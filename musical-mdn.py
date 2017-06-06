@@ -1,8 +1,3 @@
-
-# coding: utf-8
-
-# In[2]:
-
 from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,34 +7,28 @@ from edward.models import Categorical, Mixture, Normal, MultivariateNormalDiag
 import time
 
 
-# In[3]:
-
-## Generating some data:
-## Slightly fuzzy sine wave.
-
-NSAMPLE = 50000
-t_data = np.float32(np.array(range(NSAMPLE))/10.0)
-t_interval = t_data[1] - t_data[0]
-t_r_data = np.random.normal(0,t_interval/12.0,size=NSAMPLE)
-t_data = t_data + t_r_data
-
-r_data = np.random.normal(size=NSAMPLE)
-x_data = np.sin(t_data) * 7.0 + r_data * 1.0
-df = pd.DataFrame({'t':t_data, 'x':x_data})
-
-plt.show(df[500:600].plot.scatter('t','x'))
-df.t = df.t.diff()
-df.t = df.t.fillna(0)
-print(df.describe())
-
-plt.figure(figsize=(8, 8))
-plt.plot(t_data,x_data,'ro', alpha=0.3)
-plt.show()
-
-x_t_log = np.array(df)
-
-
-# In[6]:
+def generate_data():
+    """Generating some Slightly fuzzy sine wave data."""
+    NSAMPLE = 50000
+    print("Generating",str(NSAMPLE), "toy data samples.")
+    t_data = np.float32(np.array(range(NSAMPLE))/10.0)
+    t_interval = t_data[1] - t_data[0]
+    t_r_data = np.random.normal(0,t_interval/20.0,size=NSAMPLE)
+    t_data = t_data + t_r_data
+    
+    r_data = np.random.normal(size=NSAMPLE)
+    x_data = np.sin(t_data) * 7.0 + r_data * 1.0
+    df = pd.DataFrame({'t':t_data, 'x':x_data})
+    
+    #plt.show(df[500:600].plot.scatter('t','x'))
+    df.t = df.t.diff()
+    df.t = df.t.fillna(1e-4)
+    print(df.describe())
+    
+    #plt.figure(figsize=(8, 8))
+    #plt.plot(t_data,x_data,'ro', alpha=0.3)
+    #plt.show()
+    return np.array(df)
 
 ## Preparing sequences for MDN:
 class SequenceDataLoader(object):
@@ -72,7 +61,7 @@ class SequenceDataLoader(object):
 
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
-MODEL_DIR = "/Users/charles/src/mdn-experiments/"
+MODEL_DIR = "/home/charles/src/mdn-experiments/"
 LOG_PATH = "/tmp/tensorflow/"
 
 class TinyJamNet2D(object):
@@ -261,36 +250,38 @@ class TinyJamNet2D(object):
 
 # In[7]:
 
+
 ## Training Test
 ## Train on sequences of length 121 with batch size 100.
-loader = SequenceDataLoader(num_steps = 121,batch_size = 100, corpus = x_t_log)
-net = TinyJamNet2D(mode = NET_MODE_TRAIN, n_hidden_units = 128, n_mixtures = 10, batch_size = 100, sequence_length = 120)
-losses = net.train(loader, 30, saving=True)
-## Plot the losses.
-
+def test_training():
+    x_t_log = generate_data()
+    loader = SequenceDataLoader(num_steps = 121,batch_size = 100, corpus = x_t_log)
+    net = TinyJamNet2D(mode = NET_MODE_TRAIN, n_hidden_units = 128, n_mixtures = 10, batch_size = 100, sequence_length = 120)
+    losses = net.train(loader, 30, saving=True)
+    print(losses)
+    ## Plot the losses.
 
 # In[ ]:
 
 ## Evaluation Test:
 ## Predict 10000 Datapoints.
-net = TinyJamNet2D(mode = NET_MODE_RUN, n_hidden_units = 128, n_mixtures = 10, batch_size = 1, sequence_length = 1)
-first_touch = np.array([0.001,15.01]).reshape((1,1,2))
+def test_evaluation():
+    net = TinyJamNet2D(mode = NET_MODE_RUN, n_hidden_units = 128, n_mixtures = 10, batch_size = 1, sequence_length = 1)
+    first_touch = np.array([0.001,15.01]).reshape((1,1,2))
+    with tf.Session() as sess:
+        perf = net.generate_performance(first_touch,10000,sess)
+    perf_df = pd.DataFrame({'t':perf.T[0], 'x':perf.T[1]})
+    perf_df['time'] = perf_df.t.cumsum()
+    plt.show(perf_df.plot('time','x',kind='scatter'))
+    print(perf_df.describe())
+    ## Investigate Output
+    window = 100
+    for n in [1000,2000,3000,4000,5000,6000]:
+        print("Window:", str(n),'to',str(n+window))
+        plt.plot(perf_df[n:n+window].time, perf_df[n:n+window].x, '.r-')
+        plt.show()
 
-with tf.Session() as sess:
-    perf = net.generate_performance(first_touch,10000,sess)
-perf_df = pd.DataFrame({'t':perf.T[0], 'x':perf.T[1]})
-perf_df['time'] = perf_df.t.cumsum()
-plt.show(perf_df.plot('time','x',kind='scatter'))
 
-
-# In[ ]:
-
-## Investigate Output
-window = 100
-for n in [1000,2000,3000,4000,5000,6000]:
-    print("Window:", str(n),'to',str(n+window))
-    plt.plot(perf_df[n:n+window].time, perf_df[n:n+window].x, '.r-')
-    plt.show()
-
-print(perf_df.describe())
-
+if __name__ == "__main__":
+    test_training()
+    
