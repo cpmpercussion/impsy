@@ -41,8 +41,7 @@ def tf_2d_normal(x1, x2, mu1, mu2, s1, s2, rho):
 def get_lossfunc(z_pi, z_mu1, z_mu2, z_sigma1, z_sigma2, z_corr, x1_data, x2_data):
     """Returns a loss function for a mixture of bivariate normal distributions given a true value.
     Based on eq #26 of http://arxiv.org/abs/1308.0850."""
-    result0 = tf_2d_normal(x1_data, x2_data, z_mu1, z_mu2, z_sigma1, z_sigma2,
-                           z_corr)
+    result0 = tf_2d_normal(x1_data, x2_data, z_mu1, z_mu2, z_sigma1, z_sigma2, z_corr)
     epsilon = 1e-6
     result1 = tf.multiply(result0, z_pi)
     result1 = tf.reduce_sum(result1, 1, keep_dims=True)

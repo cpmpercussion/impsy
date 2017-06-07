@@ -6,7 +6,6 @@ import tensorflow as tf
 from edward.models import Categorical, Mixture, Normal, MultivariateNormalDiag
 import time
 
-
 def generate_data():
     """Generating some Slightly fuzzy sine wave data."""
     NSAMPLE = 50000
@@ -61,11 +60,13 @@ class SequenceDataLoader(object):
 
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
+MDN_MODEL_TENSORFLOW = 'tf'
+MDN_MODEL_SKETCH = 'sketch'
 MODEL_DIR = "/home/charles/src/mdn-experiments/"
 LOG_PATH = "/tmp/tensorflow/"
 
 class TinyJamNet2D(object):
-    def __init__(self, mode = NET_MODE_TRAIN, n_hidden_units = 24, n_mixtures = 24, batch_size = 100, sequence_length = 100):
+    def __init__(self, mode = NET_MODE_TRAIN, n_hidden_units = 24, n_mixtures = 24, batch_size = 100, sequence_length = 100, mixture = MDN_MODEL_TENSORFLOW):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
         # hyperparameters
         self.mode = mode
