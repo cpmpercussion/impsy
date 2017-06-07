@@ -68,6 +68,7 @@ class TinyJamNet2D(object):
     def __init__(self, mode = NET_MODE_TRAIN, n_hidden_units = 24, n_mixtures = 24, batch_size = 100, sequence_length = 100):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
         # hyperparameters
+        self.mode = mode
         self.n_hidden_units = n_hidden_units
         self.n_rnn_layers = 3
         self.batch_size = batch_size
@@ -82,6 +83,10 @@ class TinyJamNet2D(object):
         self.lr_minimum = 0.00001,  # Minimum learning rate.
         self.grad_clip=1.0
         self.state = None
+        self.use_input_dropout = False
+        if self.mode is NET_MODE_TRAIN:
+            self.use_input_dropout = True
+        self.dropout_prob = 0.90
 
         tf.reset_default_graph()
         self.graph = tf.get_default_graph()
@@ -109,8 +114,8 @@ class TinyJamNet2D(object):
                                   )
             # Saver
             self.saver = tf.train.Saver(name = "saver")
-            if (mode is NET_MODE_TRAIN):
-                print("Loading Training Operations")
+            if self.mode is NET_MODE_TRAIN:
+                tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
                 y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
                 self.cost = self.loss_function(self.mixture, y_reshaped)
@@ -119,21 +124,20 @@ class TinyJamNet2D(object):
                 g = self.grad_clip
                 capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
                 self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
-                #self.train_op = optimizer.minimize(self.cost, name="train_step")
+                #self.train_op = optimizer.minimize(self.cost, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
             
-            if (mode is NET_MODE_RUN):
-                print("Loading Running Operations")
+            if self.mode is NET_MODE_RUN:
+                tf.logging.info("Loading Running Operations")
                 self.sample = self.mixture.sample()
             # Summaries
             self.summaries = tf.summary.merge_all()
 
         self.writer = tf.summary.FileWriter(LOG_PATH, graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
-
-        print("done initialising:", self.model_name(), "vars:", str(train_vars_count))
-                    
+        tf.logging.info("done initialising: %s vars: %d", self.model_name(),train_vars_count)
+    
     def loss_function(self,mixture,Y):
         loss = self.mixture.log_prob(Y)
         loss = tf.negative(loss)
@@ -148,8 +152,11 @@ class TinyJamNet2D(object):
         return output
     
     def recurrent_network(self, X):
+        """ Create the RNN part of the network. """
         with tf.name_scope('recurrent_network'):
             cells_list = [tf.contrib.rnn.LSTMCell(self.n_hidden_units,state_is_tuple=True) for _ in range(self.n_rnn_layers)]
+            if self.use_input_dropout:
+                cells_list = [tf.contrib.rnn.DropoutWrapper(cell, input_keep_prob=self.dropout_prob) for cell in cells_list]
             cell = tf.contrib.rnn.MultiRNNCell(cells_list, state_is_tuple=True)
             init_state = cell.zero_state(self.batch_size,tf.float32)
             rnn_outputs, final_state = tf.nn.dynamic_rnn(
@@ -184,7 +191,8 @@ class TinyJamNet2D(object):
         feed = {self.x: batch_x, self.y: batch_y}
         if self.training_state is not None:
             feed[self.init_state] = self.training_state
-        training_loss_current, self.training_state, _ = sess.run([self.cost,self.final_state,self.train_op],feed_dict=feed)
+        training_loss_current, self.training_state, _, summary, step = sess.run([self.cost,self.final_state,self.train_op,self.summaries,self.global_step],feed_dict=feed)
+        self.writer.add_summary(summary, step)
         return training_loss_current
 
     def train_epoch(self, batches, sess):
@@ -197,29 +205,32 @@ class TinyJamNet2D(object):
             steps += 1
             total_training_loss += training_loss
             if (steps % 10 == 0):
-                print("Trained batch:", str(steps), "of", str(total_steps), "loss was:", str(training_loss))
+                tf.logging.info("trained batch: %d of %d; loss was %d", steps, total_steps,training_loss)
         return total_training_loss/steps
     
     def train(self, data_manager, num_epochs, saving=True):
         """Train the network for the a number of epochs."""
         # often 30
         self.num_epochs = num_epochs
-        print("Going to train: " + self.model_name())
+        tf.logging.info("going to train: %s", self.model_name())
         start_time = time.time()
         training_losses = []
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for i in range(num_epochs):
                 batches = data_manager.next_epoch()
-                print("Starting Epoch", str(i), "of", str(self.num_epochs))
                 epoch_average_loss = self.train_epoch(batches,sess)
                 training_losses.append(epoch_average_loss)
-                print("Trained Epoch", str(i), "of", str(self.num_epochs))
+                tf.logging.info("trained epoch %d of %d", i, self.num_epochs)
                 if saving:
-                    self.saver.save(sess, LOG_PATH + "/" + self.model_name() + ".ckpt", i)
+                    checkpoint_path = LOG_PATH + "/" + self.model_name() + ".ckpt"
+                    tf.logging.info('saving model %s.', checkpoint_path)
+                    tf.logging.info('global_step %i.', self.global_step)
+                    self.saver.save(sess, checkpoint_path, global_step=global_step)
             if saving:
+                tf.logging.info('saving model %s.', self.model_name())
                 self.saver.save(sess,self.model_name())
-        print("It took ", time.time() - start_time, " to train the network.")
+        tf.logging.info("took %d to train the network", time.time() - start_time)
         return training_losses
     
     def prepare_model_for_running(self,sess):
@@ -247,10 +258,6 @@ class TinyJamNet2D(object):
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
 
-
-# In[7]:
-
-
 ## Training Test
 ## Train on sequences of length 121 with batch size 100.
 def test_training():
@@ -260,8 +267,6 @@ def test_training():
     losses = net.train(loader, 30, saving=True)
     print(losses)
     ## Plot the losses.
-
-# In[ ]:
 
 ## Evaluation Test:
 ## Predict 10000 Datapoints.
@@ -280,7 +285,6 @@ def test_evaluation():
         print("Window:", str(n),'to',str(n+window))
         plt.plot(perf_df[n:n+window].time, perf_df[n:n+window].x, '.r-')
         plt.show()
-
 
 if __name__ == "__main__":
     test_training()
