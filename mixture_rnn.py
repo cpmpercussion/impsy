@@ -19,7 +19,7 @@ class MixtureRNN(object):
         # hyperparameters
         self.mode = mode
         self.n_hidden_units = n_hidden_units
-        self.n_rnn_layers = 3
+        self.n_rnn_layers = 1
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.st_dev = 0.5 
@@ -184,9 +184,8 @@ class MixtureRNN(object):
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
 
-def train_epochs():
-    num_epochs = 30
-    print("Training Mixture RNN for %d epochs", num_epochs)
+def train_epochs(num_epochs = 1):
+    print("Training Mixture RNN for", num_epochs, "epochs")
     net = MixtureRNN(mode = NET_MODE_TRAIN, n_hidden_units = 128, n_mixtures = 10, batch_size = 100, sequence_length = 120)
     x_t_log = musical_mdn.generate_data()
     loader = musical_mdn.SequenceDataLoader(num_steps = 121,batch_size = 100, corpus = x_t_log)
@@ -196,4 +195,4 @@ def train_epochs():
     print(losses)
 
 if __name__ == "__main__":
-    test_training()
+    train_epochs(30)
