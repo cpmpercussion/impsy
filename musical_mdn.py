@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import tensorflow as tf
-from edward.models import Categorical, Mixture, Normal, MultivariateNormalDiag
+import ed_mixture
 import time
 
 def generate_data():
@@ -14,22 +14,14 @@ def generate_data():
     t_interval = t_data[1] - t_data[0]
     t_r_data = np.random.normal(0,t_interval/20.0,size=NSAMPLE)
     t_data = t_data + t_r_data
-    
     r_data = np.random.normal(size=NSAMPLE)
     x_data = np.sin(t_data) * 7.0 + r_data * 1.0
     df = pd.DataFrame({'t':t_data, 'x':x_data})
-    
-    #plt.show(df[500:600].plot.scatter('t','x'))
     df.t = df.t.diff()
     df.t = df.t.fillna(1e-4)
     print(df.describe())
-    
-    #plt.figure(figsize=(8, 8))
-    #plt.plot(t_data,x_data,'ro', alpha=0.3)
-    #plt.show()
     return np.array(df)
 
-## Preparing sequences for MDN:
 class SequenceDataLoader(object):
     """Manages data from a sequence and generates epochs"""
     def __init__(self, num_steps, batch_size, corpus):
@@ -66,12 +58,11 @@ MODEL_DIR = "/home/charles/src/mdn-experiments/"
 LOG_PATH = "/tmp/tensorflow/"
 
 class TinyJamNet2D(object):
-    def __init__(self, mode = NET_MODE_TRAIN, n_hidden_units = 24, n_mixtures = 24, batch_size = 100, sequence_length = 100, mixture = MDN_MODEL_TENSORFLOW):
+    def __init__(self, mode = NET_MODE_TRAIN, n_hidden_units = 128, n_mixtures = 10, batch_size = 100, sequence_length = 100, mixture = MDN_MODEL_TENSORFLOW):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
-        # hyperparameters
         self.mode = mode
         self.n_hidden_units = n_hidden_units
-        self.n_rnn_layers = 3
+        self.n_rnn_layers = 1
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.st_dev = 0.5 
@@ -88,6 +79,7 @@ class TinyJamNet2D(object):
         if self.mode is NET_MODE_TRAIN:
             self.use_input_dropout = True
         self.dropout_prob = 0.90
+        self.run_name = self.get_run_name()
 
         tf.reset_default_graph()
         self.graph = tf.get_default_graph()
@@ -99,57 +91,43 @@ class TinyJamNet2D(object):
             
             self.rnn_outputs, self.init_state, self.final_state = self.recurrent_network(self.x)
             self.rnn_outputs = tf.reshape(self.rnn_outputs,[-1,self.n_hidden_units], name = "reshape_rnn_outputs")
-            
             output_params = self.fully_connected_layer(self.rnn_outputs,self.n_hidden_units,self.n_output_units)
-            
-            logits, scales_1, scales_2, locs_1, locs_2 = self.split_tensor_to_mixture_parameters(output_params)
-            cat = Categorical(logits=logits)
-            locs = tf.stack([locs_1, locs_2], axis=1)
-            scales = tf.stack([scales_1, scales_2],axis=1)
-            coll = [MultivariateNormalDiag(loc=loc, scale_diag=scale) for loc, scale 
-                    in zip(tf.unstack(locs,axis=-1),tf.unstack(scales,axis=-1))]
-            
-            self.mixture = Mixture(cat=cat, 
-                                   components=coll, 
-                                   value=tf.zeros([self.batch_size * self.sequence_length,self.n_input_units], dtype=tf.float32)
-                                  )
-            # Saver
+            logits, scales_1, scales_2, locs_1, locs_2 = ed_mixture.split_tensor_to_mixture_parameters(output_params)
+            input_shape = [self.batch_size * self.sequence_length,self.n_input_units]
+            self.mixture = ed_mixture.get_mixture_model(logits, locs_1, locs_2, scales_1, scales_2, input_shape)
             self.saver = tf.train.Saver(name = "saver")
             if self.mode is NET_MODE_TRAIN:
                 tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
-                y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
-                self.cost = self.loss_function(self.mixture, y_reshaped)
+                with tf.name_scope('labels'):
+                    y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
+                self.cost = ed_mixture.get_loss_func(self.mixture, y_reshaped)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
                 g = self.grad_clip
                 capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
                 self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
-                #self.train_op = optimizer.minimize(self.cost, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
             
             if self.mode is NET_MODE_RUN:
                 tf.logging.info("Loading Running Operations")
-                self.sample = self.mixture.sample()
+                self.sample = ed_mixture.sample_mixture_model(self.mixture)
             # Summaries
             self.summaries = tf.summary.merge_all()
 
-        self.writer = tf.summary.FileWriter(LOG_PATH, graph=self.graph)
+        self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name + '/', graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
         tf.logging.info("done initialising: %s vars: %d", self.model_name(),train_vars_count)
-    
-    def loss_function(self,mixture,Y):
-        loss = self.mixture.log_prob(Y)
-        loss = tf.negative(loss)
-        loss = tf.reduce_sum(loss)
-        return loss
         
     def fully_connected_layer(self, X, in_dim, out_dim):
         with tf.name_scope('rnn_to_mdn'):
             W = tf.Variable(tf.random_normal([in_dim,out_dim], stddev=self.st_dev, dtype=tf.float32))
             b = tf.Variable(tf.random_normal([1,out_dim], stddev=self.st_dev, dtype=tf.float32))
             output = tf.matmul(X,W) + b
+        tf.summary.histogram("out_weights", W)
+        tf.summary.histogram("out_biases", b)
+        tf.summary.histogram("out_logits", output)
         return output
     
     def recurrent_network(self, X):
@@ -169,20 +147,15 @@ class TinyJamNet2D(object):
                 scope='RNN'
             )
         return rnn_outputs, init_state, final_state
-        
-    def split_tensor_to_mixture_parameters(self, output):
-        # Split up the output nodes into three groups for Pis, Sigmas and Mus.
-        logits, scales_1, scales_2, locs_1, locs_2 = tf.split(value=output, num_or_size_splits=self.mdn_splits, axis=1)
-        # Transform the sigmas to e^sigma
-        scales_1 = tf.exp(scales_1)
-        scales_2 = tf.exp(scales_2)
-        # Transform the correlations to tanh(corr)
-        #corr = tf.tanh(corr)
-        return logits, scales_1, scales_2, locs_1, locs_2
     
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
         return "tiny-perf-mdn-" + str(self.n_rnn_layers) + "layers-" + str(self.n_hidden_units) + "units"
+
+    def get_run_name(self):
+        out = self.model_name() + "-"
+        out += time.strftime("%Y%m%d-%H%M%S")
+        return out
     
     def train_batch(self, batch, sess):
         """Train the network on one batch"""
@@ -194,44 +167,44 @@ class TinyJamNet2D(object):
             feed[self.init_state] = self.training_state
         training_loss_current, self.training_state, _, summary, step = sess.run([self.cost,self.final_state,self.train_op,self.summaries,self.global_step],feed_dict=feed)
         self.writer.add_summary(summary, step)
-        return training_loss_current
+        return training_loss_current, step
 
     def train_epoch(self, batches, sess):
         """Train the network on one epoch of training data."""
         total_training_loss = 0
-        steps = 0
+        epoch_steps = 0
         total_steps = len(batches)
+        step = 0
         for b in batches:
-            training_loss = self.train_batch(b, sess)
-            steps += 1
+            training_loss, step = self.train_batch(b, sess)
+            epoch_steps += 1
             total_training_loss += training_loss
-            if (steps % 10 == 0):
-                tf.logging.info("trained batch: %d of %d; loss was %d", steps, total_steps,training_loss)
-        return total_training_loss/steps
+            if (epoch_steps % 200 == 0):
+                tf.logging.info("trained batch: %d of %d; loss was %f", epoch_steps, total_steps, training_loss)
+        return (total_training_loss/epoch_steps), step
     
     def train(self, data_manager, num_epochs, saving=True):
         """Train the network for the a number of epochs."""
-        # often 30
         self.num_epochs = num_epochs
         tf.logging.info("going to train: %s", self.model_name())
         start_time = time.time()
         training_losses = []
+        step = 0
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for i in range(num_epochs):
                 batches = data_manager.next_epoch()
-                epoch_average_loss = self.train_epoch(batches,sess)
+                epoch_average_loss, step = self.train_epoch(batches,sess)
                 training_losses.append(epoch_average_loss)
                 tf.logging.info("trained epoch %d of %d", i, self.num_epochs)
                 if saving:
-                    checkpoint_path = LOG_PATH + "/" + self.model_name() + ".ckpt"
-                    tf.logging.info('saving model %s.', checkpoint_path)
-                    tf.logging.info('global_step %i.', self.global_step)
-                    self.saver.save(sess, checkpoint_path, global_step=global_step)
+                    checkpoint_path = LOG_PATH + self.run_name + '/' + self.model_name() + ".ckpt"
+                    tf.logging.info('saving model %s, global_step %d.', checkpoint_path, step)
+                    self.saver.save(sess, checkpoint_path, global_step=step)
             if saving:
                 tf.logging.info('saving model %s.', self.model_name())
                 self.saver.save(sess,self.model_name())
-        tf.logging.info("took %d to train the network", time.time() - start_time)
+        tf.logging.info("took %d seconds to train.", (time.time() - start_time))
         return training_losses
     
     def prepare_model_for_running(self,sess):
