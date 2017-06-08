@@ -56,8 +56,9 @@ class MixtureRNN(object):
             if self.mode is NET_MODE_TRAIN:
                 tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
-                y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
-                [y1_data, y2_data] = tf.split(y_reshaped, 2, 1)
+                with tf.name_scope('labels'):
+                    y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
+                    [y1_data, y2_data] = tf.split(y_reshaped, 2, 1)
                 loss_func = sketch_mixture.get_lossfunc(self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2,  self.corr, y1_data, y2_data)
                 self.cost = tf.reduce_mean(loss_func)
                 optimizer = tf.train.AdamOptimizer(self.lr)
@@ -75,7 +76,7 @@ class MixtureRNN(object):
             # Summaries
             self.summaries = tf.summary.merge_all()
 
-        self.writer = tf.summary.FileWriter(LOG_PATH, graph=self.graph)
+        self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name() + '/', graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
         tf.logging.info("done initialising: %s vars: %d", self.model_name(),train_vars_count)
         
@@ -84,6 +85,9 @@ class MixtureRNN(object):
             W = tf.Variable(tf.random_normal([in_dim,out_dim], stddev=self.st_dev, dtype=tf.float32))
             b = tf.Variable(tf.random_normal([1,out_dim], stddev=self.st_dev, dtype=tf.float32))
             output = tf.matmul(X,W) + b
+        tf.summary.histogram("out_weights", W)
+        tf.summary.histogram("out_biases", b)
+        tf.summary.histogram("out_logits", output)
         return output
     
     def recurrent_network(self, X):
@@ -107,6 +111,11 @@ class MixtureRNN(object):
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
         return "mixture-rnn-" + str(self.n_rnn_layers) + "layers-" + str(self.n_hidden_units) + "units"
+
+    def run_name(self):
+        out = self.model_name() + "-"
+        out += time.strftime("%Y%m%d-%H%M%S")
+        return out
     
     def train_batch(self, batch, sess):
         """Train the network on one batch"""
@@ -149,7 +158,7 @@ class MixtureRNN(object):
                 training_losses.append(epoch_average_loss)
                 tf.logging.info("trained epoch %d of %d", i, self.num_epochs)
                 if saving:
-                    checkpoint_path = LOG_PATH + self.model_name() + ".ckpt"
+                    checkpoint_path = LOG_PATH + self.run_name() + '/' + self.model_name() + ".ckpt"
                     tf.logging.info('saving model %s, global_step %d.', checkpoint_path, step)
                     self.saver.save(sess, checkpoint_path, global_step=step)
             if saving:

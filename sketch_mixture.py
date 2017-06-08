@@ -13,14 +13,15 @@ N_OUTPUT_UNITS = N_MIXTURES * MDN_SPLITS
 def split_tensor_to_mixture_parameters(output):
     """ Split up the output nodes into three groups for Pis, Sigmas and Mus to parameterise mixture model. 
     This uses eqns 18 -> 23 of http://arxiv.org/abs/1308.0850. """
-    logits, scales_1, scales_2, locs_1, locs_2, corr = tf.split(value=output, num_or_size_splits=MDN_SPLITS, axis=1)
-    # softmax the mixture weights:
-    pis = tf.nn.softmax(logits)
-    # Transform the sigmas to e^sigma
-    scales_1 = tf.exp(scales_1)
-    scales_2 = tf.exp(scales_2)
-    # Transform the correlations to tanh(corr)
-    corr = tf.tanh(corr)
+    with tf.name_scope('mixture_split'):
+        logits, scales_1, scales_2, locs_1, locs_2, corr = tf.split(value=output, num_or_size_splits=MDN_SPLITS, axis=1)
+        # softmax the mixture weights:
+        pis = tf.nn.softmax(logits)
+        # Transform the sigmas to e^sigma
+        scales_1 = tf.exp(scales_1)
+        scales_2 = tf.exp(scales_2)
+        # Transform the correlations to tanh(corr)
+        corr = tf.tanh(corr)
     return pis, scales_1, scales_2, locs_1, locs_2, corr
        
 def tf_2d_normal(x1, x2, mu1, mu2, s1, s2, rho):
