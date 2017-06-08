@@ -36,6 +36,7 @@ class MixtureRNN(object):
         if self.mode is NET_MODE_TRAIN:
             self.use_input_dropout = True
         self.dropout_prob = 0.90
+        self.run_name = self.get_run_name()
 
         tf.reset_default_graph()
         self.graph = tf.get_default_graph()
@@ -76,7 +77,7 @@ class MixtureRNN(object):
             # Summaries
             self.summaries = tf.summary.merge_all()
 
-        self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name() + '/', graph=self.graph)
+        self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name + '/', graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
         tf.logging.info("done initialising: %s vars: %d", self.model_name(),train_vars_count)
         
@@ -112,7 +113,7 @@ class MixtureRNN(object):
         """Returns the name of the present model for saving to disk"""
         return "mixture-rnn-" + str(self.n_rnn_layers) + "layers-" + str(self.n_hidden_units) + "units"
 
-    def run_name(self):
+    def get_run_name(self):
         out = self.model_name() + "-"
         out += time.strftime("%Y%m%d-%H%M%S")
         return out
@@ -158,7 +159,7 @@ class MixtureRNN(object):
                 training_losses.append(epoch_average_loss)
                 tf.logging.info("trained epoch %d of %d", i, self.num_epochs)
                 if saving:
-                    checkpoint_path = LOG_PATH + self.run_name() + '/' + self.model_name() + ".ckpt"
+                    checkpoint_path = LOG_PATH + self.run_name + '/' + self.model_name() + ".ckpt"
                     tf.logging.info('saving model %s, global_step %d.', checkpoint_path, step)
                     self.saver.save(sess, checkpoint_path, global_step=step)
             if saving:
