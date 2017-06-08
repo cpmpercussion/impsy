@@ -24,28 +24,30 @@ def split_tensor_to_mixture_parameters(output):
     return pis, scales_1, scales_2, locs_1, locs_2, corr
        
 def tf_2d_normal(x1, x2, mu1, mu2, s1, s2, rho):
-    """ Returns the negative log probability of (x1,x2) occuring in the bivariate
+    """ Returns the  probability of (x1,x2) occuring in the bivariate
     gaussian model parameterised by mu1, mu2, s1, s2, rho. 
     Following eq # 24 and 25 of http://arxiv.org/abs/1308.0850."""
-    norm1 = tf.subtract(x1, mu1)
-    norm2 = tf.subtract(x2, mu2)
-    s1s2 = tf.multiply(s1, s2)
-    z = (tf.square(tf.div(norm1, s1)) + tf.square(tf.div(norm2, s2)) -
-       2 * tf.div(tf.multiply(rho, tf.multiply(norm1, norm2)), s1s2))
-    neg_rho = 1 - tf.square(rho)
-    result = tf.exp(tf.div(-z, 2 * neg_rho))
-    denom = 2 * np.pi * tf.multiply(s1s2, tf.sqrt(neg_rho))
-    result = tf.div(result, denom)
+    with tf.name_scope('2d_normal_prob'):
+        norm1 = tf.subtract(x1, mu1)
+        norm2 = tf.subtract(x2, mu2)
+        s1s2 = tf.multiply(s1, s2)
+        z = (tf.square(tf.div(norm1, s1)) + tf.square(tf.div(norm2, s2)) -
+             2 * tf.div(tf.multiply(rho, tf.multiply(norm1, norm2)), s1s2))
+        neg_rho = 1 - tf.square(rho)
+        result = tf.exp(tf.div(-z, 2 * neg_rho))
+        denom = 2 * np.pi * tf.multiply(s1s2, tf.sqrt(neg_rho))
+        result = tf.div(result, denom)
     return result
 
 def get_lossfunc(z_pi, z_mu1, z_mu2, z_sigma1, z_sigma2, z_corr, x1_data, x2_data):
     """Returns a loss function for a mixture of bivariate normal distributions given a true value.
     Based on eq #26 of http://arxiv.org/abs/1308.0850."""
-    result0 = tf_2d_normal(x1_data, x2_data, z_mu1, z_mu2, z_sigma1, z_sigma2, z_corr)
-    epsilon = 1e-6
-    result1 = tf.multiply(result0, z_pi)
-    result1 = tf.reduce_sum(result1, 1, keep_dims=True)
-    result1 = -tf.log(result1 + epsilon)  # avoid log(0)
+    with tf.name_scope('mixture_loss'):
+        result0 = tf_2d_normal(x1_data, x2_data, z_mu1, z_mu2, z_sigma1, z_sigma2, z_corr)
+        epsilon = 1e-6
+        result1 = tf.multiply(result0, z_pi)
+        result1 = tf.reduce_sum(result1, 1, keep_dims=True)
+        result1 = -tf.log(result1 + epsilon)  # avoid log(0)
     return result1
 
 def adjust_temp(pi_pdf, temp):
