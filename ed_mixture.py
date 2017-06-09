@@ -38,7 +38,7 @@ def get_loss_func(mixture,Y):
     with tf.name_scope('mixture_loss'):        
         loss = mixture.log_prob(Y)
         loss = tf.negative(loss)
-        loss = tf.reduce_sum(loss)
+        loss = tf.reduce_mean(loss)
     return loss
 
 def sample_mixture_model(mixture):
