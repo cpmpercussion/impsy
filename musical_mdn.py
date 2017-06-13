@@ -71,8 +71,8 @@ class TinyJamNet2D(object):
         self.mdn_splits = 5 # (pi, sigma_1, sigma_2, mu_1, mu_2) # forget about (rho) for now.
         self.n_output_units = n_mixtures * self.mdn_splits # KMIX * self.mdn_splits
         self.lr = 1e-4 # could be 1e-3
-        self.lr_decay_rate = 0.9999,  # Learning rate decay per minibatch.
-        self.lr_minimum = 0.00001,  # Minimum learning rate.
+        # self.lr_decay_rate = 0.9999,  # Learning rate decay per minibatch.
+        # self.lr_minimum = 0.00001,  # Minimum learning rate.
         self.grad_clip=1.0
         self.state = None
         self.use_input_dropout = False
@@ -90,17 +90,24 @@ class TinyJamNet2D(object):
                 self.y = tf.placeholder(dtype=tf.float32, shape=[self.batch_size,self.sequence_length,self.n_input_units], name="y") # target
             
             self.rnn_outputs, self.init_state, self.final_state = self.recurrent_network(self.x)
+            self.rnn_outputs = self.rnn_outputs[:,-1,:] # slice to obtain last output only.
             self.rnn_outputs = tf.reshape(self.rnn_outputs,[-1,self.n_hidden_units], name = "reshape_rnn_outputs")
-            output_params = self.fully_connected_layer(self.rnn_outputs,self.n_hidden_units,self.n_output_units)
+            output_params = self.fully_connected_layer(self.rnn_outputs, self.n_hidden_units, self.n_output_units)
             logits, scales_1, scales_2, locs_1, locs_2 = ed_mixture.split_tensor_to_mixture_parameters(output_params)
-            input_shape = [self.batch_size * self.sequence_length,self.n_input_units]
+            #input_shape = [self.batch_size * self.sequence_length,self.n_input_units] # accounts for all steps in sequence
+            input_shape = [self.batch_size,self.n_input_units] # just last step in sequence
             self.mixture = ed_mixture.get_mixture_model(logits, locs_1, locs_2, scales_1, scales_2, input_shape)
             self.saver = tf.train.Saver(name = "saver")
             if self.mode is NET_MODE_TRAIN:
                 tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
                 with tf.name_scope('labels'):
-                    y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels")
+                    print(self.y.shape)
+                    y_reshaped = self.y[:,-1,:] # slice to obtain last label only.
+                    print(y_reshaped.shape)
+                    # y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels") # keeps all steps in sequence
+                    y_reshaped = tf.reshape(y_reshaped,[-1,self.n_input_units], name = "reshape_labels")
+                    print(y_reshaped.shape)
                 self.cost = ed_mixture.get_loss_func(self.mixture, y_reshaped)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
