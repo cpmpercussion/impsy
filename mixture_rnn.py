@@ -10,9 +10,12 @@ import sketch_mixture
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
 MODEL_DIR = "/Users/charles/src/mdn-experiments/"
-LOG_PATH = "/tmp/tensorflow/"
+LOG_PATH = "./output-logs/"
+
 
 class MixtureRNN(object):
+    """Mixture Density Network RNN using the SketchRNN's hand-coded loss function for the mixture of 2D Normals."""
+
     def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=24, batch_size=100, sequence_length=120):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
         # hyperparameters
@@ -43,11 +46,11 @@ class MixtureRNN(object):
         with self.graph.as_default():
             with tf.name_scope('input'):
                 self.x = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.sequence_length, self.n_input_units], name="x")  # input
-                self.y = tf.placeholder(dtype=tf.float32, shape=[self.batch_size,self.sequence_length,self.n_input_units], name="y")  # target
+                self.y = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.sequence_length, self.n_input_units], name="y")  # target
                 self.rnn_outputs, self.init_state, self.final_state = self.recurrent_network(self.x)
             self.rnn_outputs = tf.reshape(self.rnn_outputs, [-1, self.n_hidden_units], name="reshape_rnn_outputs")
 
-            output_params = self.fully_connected_layer(self.rnn_outputs,self.n_hidden_units,self.n_output_units)
+            output_params = self.fully_connected_layer(self.rnn_outputs, self.n_hidden_units, self.n_output_units)
 
             self.pis, self.scales_1, self.scales_2, self.locs_1, self.locs_2, self.corr = sketch_mixture.split_tensor_to_mixture_parameters(output_params)
             # Saver
@@ -58,12 +61,12 @@ class MixtureRNN(object):
                 with tf.name_scope('labels'):
                     y_reshaped = tf.reshape(self.y, [-1, self.n_input_units], name="reshape_labels")
                     [y1_data, y2_data] = tf.split(y_reshaped, 2, 1)
-                loss_func = sketch_mixture.get_lossfunc(self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2,  self.corr, y1_data, y2_data)
+                loss_func = sketch_mixture.get_lossfunc(self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2, self.corr, y1_data, y2_data)
                 self.cost = tf.reduce_mean(loss_func)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
-                g = self.grad_clip
-                capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
+                # g = self.grad_clip
+                # capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
                 self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
@@ -76,36 +79,36 @@ class MixtureRNN(object):
 
         self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name + '/', graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
-        tf.logging.info("done initialising: %s vars: %d", self.model_name(),train_vars_count)
+        tf.logging.info("done initialising: %s vars: %d", self.model_name(), train_vars_count)
 
     def fully_connected_layer(self, X, in_dim, out_dim):
         with tf.name_scope('rnn_to_mdn'):
-            W = tf.Variable(tf.random_normal([in_dim,out_dim], stddev=self.st_dev, dtype=tf.float32))
-            b = tf.Variable(tf.random_normal([1,out_dim], stddev=self.st_dev, dtype=tf.float32))
-            output = tf.matmul(X,W) + b
+            W = tf.Variable(tf.random_normal([in_dim, out_dim], stddev=self.st_dev, dtype=tf.float32))
+            b = tf.Variable(tf.random_normal([1, out_dim], stddev=self.st_dev, dtype=tf.float32))
+            output = tf.matmul(X, W) + b
         tf.summary.histogram("out_weights", W)
         tf.summary.histogram("out_biases", b)
         tf.summary.histogram("out_logits", output)
         return output
-    
+
     def recurrent_network(self, X):
         """ Create the RNN part of the network. """
         with tf.name_scope('recurrent_network'):
-            cells_list = [tf.contrib.rnn.LSTMCell(self.n_hidden_units,state_is_tuple=True) for _ in range(self.n_rnn_layers)]
+            cells_list = [tf.contrib.rnn.LSTMCell(self.n_hidden_units, state_is_tuple=True) for _ in range(self.n_rnn_layers)]
             if self.use_input_dropout:
                 cells_list = [tf.contrib.rnn.DropoutWrapper(cell, input_keep_prob=self.dropout_prob) for cell in cells_list]
             cell = tf.contrib.rnn.MultiRNNCell(cells_list, state_is_tuple=True)
-            init_state = cell.zero_state(self.batch_size,tf.float32)
+            init_state = cell.zero_state(self.batch_size, tf.float32)
             rnn_outputs, final_state = tf.nn.dynamic_rnn(
-                cell, 
-                X, 
-                initial_state=init_state, 
-                time_major = False, 
-                dtype=tf.float32, 
+                cell,
+                X,
+                initial_state=init_state,
+                time_major=False,
+                dtype=tf.float32,
                 scope='RNN'
             )
         return rnn_outputs, init_state, final_state
-    
+
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
         return "mixture-rnn-" + str(self.n_rnn_layers) + "layers-" + str(self.n_hidden_units) + "units"
@@ -114,16 +117,16 @@ class MixtureRNN(object):
         out = self.model_name() + "-"
         out += time.strftime("%Y%m%d-%H%M%S")
         return out
-    
+
     def train_batch(self, batch, sess):
         """Train the network on one batch"""
-        ## batch is an array of shape (batch_size, sequence_length + 1, n_input_units)
-        batch_x = batch[:,:self.sequence_length,:]
-        batch_y = batch[:,1:,:]
+        # batch is an array of shape (batch_size, sequence_length + 1, n_input_units)
+        batch_x = batch[:, :self.sequence_length, :]
+        batch_y = batch[:, 1:, :]
         feed = {self.x: batch_x, self.y: batch_y}
         if self.training_state is not None:
             feed[self.init_state] = self.training_state
-        training_loss_current, self.training_state, _, summary, step = sess.run([self.cost,self.final_state,self.train_op,self.summaries,self.global_step],feed_dict=feed)
+        training_loss_current, self.training_state, _, summary, step = sess.run([self.cost, self.final_state, self.train_op, self.summaries, self.global_step], feed_dict=feed)
         self.writer.add_summary(summary, step)
         return training_loss_current, step
 
@@ -139,8 +142,8 @@ class MixtureRNN(object):
             total_training_loss += training_loss
             if (epoch_steps % 200 == 0):
                 tf.logging.info("trained batch: %d of %d; loss was %f", epoch_steps, total_steps, training_loss)
-        return (total_training_loss/epoch_steps), step
-    
+        return (total_training_loss / epoch_steps), step
+
     def train(self, data_manager, num_epochs, saving=True):
         """Train the network for the a number of epochs."""
         self.num_epochs = num_epochs
@@ -152,7 +155,7 @@ class MixtureRNN(object):
             sess.run(tf.global_variables_initializer())
             for i in range(num_epochs):
                 batches = data_manager.next_epoch()
-                epoch_average_loss, step = self.train_epoch(batches,sess)
+                epoch_average_loss, step = self.train_epoch(batches, sess)
                 training_losses.append(epoch_average_loss)
                 tf.logging.info("trained epoch %d of %d", i, self.num_epochs)
                 if saving:
@@ -161,45 +164,47 @@ class MixtureRNN(object):
                     self.saver.save(sess, checkpoint_path, global_step=step)
             if saving:
                 tf.logging.info('saving model %s.', self.model_name())
-                self.saver.save(sess,self.model_name())
+                self.saver.save(sess, self.model_name())
         tf.logging.info("took %d seconds to train.", (time.time() - start_time))
         return training_losses
-    
-    def prepare_model_for_running(self,sess):
+
+    def prepare_model_for_running(self, sess):
         """Load trained model and reset RNN state."""
         sess.run(tf.global_variables_initializer())
         self.saver.restore(sess, MODEL_DIR + self.model_name())
         self.state = None
-        
-    def generate_touch(self,prev_touch,sess):
+
+    def generate_touch(self, prev_touch, sess):
         """Generate prediction for a single touch."""
-        input_touch = prev_touch.reshape([1,1,self.n_input_units]) ## Give input correct shape for one-at-a-time evaluation.
+        input_touch = prev_touch.reshape([1, 1, self.n_input_units])  # Give input correct shape for one-at-a-time evaluation.
         if self.state is not None:
             feed = {self.x: input_touch, self.init_state: self.state}
         else:
             feed = {self.x: input_touch}
-        pis, locs_1, locs_2, scales_1, scales_2, corr, self.state = sess.run([self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2,  self.corr, self.final_state], feed_dict=feed)
+        pis, locs_1, locs_2, scales_1, scales_2, corr, self.state = sess.run([self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2, self.corr, self.final_state], feed_dict=feed)
         x_1, x_2 = sketch_mixture.sample_mixture_model(pis[0], locs_1[0], locs_2[0], scales_1[0], scales_2[0], corr[0], temp=1.0, greedy=False)
-        return np.array([x_1,x_2])
-    
-    def generate_performance(self,first_touch,number,sess):
+        return np.array([x_1, x_2])
+
+    def generate_performance(self, first_touch, number, sess):
         self.prepare_model_for_running(sess)
         previous_touch = first_touch
         performance = [previous_touch.reshape((self.n_input_units,))]
         for i in range(number):
-            previous_touch = self.generate_touch(previous_touch,sess)
+            previous_touch = self.generate_touch(previous_touch, sess)
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
 
-def train_epochs(num_epochs = 1):
+
+def train_epochs(num_epochs=1):
     print("Training Mixture RNN for", num_epochs, "epochs")
-    net = MixtureRNN(mode = NET_MODE_TRAIN, n_hidden_units = 128, n_mixtures = 10, batch_size = 100, sequence_length = 120)
+    net = MixtureRNN(mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=10, batch_size=100, sequence_length=120)
     x_t_log = musical_mdn.generate_data()
-    loader = musical_mdn.SequenceDataLoader(num_steps = 121,batch_size = 100, corpus = x_t_log)
+    loader = musical_mdn.SequenceDataLoader(num_steps=121, batch_size=100, corpus=x_t_log)
     losses = net.train(loader, num_epochs, saving=True)
     print("Training Done.")
     print("Mean Losses per Batch:")
     print(losses)
+
 
 if __name__ == "__main__":
     train_epochs(30)
