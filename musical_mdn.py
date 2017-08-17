@@ -6,6 +6,8 @@ import tensorflow as tf
 import ed_mixture
 import time
 
+# Mixture Density Recurrent Neural Network using native tensorflow mixture model functions.
+
 
 def generate_data():
     """Generating some Slightly fuzzy sine wave data."""
@@ -62,6 +64,8 @@ LOG_PATH = "/tmp/tensorflow/"
 
 
 class TinyJamNet2D(object):
+    """ A 2D Mixture Density RNN for modelling musical data (data and time); uses native Tensorflow Mixture Model """
+
     def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=10, batch_size=100, sequence_length=100, mixture=MDN_MODEL_TENSORFLOW):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
         self.mode = mode
