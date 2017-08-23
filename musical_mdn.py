@@ -199,7 +199,13 @@ class TinyJamNet2D(object):
         return (total_training_loss / epoch_steps), step
 
     def train(self, data_manager, num_epochs, saving=True):
-        """Train the network for the a number of epochs."""
+        """Train the network for the a number of epochs.
+
+        Keyword arguments:
+        data_manager -- A SequenceDataLoader object loaded with the training data.
+        num_epochs -- Number of epochs to train the whole data set.
+        saving -- Sets whether the trained model should be saved. (default True)
+        """
         self.num_epochs = num_epochs
         tf.logging.info("going to train: %s", self.model_name())
         start_time = time.time()
