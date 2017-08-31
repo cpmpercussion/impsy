@@ -59,8 +59,10 @@ NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
 MDN_MODEL_TENSORFLOW = 'tf'
 MDN_MODEL_SKETCH = 'sketch'
-MODEL_DIR = "/home/charles/src/mdn-experiments/"
-LOG_PATH = "/tmp/tensorflow/"
+# MODEL_DIR = "/home/charles/src/mdn-experiments/"
+MODEL_DIR = "./"
+LOG_PATH = "./output-logs/"
+#LOG_PATH = "/tmp/tensorflow/"
 
 
 class TinyJamNet2D(object):
