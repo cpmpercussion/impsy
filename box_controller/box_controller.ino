@@ -4,6 +4,7 @@ boolean debug = false;
 
 Servo servoObject;
 
+int servoPin = 10;
 int potPin = 0;
 int potMin = 560;
 int potMax = 1020;
@@ -21,7 +22,7 @@ byte receivedPositionCommand = 0;
 void setup()
 {
   Serial.begin(9600);
-  servoObject.attach(12);
+  servoObject.attach(servoPin);
 }
 
 void loop()
