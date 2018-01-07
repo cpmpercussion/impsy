@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import tensorflow as tf
-from tf.contrib.distributions import Categorical, Mixture, MultivariateNormalDiag
+from tensorflow.contrib.distributions import Categorical, Mixture, MultivariateNormalDiag
 
 
 N_MIXTURES = 24
