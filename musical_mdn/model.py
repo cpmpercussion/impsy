@@ -1,23 +1,22 @@
+"""Mixture Density Recurrent Neural Network using native tensorflow mixture model functions."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 import tensorflow as tf
-import time
 from . import ed_mixture
+import time
 
 
-# Mixture Density Recurrent Neural Network using native tensorflow mixture model functions.
+tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
 
 
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
 MDN_MODEL_TENSORFLOW = 'tf'
 MDN_MODEL_SKETCH = 'sketch'
-# MODEL_DIR = "/home/charles/src/mdn-experiments/"
 MODEL_DIR = "./"
 LOG_PATH = "./output-logs/"
-#LOG_PATH = "/tmp/tensorflow/"
 
 
 class TinyJamNet2D(object):
@@ -67,18 +66,15 @@ class TinyJamNet2D(object):
                 tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
                 with tf.name_scope('labels'):
-                    print(self.y.shape)
                     y_reshaped = self.y[:, -1, :]  # slice to obtain last label only.
-                    print(y_reshaped.shape)
                     # y_reshaped = tf.reshape(self.y,[-1,self.n_input_units], name = "reshape_labels") # keeps all steps in sequence
                     y_reshaped = tf.reshape(y_reshaped, [-1, self.n_input_units], name="reshape_labels")
-                    print(y_reshaped.shape)
                 self.cost = ed_mixture.get_loss_func(self.mixture, y_reshaped)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
                 g = self.grad_clip
-                capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
-                self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
+                capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]  # gradient clipping to 1.0.
+                self.train_op = optimizer.apply_gradients(capped_gvs, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
 
@@ -209,36 +205,3 @@ class TinyJamNet2D(object):
             previous_touch = self.generate_touch(previous_touch, sess)
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
-
-
-# Training Test
-# Train on sequences of length 121 with batch size 100.
-def test_training():
-    x_t_log = generate_data()
-    loader = SequenceDataLoader(num_steps=121, batch_size=100, corpus=x_t_log)
-    net = TinyJamNet2D(mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=10, batch_size=100, sequence_length=120)
-    losses = net.train(loader, 30, saving=True)
-    print(losses)
-    # Plot the losses.
-
-
-# Evaluation Test:
-# Predict 10000 Datapoints.
-def test_evaluation():
-    net = TinyJamNet2D(mode=NET_MODE_RUN, n_hidden_units=128, n_mixtures=10, batch_size=1, sequence_length=1)
-    first_touch = np.array([0.001, 15.01]).reshape((1, 1, 2))
-    with tf.Session() as sess:
-        perf = net.generate_performance(first_touch, 10000, sess)
-    perf_df = pd.DataFrame({'t': perf.T[0], 'x': perf.T[1]})
-    perf_df['time'] = perf_df.t.cumsum()
-    plt.show(perf_df.plot('time', 'x', kind='scatter'))
-    print(perf_df.describe())
-    # Investigate Output
-    window = 100
-    for n in [1000, 2000, 3000, 4000, 5000, 6000]:
-        print("Window:", str(n), 'to', str(n + window))
-        plt.plot(perf_df[n:n + window].time, perf_df[n:n + window].x, '.r-')
-        plt.show()
-
-if __name__ == "__main__":
-    test_training()

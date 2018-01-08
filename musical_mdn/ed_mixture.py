@@ -12,7 +12,7 @@ N_OUTPUT_UNITS = N_MIXTURES * MDN_SPLITS
 
 
 def split_tensor_to_mixture_parameters(output):
-    """ Split up the output nodes into three groups for Pis, Sigmas and Mus to parameterise mixture model. 
+    """ Split up the output nodes into three groups for Pis, Sigmas and Mus to parameterise mixture model.
     This uses eqns 18 -> 23 of http://arxiv.org/abs/1308.0850. """
     with tf.name_scope('mixture_split'):
         logits, scales_1, scales_2, locs_1, locs_2 = tf.split(value=output, num_or_size_splits=MDN_SPLITS, axis=1)

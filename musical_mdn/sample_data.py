@@ -1,3 +1,7 @@
+"""Manages Training Data for the Musical MDN and can generate fake datsets for testing."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import numpy as np
 import pandas as pd
 
@@ -11,7 +15,7 @@ def generate_data():
     t_r_data = np.random.normal(0, t_interval / 20.0, size=NSAMPLE)
     t_data = t_data + t_r_data
     r_data = np.random.normal(size=NSAMPLE)
-    x_data = np.sin(t_data) * 7.0 + r_data * 1.0
+    x_data = np.sin(t_data) * 1.0 + (r_data * 0.05)
     df = pd.DataFrame({'t': t_data, 'x': x_data})
     df.t = df.t.diff()
     df.t = df.t.fillna(1e-4)
@@ -42,7 +46,7 @@ class SequenceDataLoader(object):
         """Return an epoch of batches of shuffled examples."""
         np.random.shuffle(self.examples)
         batches = []
-        for i in range(len(self.examples) / self.batch_size):
+        for i in range(len(self.examples) // self.batch_size):
             batch = self.examples[i * self.batch_size: (i + 1) * self.batch_size]
             batches.append(batch)
         return(np.array(batches))
