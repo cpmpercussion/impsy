@@ -1,6 +1,6 @@
 #include <Servo.h>
 
-#define DEBUG_MODE true
+#define DEBUG_MODE false  // Debug mode links pot input to servo, should be false for normal use.
 
 Servo servoObject;
 
