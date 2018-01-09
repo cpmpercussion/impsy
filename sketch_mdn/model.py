@@ -7,9 +7,15 @@ import time
 import musical_mdn
 import sketch_mixture
 
+
+tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
+
+
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
-MODEL_DIR = "/Users/charles/src/mdn-experiments/"
+MDN_MODEL_TENSORFLOW = 'tf'
+MDN_MODEL_SKETCH = 'sketch'
+MODEL_DIR = "./"
 LOG_PATH = "./output-logs/"
 
 
@@ -65,8 +71,7 @@ class MixtureRNN(object):
                 self.cost = tf.reduce_mean(loss_func)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
-                # g = self.grad_clip
-                # capped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs]
+                # capped_gvs = [(tf.clip_by_value(grad, -1 * self.grad_clip, self.grad_clip), var) for grad, var in gvs]
                 self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
