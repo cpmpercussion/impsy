@@ -5,6 +5,7 @@
 # ## Import Modules
 
 import serial
+from serial.tools.list_ports import comports
 import time
 import struct
 import socket
@@ -29,9 +30,20 @@ STRING_DGRAM_PAD = 4
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setblocking(0)
 
+
+def detect_arduino_tty():
+    """ Attempts to detect a Myo Bluetooth adapter among the system's serial ports. """
+    for p in comports():
+        if p[1] == 'SparkFun Pro Micro':
+            return p[0]
+    return None
+
 # Serial for input and output via a USB-connected microcontroller.
+
 try:
-    ser = serial.Serial('/dev/cu.usbmodem1441', 9600)
+    tty = detect_arduino_tty()
+    print("Connecting to", tty)
+    ser = serial.Serial(tty, 9600)
 except serial.SerialException:
     print("Serial Port busy or not available.")
 
