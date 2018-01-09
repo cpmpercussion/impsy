@@ -4,8 +4,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 import time
-import musical_mdn
-import sketch_mixture
+from . import mixture_2d_normals
 
 
 tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
@@ -33,7 +32,7 @@ class MixtureRNN(object):
         self.st_dev = 0.5
         self.n_mixtures = n_mixtures  # number of mixtures
         self.n_input_units = 2  # Number of dimensions of the input (and sampled output) data
-        self.mdn_splits = 6  # (pi, sigma_1, sigma_2, mu_1, mu_2) # forget about (rho) for now.
+        self.mdn_splits = 6  # (pi, sigma_1, sigma_2, mu_1, mu_2, rho)
         self.n_output_units = n_mixtures * self.mdn_splits  # KMIX * self.mdn_splits
         self.lr = 1e-4  # could be 1e-3
         self.lr_decay_rate = 0.9999,  # Learning rate decay per minibatch.
@@ -49,36 +48,37 @@ class MixtureRNN(object):
         tf.reset_default_graph()
         self.graph = tf.get_default_graph()
 
+        # Construct Operation Graph
         with self.graph.as_default():
             with tf.name_scope('input'):
                 self.x = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.sequence_length, self.n_input_units], name="x")  # input
                 self.y = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.sequence_length, self.n_input_units], name="y")  # target
                 self.rnn_outputs, self.init_state, self.final_state = self.recurrent_network(self.x)
+
             self.rnn_outputs = tf.reshape(self.rnn_outputs, [-1, self.n_hidden_units], name="reshape_rnn_outputs")
-
             output_params = self.fully_connected_layer(self.rnn_outputs, self.n_hidden_units, self.n_output_units)
+            self.pis, self.scales_1, self.scales_2, self.locs_1, self.locs_2, self.corr = mixture_2d_normals.split_tensor_to_mixture_parameters(output_params)
+            self.saver = tf.train.Saver(name="saver")  # Saver
 
-            self.pis, self.scales_1, self.scales_2, self.locs_1, self.locs_2, self.corr = sketch_mixture.split_tensor_to_mixture_parameters(output_params)
-            # Saver
-            self.saver = tf.train.Saver(name="saver")
-            if self.mode is NET_MODE_TRAIN:
+            if self.mode is NET_MODE_TRAIN:  # Loading training operations.
                 tf.logging.info("Loading Training Operations")
                 self.global_step = tf.Variable(0, name='global_step', trainable=False)
                 with tf.name_scope('labels'):
                     y_reshaped = tf.reshape(self.y, [-1, self.n_input_units], name="reshape_labels")
                     [y1_data, y2_data] = tf.split(y_reshaped, 2, 1)
-                loss_func = sketch_mixture.get_lossfunc(self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2, self.corr, y1_data, y2_data)
+                loss_func = mixture_2d_normals.get_lossfunc(self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2, self.corr, y1_data, y2_data)
                 self.cost = tf.reduce_mean(loss_func)
                 optimizer = tf.train.AdamOptimizer(self.lr)
                 gvs = optimizer.compute_gradients(self.cost)
-                # capped_gvs = [(tf.clip_by_value(grad, -1 * self.grad_clip, self.grad_clip), var) for grad, var in gvs]
-                self.train_op = optimizer.apply_gradients(gvs, global_step=self.global_step, name='train_step')
+                capped_gvs = [(tf.clip_by_value(grad, -1 * self.grad_clip, self.grad_clip), var) for grad, var in gvs]
+                self.train_op = optimizer.apply_gradients(capped_gvs, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
 
-            if self.mode is NET_MODE_RUN:
+            if self.mode is NET_MODE_RUN:  # Loading running operations? None needed probably.
                 tf.logging.info("Loading Running Operations")
                 # TODO: write a sketch-RNN version of the sampling function?
+
             # Summaries
             self.summaries = tf.summary.merge_all()
 
@@ -187,7 +187,7 @@ class MixtureRNN(object):
         else:
             feed = {self.x: input_touch}
         pis, locs_1, locs_2, scales_1, scales_2, corr, self.state = sess.run([self.pis, self.locs_1, self.locs_2, self.scales_1, self.scales_2, self.corr, self.final_state], feed_dict=feed)
-        x_1, x_2 = sketch_mixture.sample_mixture_model(pis[0], locs_1[0], locs_2[0], scales_1[0], scales_2[0], corr[0], temp=1.0, greedy=False)
+        x_1, x_2 = mixture_2d_normals.sample_mixture_model(pis[0], locs_1[0], locs_2[0], scales_1[0], scales_2[0], corr[0], temp=1.0, greedy=False)
         return np.array([x_1, x_2])
 
     def generate_performance(self, first_touch, number, sess):
@@ -198,18 +198,3 @@ class MixtureRNN(object):
             previous_touch = self.generate_touch(previous_touch, sess)
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
-
-
-def train_epochs(num_epochs=1):
-    print("Training Mixture RNN for", num_epochs, "epochs")
-    net = MixtureRNN(mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=10, batch_size=100, sequence_length=120)
-    x_t_log = musical_mdn.generate_data()
-    loader = musical_mdn.SequenceDataLoader(num_steps=121, batch_size=100, corpus=x_t_log)
-    losses = net.train(loader, num_epochs, saving=True)
-    print("Training Done.")
-    print("Mean Losses per Batch:")
-    print(losses)
-
-
-if __name__ == "__main__":
-    train_epochs(30)
