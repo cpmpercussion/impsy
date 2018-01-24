@@ -133,7 +133,7 @@ listening_as_well = False
 first_touch = np.array([(0.01 + (np.random.rand() - 0.5) * 0.005), (np.random.rand() - 0.5)])
 
 
-def threaded_function():
+def run_loop():
     # Reacts to serial with sound, not movement
     while thread_running:
         while ser.in_waiting > 0:
@@ -184,9 +184,8 @@ def threaded_function():
 print("Now running...")
 try:
     while True:
-        threaded_function()
+        run_loop()
 except KeyboardInterrupt:
     pass
 finally:
-    m.disconnect()
     print("\nDisconnected")
