@@ -130,7 +130,7 @@ user_to_sound = False
 user_to_rnn = False
 rnn_to_rnn = False
 rnn_to_servo = False
-user_to_servo = True
+user_to_servo = False
 rnn_to_sound = False
 listening_as_well = False
 
@@ -175,6 +175,8 @@ def rnn_make_prediction(sess):
         input = last_user_touch
     if rnn_to_rnn:
         input = last_rnn_touch
+    if input is None:
+        input = random_touch()
     rnn_output = net.generate_touch(input, sess)
     rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
@@ -192,10 +194,11 @@ def playback_user_loop(sess):
         if user_to_servo and loc:
             command_servo(loc)
         dt = 0.5
-        last_user_touch = np.array([dt, loc / 255.0])
-        last_user_interaction = time.time()
-        if user_to_rnn:
-            rnn_make_prediction(sess)
+        if loc is not None:
+            last_user_touch = np.array([dt, loc / 255.0])
+            last_user_interaction = time.time()
+            if user_to_rnn:
+                rnn_make_prediction(sess)
 
 
 def playback_rnn_loop(sess):
@@ -222,20 +225,27 @@ def playback_rnn_loop(sess):
 
 
 CALL_RESPONSE_THRESHOLD = 2.0
-
+call_response_mode = 'call'
 
 def monitor_user_action():
     # Handles changing responsibility in Call-Response mode.
+    global call_response_mode
     while thread_running:
         # Check when the last user interaction was
         dt = time.time() - last_user_interaction
         if dt > CALL_RESPONSE_THRESHOLD and args.callresponse:
-            # switch call response modes.
+            # switch to response modes.
+            if call_response_mode is 'call':
+                print("switching to response.")
+                call_response_mode = 'response'
             user_to_rnn = False
             rnn_to_rnn = True
             rnn_to_sound = True
             rnn_to_servo = True
         elif args.callresponse:
+            if call_response_mode is 'response':
+                print("switching to call.")
+                call_response_mode = 'call'
             user_to_rnn = True
             rnn_to_rnn = False
             rnn_to_sound = False
@@ -278,11 +288,21 @@ thread_running = True
 
 with tf.Session() as sess:
     net.prepare_model_for_running(sess)
+    user_thread = Thread(target=playback_user_loop, args=(sess,), name="user_thread")
+    rnn_thread = Thread(target=playback_rnn_loop, args=(sess,), name="rnn_thread")
     try:
+        user_thread.start()
+        rnn_thread.start()
         while True:
-            playback_user_loop(sess)
+            monitor_user_action()
+            # Do nothing in the main thread
+            pass
+            # playback_user_loop(sess)
     except KeyboardInterrupt:
         thread_running = False
+        user_thread.join()
+        rnn_thread.join()
+        print("threads finished...exiting")
         pass
     finally:
         print("\nDisconnected")
