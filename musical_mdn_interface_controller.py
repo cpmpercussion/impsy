@@ -9,6 +9,8 @@ from serial.tools.list_ports import comports
 import time
 import struct
 import socket
+import logging
+import argparse
 from threading import Thread
 import sketch_mdn
 import numpy as np
