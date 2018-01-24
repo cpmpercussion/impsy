@@ -227,9 +227,14 @@ def playback_rnn_loop(sess):
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 
+
 def monitor_user_action():
     # Handles changing responsibility in Call-Response mode.
     global call_response_mode
+    global user_to_rnn
+    global rnn_to_rnn
+    global rnn_to_sound
+    global rnn_to_servo
     while thread_running:
         # Check when the last user interaction was
         dt = time.time() - last_user_interaction
@@ -242,6 +247,7 @@ def monitor_user_action():
             rnn_to_rnn = True
             rnn_to_sound = True
             rnn_to_servo = True
+            rnn_make_prediction(sess)
         elif args.callresponse:
             if call_response_mode is 'response':
                 print("switching to call.")
@@ -312,3 +318,6 @@ with tf.Session() as sess:
 #     thread_running = True
 #     thread = Thread(target=threaded_function)
 #     thread.start()
+
+## Why aren't any of the loops completing?
+## Next idea is to get rid of threading and just do a series of actions, any future sounds can just be scheduled.
