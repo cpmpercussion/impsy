@@ -136,11 +136,12 @@ first_touch = np.array([(0.01 + (np.random.rand() - 0.5) * 0.005), (np.random.ra
 def run_loop():
     # Reacts to serial with sound, not movement
     while thread_running:
+        loc = None
         while ser.in_waiting > 0:
             loc = read_lever()
             logging.info("{1}, user, {0}".format(loc, datetime.datetime.now().isoformat()))
             send_sound_command(touch_message_datagram(loc / 255.0))
-        if user_to_servo:
+        if user_to_servo and loc:
             command_servo(loc)
 
 # # Start a thread for listening
