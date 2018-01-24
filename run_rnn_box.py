@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description='Runs the RNN interaction box inter
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
-parser.add_argument('-h', '--harmony', dest='harmony', action="store_true", help='Harmony mode.')
+parser.add_argument('-p', '--polyphony', dest='polyphone', action="store_true", help='Harmony mode.')
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
 args = parser.parse_args()
 
@@ -112,7 +112,6 @@ sketch_mdn.MODEL_DIR = "./"
 # Main network
 net = sketch_mdn.MixtureRNN(mode=sketch_mdn.NET_MODE_RUN, n_hidden_units=128, n_mixtures=10, batch_size=1, sequence_length=1)
 print("RNN Loaded.")
-
 
 
 # Process Args here
