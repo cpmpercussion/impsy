@@ -133,7 +133,6 @@ thread_running = False
 user_to_sound = False
 user_to_rnn = False
 rnn_to_rnn = False
-rnn_to_servo = False
 user_to_servo = False
 rnn_to_sound = False
 listening_as_well = False
@@ -169,13 +168,19 @@ elif args.callresponse:
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = False
-    rnn_to_servo = False
 elif args.polyphony:
     print("Entering polyphony mode.")
+    user_to_sound = True
+    user_to_rnn = True
+    rnn_to_rnn = False
+    rnn_to_sound = True
 elif args.battle:
     print("Entering battle royale mode.")
+    user_to_sound = True
+    user_to_rnn = False
+    rnn_to_rnn = True
+    rnn_to_sound = True
 
-# TODO make this work.
 # RNN Model choice
 if args.usermodel:
     print("Using human RNN model.")
@@ -243,7 +248,6 @@ def monitor_user_action():
     global user_to_rnn
     global rnn_to_rnn
     global rnn_to_sound
-    global rnn_to_servo
     # Check when the last user interaction was
     dt = time.time() - last_user_interaction
     if dt > CALL_RESPONSE_THRESHOLD:
@@ -254,7 +258,6 @@ def monitor_user_action():
         user_to_rnn = False
         rnn_to_rnn = True
         rnn_to_sound = True
-        rnn_to_servo = True
     else:
         # switch to call mode.
         if call_response_mode is 'response':
@@ -269,7 +272,6 @@ def monitor_user_action():
         user_to_rnn = True
         rnn_to_rnn = False
         rnn_to_sound = False
-        rnn_to_servo = False
 
 print("Now running...")
 thread_running = True
