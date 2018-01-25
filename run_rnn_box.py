@@ -18,6 +18,7 @@ import queue
 parser = argparse.ArgumentParser(description='Interface for RNN Box.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN or servo.")
+parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RNN interaction only.')
 parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
@@ -79,15 +80,10 @@ def touch_message_datagram(pos=0.0):
 
 # Functions for sending and receving from levers.
 
-# last_servo_pos = 0
-# SERVO_MOVEMENT_THRESHOLD = 2
 
 def command_servo(input=128):
     """Send a command to the servo. Input is between 0, 255"""
-    # global last_servo_pos
-    # if abs(input - last_servo_pos) > SERVO_MOVEMENT_THRESHOLD:
-    ser.write(struct.pack('B', input))
-    # last_servo_pos = input
+    ser.write(struct.pack('B', int(input)))
 
 
 def read_lever():
@@ -115,19 +111,26 @@ def clear_and_play_serial_input(movement=True):
 # ## Load the Model
 #
 # Loads a `musical_mdn` model with one predicted variable and time.
+# Hyperparameters
+units = 128
+mixes = 8
+layers = 1
+n_steps = 1
+batch_s = 1
 sketch_mdn.MODEL_DIR = "./"
-# Alternative Network
-# net = musical_mdn.TinyJamNet2D(mode = musical_mdn.NET_MODE_RUN, n_hidden_units = 128, n_mixtures = 10, batch_size = 1, sequence_length = 1)
-# Main network
-net = sketch_mdn.MixtureRNN(mode=sketch_mdn.NET_MODE_RUN, n_hidden_units=128, n_mixtures=10, batch_size=1, sequence_length=1)
+# Instantiate Running Network
+net = sketch_mdn.MixtureRNN(mode=sketch_mdn.NET_MODE_RUN, n_hidden_units=units, n_mixtures=mixes,
+                            batch_size=batch_s, sequence_length=n_steps, layers=layers)
 print("RNN Loaded.")
 rnn_output_buffer = queue.Queue()
+# Touch storage for RNN.
+last_rnn_touch = sketch_mdn.random_touch()  # prepare previous touch input for RNN input
+last_user_touch = sketch_mdn.random_touch()
+last_user_interaction = time.time()
+CALL_RESPONSE_THRESHOLD = 2.0
+call_response_mode = 'call'
 
-
-# Process Args here
-
-
-# Parameters
+# Interaction Loop Parameters
 # All set to false before setting is chosen.
 thread_running = False
 user_to_sound = False
@@ -138,15 +141,8 @@ rnn_to_sound = False
 listening_as_well = False
 
 
-def random_touch():
-    return np.array([(0.01 + (np.random.rand() - 0.5) * 0.005), (np.random.rand() - 0.5)])
 
-# Touch storage for RNN.
-last_rnn_touch = random_touch()  # prepare previous touch input for RNN input
-last_user_touch = random_touch()
-last_user_interaction = time.time()
-CALL_RESPONSE_THRESHOLD = 2.0
-call_response_mode = 'call'
+
 
 
 if args.logging:
@@ -184,7 +180,12 @@ elif args.useronly:
     print("Entering user only mode.")
     user_to_sound = True
     user_to_servo = False
-
+elif args.rnnonly:
+    print("RNN Playback only mode.")
+    user_to_sound = False
+    user_to_rnn = False
+    rnn_to_rnn = True
+    rnn_to_sound = True
 
 # RNN Model choice
 if args.usermodel:
@@ -234,8 +235,7 @@ def playback_rnn_loop():
             # convert to dt, byte format
             dt = item[0]
             pos = item[1]
-            # pos = int((pos + 10) * 255 / 20.0)  # what does this maths do?
-            pos = min(max(pos, 0), 255)  # ditto here?
+            pos = min(max(pos * 255, 0), 255)  # Scale pos to 0-255
             dt = max(dt, 0)  # stop accidental minus dt
             time.sleep(dt)  # wait until time to play the sound
             if rnn_to_sound:
@@ -257,14 +257,18 @@ def monitor_user_action():
     dt = time.time() - last_user_interaction
     if dt > CALL_RESPONSE_THRESHOLD:
         # switch to response modes.
-        if call_response_mode is 'call':
-            print("switching to response.")
-            call_response_mode = 'response'
         user_to_rnn = False
         rnn_to_rnn = True
         rnn_to_sound = True
+        if call_response_mode is 'call':
+            print("switching to response.")
+            call_response_mode = 'response'
+
     else:
         # switch to call mode.
+        user_to_rnn = True
+        rnn_to_rnn = False
+        rnn_to_sound = False
         if call_response_mode is 'response':
             print("switching to call.")
             call_response_mode = 'call'
@@ -274,9 +278,7 @@ def monitor_user_action():
                 rnn_output_buffer.task_done()
                 print("Cleared an RNN buffer item")
             print("ready for call mode")
-        user_to_rnn = True
-        rnn_to_rnn = False
-        rnn_to_sound = False
+
 
 print("Now running...")
 thread_running = True
@@ -286,7 +288,7 @@ with tf.Session() as sess:
     rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread")
     try:
         # user_thread.start()
-        # rnn_thread.start()
+        rnn_thread.start()
         while True:
             interaction_loop(sess)
             if args.callresponse:
@@ -295,22 +297,15 @@ with tf.Session() as sess:
         print("Ctrl-C received... exiting.")
         thread_running = False
         # user_thread.join(timeout=1)
-        # rnn_thread.join(timeout=1)
+        rnn_thread.join(timeout=1)
         pass
     finally:
         print("\nDone, shutting down.")
-
-# # Start a thread for listening
-# if listening_as_well:
-#     thread_running = True
-#     thread = Thread(target=threaded_function)
-#     thread.start()
-
-## Why aren't any of the loops completing?
-## Next idea is to get rid of threading and just do a series of actions, any future sounds can just be scheduled.
-
 
 # New idea:
 # have a flag for "needs a new rnn note" and if that is unset, generate a new note in the interaction loop.
 # could have some limit for nuimber to generate, maybe 200ms worth e.g.
 # no threaded RNN then, just schedule notes, when they're played from the queue, the flag gets unset.
+
+# so r mode is working now, as is u.
+# 
