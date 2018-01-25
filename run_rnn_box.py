@@ -79,16 +79,15 @@ def touch_message_datagram(pos=0.0):
 
 # Functions for sending and receving from levers.
 
-last_servo_pos = 0
-SERVO_MOVEMENT_THRESHOLD = 10
+# last_servo_pos = 0
+# SERVO_MOVEMENT_THRESHOLD = 2
 
 def command_servo(input=128):
     """Send a command to the servo. Input is between 0, 255"""
-    global last_servo_pos
-    if abs(input - last_servo_pos) > SERVO_MOVEMENT_THRESHOLD:
-        print("servo input:", input)
-        ser.write(struct.pack('B', input))
-        last_servo_pos = input
+    # global last_servo_pos
+    # if abs(input - last_servo_pos) > SERVO_MOVEMENT_THRESHOLD:
+    ser.write(struct.pack('B', input))
+    # last_servo_pos = input
 
 
 def read_lever():
@@ -147,6 +146,8 @@ def random_touch():
 last_rnn_touch = random_touch()  # prepare previous touch input for RNN input
 last_user_touch = random_touch()
 last_user_interaction = time.time()
+CALL_RESPONSE_THRESHOLD = 2.0
+call_response_mode = 'call'
 
 
 if args.logging:
@@ -159,9 +160,12 @@ if args.test:
     # user to sound, user to servo.
     user_to_sound = True
     user_to_servo = True
+    user_to_rnn = False
+    rnn_to_rnn = False
 elif args.callresponse:
     print("Entering call and response mode.")
     # set initial conditions.
+    user_to_sound = True
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = False
@@ -179,85 +183,58 @@ elif args.syntheticmodel:
     print("Using synthetic RNN model.")
 
 
-def rnn_make_prediction(sess):
-    input = None
-    if user_to_rnn:
-        input = last_user_touch
-    if rnn_to_rnn:
-        input = last_rnn_touch
-    if input is None:
-        input = random_touch()
-    rnn_output = net.generate_touch(input, sess)
-    rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-
-
-def playback_user_loop(sess):
-    # Plays back serial messages from the user
-    global last_user_touch
-    global last_user_interaction
-    while thread_running:
-        loc = None
-        while ser.in_waiting > 0:
-            loc = read_lever()
-            logging.info("{1}, user, {0}".format(loc, datetime.datetime.now().isoformat()))
-            send_sound_command(touch_message_datagram(loc / 255.0))
-            if user_to_servo and loc:
-                command_servo(loc)
-        print("end user loop", str(time.time()))
-        dt = 0.5
-        if loc is not None:
-            last_user_touch = np.array([dt, loc / 255.0])
-            last_user_interaction = time.time()
-            if user_to_rnn:
-                rnn_make_prediction(sess)
-
-
 def interaction_loop(sess):
     # Interaction loop for the box, reads serial, makes predictions, outputs servo and sound.
     global last_user_touch
     global last_user_interaction
+    global last_rnn_touch
+    # Start Lever Processing
     userloc = None
     while ser.in_waiting > 0:
         userloc = read_lever()
+        userloc = min(max(userloc, 0), 255)
         logging.info("{1}, user, {0}".format(userloc, datetime.datetime.now().isoformat()))
         send_sound_command(touch_message_datagram(userloc / 255.0))
         userdt = time.time() - last_user_interaction
         last_user_interaction = time.time()
         last_user_touch = np.array([userdt, userloc / 255.0])
+
         if user_to_servo and userloc:
             command_servo(userloc)
-    print("end user loop", str(time.time()))
-    ## Make predictions.
-    if userloc and user_to_rnn:
-        if user_to_rnn:
-            rnn_make_prediction(sess)
+
+    # Make predictions.
+    if user_to_rnn and userloc:
+        rnn_output = net.generate_touch(last_user_touch, sess)
+        print("conditioned RNN state", str(time.time()))
+        if rnn_to_sound:
+            rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+
+    if rnn_to_rnn and rnn_output_buffer.empty():
+        rnn_output = net.generate_touch(last_rnn_touch, sess)
+        print("made RNN prediction", str(time.time()))
+        rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
 
-def playback_rnn_loop(sess):
+def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
     global last_rnn_touch
     while thread_running:
-        item = rnn_output_buffer.get()  # could put a timeout here.
-        if item is not None:
+        if not rnn_output_buffer.empty():
+            item = rnn_output_buffer.get()  # could put a timeout here.
             # convert to dt, byte format
             dt = item[0]
             pos = item[1]
-            pos = int((pos + 10) * 255 / 20.0)  # what does this maths do?
+            # pos = int((pos + 10) * 255 / 20.0)  # what does this maths do?
             pos = min(max(pos, 0), 255)  # ditto here?
             dt = max(dt, 0)  # stop accidental minus dt
             time.sleep(dt)  # wait until time to play the sound
             if rnn_to_sound:
                 # RNN can be disconnected from sound
                 move_and_play_sound(pos)  # do the playing and moving
+                print("RNN Played:", pos, "at", dt)
                 logging.info("{1}, rnn, {0}".format(pos, datetime.datetime.now().isoformat()))
             last_rnn_touch = item  # Set the last_rnn_touch (after the time delay?)
             rnn_output_buffer.task_done()
-        if rnn_to_rnn:
-            rnn_make_prediction(sess)
-
-
-CALL_RESPONSE_THRESHOLD = 2.0
-call_response_mode = 'call'
 
 
 def monitor_user_action():
@@ -267,40 +244,46 @@ def monitor_user_action():
     global rnn_to_rnn
     global rnn_to_sound
     global rnn_to_servo
-    while thread_running:
-        # Check when the last user interaction was
-        dt = time.time() - last_user_interaction
-        if dt > CALL_RESPONSE_THRESHOLD and args.callresponse:
-            # switch to response modes.
-            if call_response_mode is 'call':
-                print("switching to response.")
-                call_response_mode = 'response'
-            user_to_rnn = False
-            rnn_to_rnn = True
-            rnn_to_sound = True
-            rnn_to_servo = True
-            rnn_make_prediction(sess)
-        elif args.callresponse:
-            if call_response_mode is 'response':
-                print("switching to call.")
-                call_response_mode = 'call'
-            user_to_rnn = True
-            rnn_to_rnn = False
-            rnn_to_sound = False
-            rnn_to_servo = False
+    # Check when the last user interaction was
+    dt = time.time() - last_user_interaction
+    if dt > CALL_RESPONSE_THRESHOLD:
+        # switch to response modes.
+        if call_response_mode is 'call':
+            print("switching to response.")
+            call_response_mode = 'response'
+        user_to_rnn = False
+        rnn_to_rnn = True
+        rnn_to_sound = True
+        rnn_to_servo = True
+    else:
+        # switch to call mode.
+        if call_response_mode is 'response':
+            print("switching to call.")
+            call_response_mode = 'call'
+            print("Clearning RNN buffer")
+            while not rnn_output_buffer.empty():
+                rnn_output_buffer.get()
+                rnn_output_buffer.task_done()
+                print("Cleared an RNN buffer item")
+            print("ready for call mode")
+        user_to_rnn = True
+        rnn_to_rnn = False
+        rnn_to_sound = False
+        rnn_to_servo = False
 
 print("Now running...")
 thread_running = True
 
 with tf.Session() as sess:
     net.prepare_model_for_running(sess)
-    # user_thread = Thread(target=playback_user_loop, args=(sess,), name="user_thread")
-    # rnn_thread = Thread(target=playback_rnn_loop, args=(sess,), name="rnn_thread")
+    rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread")
     try:
         # user_thread.start()
         # rnn_thread.start()
         while True:
             interaction_loop(sess)
+            if args.callresponse:
+                monitor_user_action()
     except KeyboardInterrupt:
         print("Ctrl-C received... exiting.")
         thread_running = False
@@ -318,3 +301,9 @@ with tf.Session() as sess:
 
 ## Why aren't any of the loops completing?
 ## Next idea is to get rid of threading and just do a series of actions, any future sounds can just be scheduled.
+
+
+# New idea:
+# have a flag for "needs a new rnn note" and if that is unset, generate a new note in the interaction loop.
+# could have some limit for nuimber to generate, maybe 200ms worth e.g.
+# no threaded RNN then, just schedule notes, when they're played from the queue, the flag gets unset.
