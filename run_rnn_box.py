@@ -70,10 +70,10 @@ def pad_dgram_four_bytes(dgram):
     return (dgram + (b'\x00' * (4 - len(dgram) % 4)))
 
 
-def touch_message_datagram(pos=0.0):
+def touch_message_datagram(address="touch", pos=0.0):
     """Construct an osc message with address /touch and one float."""
     dgram = b''
-    dgram += pad_dgram_four_bytes("/touch".encode('utf-8'))
+    dgram += pad_dgram_four_bytes(("/" + address).encode('utf-8'))
     dgram += pad_dgram_four_bytes(b',f')  # (",f"), is this working? test again.
     dgram += struct.pack('>f', pos)
     return dgram
@@ -89,23 +89,6 @@ def command_servo(input=128):
 def read_lever():
     """Read a single byte from the lever and return as integer."""
     return ord(ser.read(1))
-
-# Functions for playing back level sounds and moving servo
-
-
-def move_and_play_sound(loc):
-    """Move the servo and play a sound in response to a byte input."""
-    command_servo(loc)
-    send_sound_command(touch_message_datagram(loc / 255.0))
-
-
-def clear_and_play_serial_input(movement=True):
-    """Clears the serial buffer of input and plays it all."""
-    while ser.in_waiting > 0:
-        loc = read_lever()
-        send_sound_command(touch_message_datagram(loc / 255.0))
-        if movement:
-            command_servo(loc)
 
 
 # ## Load the Model
@@ -139,10 +122,6 @@ rnn_to_rnn = False
 user_to_servo = False
 rnn_to_sound = False
 listening_as_well = False
-
-
-
-
 
 
 if args.logging:
@@ -204,13 +183,13 @@ def interaction_loop(sess):
     while ser.in_waiting > 0:
         userloc = read_lever()
         userloc = min(max(userloc, 0), 255)
-        logging.info("{1}, user, {0}".format(userloc, datetime.datetime.now().isoformat()))
-        send_sound_command(touch_message_datagram(userloc / 255.0))
+        logging.info("{1},user,{0}".format(userloc, datetime.datetime.now().isoformat()))
         userdt = time.time() - last_user_interaction
         last_user_interaction = time.time()
         last_user_touch = np.array([userdt, userloc / 255.0])
-
-        if user_to_servo and userloc:
+        if user_to_sound:
+            send_sound_command(touch_message_datagram(address='user', pos=(userloc / 255.0)))
+        if user_to_servo:
             command_servo(userloc)
 
     # Make predictions.
@@ -222,7 +201,7 @@ def interaction_loop(sess):
 
     if rnn_to_rnn and rnn_output_buffer.empty():
         rnn_output = net.generate_touch(last_rnn_touch, sess)
-        print("made RNN prediction", str(time.time()))
+        print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
 
@@ -234,16 +213,17 @@ def playback_rnn_loop():
             item = rnn_output_buffer.get()  # could put a timeout here.
             # convert to dt, byte format
             dt = item[0]
-            pos = item[1]
-            pos = min(max(pos * 255, 0), 255)  # Scale pos to 0-255
+            x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
             dt = max(dt, 0)  # stop accidental minus dt
+            servo_pos = int(255 * x_loc)  # Scale pos to 0-255
             time.sleep(dt)  # wait until time to play the sound
+            last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
             if rnn_to_sound:
                 # RNN can be disconnected from sound
-                move_and_play_sound(pos)  # do the playing and moving
-                print("RNN Played:", pos, "at", dt)
-                logging.info("{1}, rnn, {0}".format(pos, datetime.datetime.now().isoformat()))
-            last_rnn_touch = item  # Set the last_rnn_touch (after the time delay?)
+                send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
+                command_servo(servo_pos)
+                print("RNN Played:", servo_pos, "at", dt)
+                logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
             rnn_output_buffer.task_done()
 
 
