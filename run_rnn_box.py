@@ -94,8 +94,6 @@ def read_lever():
 
 
 # ## Load the Model
-#
-# Loads a `musical_mdn` model with one predicted variable and time.
 # Hyperparameters
 units = 128
 mixes = 8
@@ -114,7 +112,6 @@ last_user_touch = sketch_mdn.random_touch()
 last_user_interaction = time.time()
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
-
 # Interaction Loop Parameters
 # All set to false before setting is chosen.
 thread_running = False
@@ -201,24 +198,16 @@ def interaction_loop(sess):
         print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
-            # with cv:
-            #     rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-            #     cv.notifyAll()
     if rnn_to_rnn and rnn_output_buffer.empty():
         rnn_output = net.generate_touch(last_rnn_touch, sess)
         print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-        # with cv:
-        #     rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-        #     cv.notifyAll()
 
 
 def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
     global last_rnn_touch
     while True:
-        # with cv:
-        #     cv.wait_for(not rnn_output_buffer.empty())
         item = rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
         print("processing an rnn command", time.time())
         # convert to dt, byte format
@@ -253,7 +242,6 @@ def monitor_user_action():
         if call_response_mode is 'call':
             print("switching to response.")
             call_response_mode = 'response'
-
     else:
         # switch to call mode.
         user_to_rnn = True
