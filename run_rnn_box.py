@@ -16,9 +16,8 @@ import queue
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Interface for RNN Box.')
-
-
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
+parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN or servo.")
 parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
@@ -53,7 +52,7 @@ def detect_arduino_tty():
 try:
     tty = detect_arduino_tty()
     print("Connecting to", tty)
-    ser = serial.Serial(tty, 9600)
+    ser = serial.Serial(tty, 115200, timeout=None, write_timeout=None)
 except serial.SerialException:
     print("Serial Port busy or not available.")
 
@@ -80,10 +79,16 @@ def touch_message_datagram(pos=0.0):
 
 # Functions for sending and receving from levers.
 
+last_servo_pos = 0
+SERVO_MOVEMENT_THRESHOLD = 10
 
 def command_servo(input=128):
     """Send a command to the servo. Input is between 0, 255"""
-    ser.write(struct.pack('B', input))
+    global last_servo_pos
+    if abs(input - last_servo_pos) > SERVO_MOVEMENT_THRESHOLD:
+        print("servo input:", input)
+        ser.write(struct.pack('B', input))
+        last_servo_pos = input
 
 
 def read_lever():
@@ -148,14 +153,19 @@ if args.logging:
     logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 
-
 # Interactive Mapping
 if args.test:
     print("Entering test mode (no RNN).")
+    # user to sound, user to servo.
     user_to_sound = True
-    user_to_servo = False
+    user_to_servo = True
 elif args.callresponse:
     print("Entering call and response mode.")
+    # set initial conditions.
+    user_to_rnn = True
+    rnn_to_rnn = False
+    rnn_to_sound = False
+    rnn_to_servo = False
 elif args.polyphony:
     print("Entering polyphony mode.")
 elif args.battle:
@@ -191,14 +201,36 @@ def playback_user_loop(sess):
             loc = read_lever()
             logging.info("{1}, user, {0}".format(loc, datetime.datetime.now().isoformat()))
             send_sound_command(touch_message_datagram(loc / 255.0))
-        if user_to_servo and loc:
-            command_servo(loc)
+            if user_to_servo and loc:
+                command_servo(loc)
+        print("end user loop", str(time.time()))
         dt = 0.5
         if loc is not None:
             last_user_touch = np.array([dt, loc / 255.0])
             last_user_interaction = time.time()
             if user_to_rnn:
                 rnn_make_prediction(sess)
+
+
+def interaction_loop(sess):
+    # Interaction loop for the box, reads serial, makes predictions, outputs servo and sound.
+    global last_user_touch
+    global last_user_interaction
+    userloc = None
+    while ser.in_waiting > 0:
+        userloc = read_lever()
+        logging.info("{1}, user, {0}".format(userloc, datetime.datetime.now().isoformat()))
+        send_sound_command(touch_message_datagram(userloc / 255.0))
+        userdt = time.time() - last_user_interaction
+        last_user_interaction = time.time()
+        last_user_touch = np.array([userdt, userloc / 255.0])
+        if user_to_servo and userloc:
+            command_servo(userloc)
+    print("end user loop", str(time.time()))
+    ## Make predictions.
+    if userloc and user_to_rnn:
+        if user_to_rnn:
+            rnn_make_prediction(sess)
 
 
 def playback_rnn_loop(sess):
@@ -257,61 +289,26 @@ def monitor_user_action():
             rnn_to_sound = False
             rnn_to_servo = False
 
-
-# # Start TF Predictions
-# with tf.Session() as sess:
-#     # Get network ready to run
-#     net.prepare_model_for_running(sess)
-#     last_touch = first_touch
-#     time_total = 0
-#     count = 0
-
-#     print("Performing a 30s performance")
-#     while time_total < 30.0:
-#         # generate some output and schedule sounds and movement.
-#         last_touch = net.generate_touch(last_touch, sess)
-#         output = last_touch.reshape((2,))
-#         # convert to dt, byte format
-#         dt = output[0]
-#         pos = output[1]
-#         pos = int((pos + 10) * 255 / 20.0)
-#         pos = min(max(pos, 0), 255)
-#         dt = max(dt, 0)
-#         time.sleep(dt)
-#         move_and_play_sound(pos)
-#         time_total += dt
-#         count += 1
-#     print("Done, time was", time_total, "with", count, "moves.")
-#     keep_reacting_to_lever = False
-
-# if listening_as_well:
-#     thread.join()
-#     print("thread finished...exiting")
-
-
 print("Now running...")
 thread_running = True
 
 with tf.Session() as sess:
     net.prepare_model_for_running(sess)
-    user_thread = Thread(target=playback_user_loop, args=(sess,), name="user_thread")
-    rnn_thread = Thread(target=playback_rnn_loop, args=(sess,), name="rnn_thread")
+    # user_thread = Thread(target=playback_user_loop, args=(sess,), name="user_thread")
+    # rnn_thread = Thread(target=playback_rnn_loop, args=(sess,), name="rnn_thread")
     try:
-        user_thread.start()
-        rnn_thread.start()
+        # user_thread.start()
+        # rnn_thread.start()
         while True:
-            monitor_user_action()
-            # Do nothing in the main thread
-            pass
-            # playback_user_loop(sess)
+            interaction_loop(sess)
     except KeyboardInterrupt:
+        print("Ctrl-C received... exiting.")
         thread_running = False
-        user_thread.join()
-        rnn_thread.join()
-        print("threads finished...exiting")
+        # user_thread.join(timeout=1)
+        # rnn_thread.join(timeout=1)
         pass
     finally:
-        print("\nDisconnected")
+        print("\nDone, shutting down.")
 
 # # Start a thread for listening
 # if listening_as_well:
