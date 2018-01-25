@@ -168,7 +168,7 @@ class MixtureRNN(object):
                     tf.logging.info('saving model %s, global_step %d.', checkpoint_path, step)
                     self.saver.save(sess, checkpoint_path, global_step=step)
             if saving:
-                tf.logging.info('saving model %s.', self.model_name())
+                tf.logging.info('saving model %s.', './' + self.model_name())
                 self.saver.save(sess, self.model_name())
         tf.logging.info("took %d seconds to train.", (time.time() - start_time))
         return training_losses
