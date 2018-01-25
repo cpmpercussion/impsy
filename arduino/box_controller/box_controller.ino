@@ -13,9 +13,11 @@ Servo servoObject;
 
 byte lastPotValue;
 byte lastWrittenPotValue;
-
 int goalPosition = 127;
+int lastGoalPosition;
 int servoCommand;
+int rawPotValue;
+byte potValue;
 
 byte receivedPositionCommand = 0;
 
@@ -27,13 +29,12 @@ void setup()
 
 void loop()
 {
-  byte goalPosition;
-  int rawPotValue = constrain(analogRead(POTPIN), POTMIN, POTMAX);
-  byte potValue = map(rawPotValue, POTMIN, POTMAX, 0, 255);
-  int clonePosition = map(potValue, 0, 255, SERVOMIN, SERVOMAX);
+  rawPotValue = constrain(analogRead(POTPIN), POTMIN, POTMAX);
+  potValue = map(rawPotValue, POTMIN, POTMAX, 0, 255);
 
   // DEBUG:
   if (DEBUG_MODE) {
+    int clonePosition = map(potValue, 0, 255, SERVOMIN, SERVOMAX);
     goalPosition = potValue;
     commandServo(goalPosition);
 
@@ -47,12 +48,16 @@ void loop()
 
     // NORMAL:
   } else {
+    // Only write if values have changed.
+    // Handle Servo
     while (Serial.available() > 0) {
-      goalPosition = Serial.read();
-      commandServo(goalPosition);
+      goalPosition = Serial.read(); 
     }
-    // only write if changed.
-    // TODO: check for out by one as well.
+    if (abs(goalPosition - lastGoalPosition) > 2) {
+      commandServo(goalPosition);
+      lastGoalPosition = goalPosition;
+    }
+    // Handle Potentiometer
     if (abs(potValue - lastWrittenPotValue) > 0x02) {
       Serial.write(potValue);
       lastWrittenPotValue = potValue;
