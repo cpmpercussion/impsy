@@ -8,8 +8,8 @@ Servo servoObject;
 #define POTPIN 0
 #define POTMIN 170
 #define POTMAX 852
-#define SERVOMIN 0
-#define SERVOMAX 180
+#define SERVOMIN 5
+#define SERVOMAX 175
 
 byte lastPotValue;
 byte lastWrittenPotValue;
