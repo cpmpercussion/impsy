@@ -74,15 +74,15 @@ class MixtureRNN(object):
                 self.train_op = optimizer.apply_gradients(capped_gvs, global_step=self.global_step, name='train_step')
                 self.training_state = None
                 tf.summary.scalar("cost_summary", self.cost)
+                # Summaries
+                self.summaries = tf.summary.merge_all()
 
             if self.mode is NET_MODE_RUN:  # Loading running operations? None needed probably.
                 tf.logging.info("Loading Running Operations")
                 # TODO: write a sketch-RNN version of the sampling function?
 
-            # Summaries
-            self.summaries = tf.summary.merge_all()
-
-        self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name + '/', graph=self.graph)
+        if self.mode is NET_MODE_TRAIN:
+            self.writer = tf.summary.FileWriter(LOG_PATH + self.run_name + '/', graph=self.graph)
         train_vars_count = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
         tf.logging.info("done initialising: %s vars: %d", self.model_name(), train_vars_count)
 
