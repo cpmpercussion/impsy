@@ -21,12 +21,12 @@ LOG_PATH = "./output-logs/"
 class MixtureRNN(object):
     """Mixture Density Network RNN using the SketchRNN's hand-coded loss function for the mixture of 2D Normals."""
 
-    def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=24, batch_size=100, sequence_length=120):
+    def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=24, batch_size=100, sequence_length=120, layers=1):
         """Initialise the TinyJamNet model. Use mode='run' for evaluation graph and mode='train' for training graph."""
         # hyperparameters
         self.mode = mode
         self.n_hidden_units = n_hidden_units
-        self.n_rnn_layers = 1
+        self.n_rnn_layers = layers
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.st_dev = 0.5
