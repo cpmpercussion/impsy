@@ -23,6 +23,11 @@ def generate_data():
     return np.array(df)
 
 
+def random_touch():
+    """ Returns a random touch in mixture_mdn format: (dt, x)."""
+    return np.array([(0.01 + (np.random.rand() - 0.5) * 0.005), np.random.rand()])
+
+
 class SequenceDataLoader(object):
     """Manages data from a sequence and generates epochs"""
 
