@@ -180,6 +180,11 @@ elif args.battle:
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
+elif args.useronly:
+    print("Entering user only mode.")
+    user_to_sound = True
+    user_to_servo = False
+
 
 # RNN Model choice
 if args.usermodel:
