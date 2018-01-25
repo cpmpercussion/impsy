@@ -7,7 +7,7 @@ import socket
 import logging
 import datetime
 import argparse
-from threading import Thread
+from threading import Thread, Condition
 import sketch_mdn
 import numpy as np
 import tensorflow as tf
@@ -17,9 +17,11 @@ import queue
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Interface for RNN Box.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
+# Individual Modes
+parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
 parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN or servo.")
 parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RNN interaction only.')
-parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
+# Duo Modes
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
@@ -190,6 +192,7 @@ def interaction_loop(sess):
         if user_to_sound:
             send_sound_command(touch_message_datagram(address='user', pos=(userloc / 255.0)))
         if user_to_servo:
+            print("Sending User to Servo:", userloc)
             command_servo(userloc)
 
     # Make predictions.
@@ -197,34 +200,41 @@ def interaction_loop(sess):
         rnn_output = net.generate_touch(last_user_touch, sess)
         print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
-            rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-
+            rnn_output_buffer.put_nowait(rnn_output)
+            # with cv:
+            #     rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+            #     cv.notifyAll()
     if rnn_to_rnn and rnn_output_buffer.empty():
         rnn_output = net.generate_touch(last_rnn_touch, sess)
         print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+        # with cv:
+        #     rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+        #     cv.notifyAll()
 
 
 def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
     global last_rnn_touch
-    while thread_running:
-        if not rnn_output_buffer.empty():
-            item = rnn_output_buffer.get()  # could put a timeout here.
-            # convert to dt, byte format
-            dt = item[0]
-            x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
-            dt = max(dt, 0)  # stop accidental minus dt
-            servo_pos = int(255 * x_loc)  # Scale pos to 0-255
-            time.sleep(dt)  # wait until time to play the sound
-            last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
-            if rnn_to_sound:
-                # RNN can be disconnected from sound
-                send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
-                command_servo(servo_pos)
-                print("RNN Played:", servo_pos, "at", dt)
-                logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
-            rnn_output_buffer.task_done()
+    while True:
+        # with cv:
+        #     cv.wait_for(not rnn_output_buffer.empty())
+        item = rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
+        print("processing an rnn command", time.time())
+        # convert to dt, byte format
+        dt = item[0]
+        x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
+        dt = max(dt, 0)  # stop accidental minus dt
+        servo_pos = int(255 * x_loc)  # Scale pos to 0-255
+        time.sleep(dt)  # wait until time to play the sound
+        last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
+        if rnn_to_sound:
+            # RNN can be disconnected from sound
+            send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
+            command_servo(servo_pos)
+            print("RNN Played:", servo_pos, "at", dt)
+            logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
+        rnn_output_buffer.task_done()
 
 
 def monitor_user_action():
@@ -265,7 +275,9 @@ thread_running = True
 
 with tf.Session() as sess:
     net.prepare_model_for_running(sess)
-    rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread")
+    # condition = Condition()
+    # rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
+    rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
     try:
         # user_thread.start()
         rnn_thread.start()
@@ -274,7 +286,7 @@ with tf.Session() as sess:
             if args.callresponse:
                 monitor_user_action()
     except KeyboardInterrupt:
-        print("Ctrl-C received... exiting.")
+        print("\nCtrl-C received... exiting.")
         thread_running = False
         # user_thread.join(timeout=1)
         rnn_thread.join(timeout=1)
@@ -286,6 +298,3 @@ with tf.Session() as sess:
 # have a flag for "needs a new rnn note" and if that is unset, generate a new note in the interaction loop.
 # could have some limit for nuimber to generate, maybe 200ms worth e.g.
 # no threaded RNN then, just schedule notes, when they're played from the queue, the flag gets unset.
-
-# so r mode is working now, as is u.
-# 
