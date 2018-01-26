@@ -106,6 +106,7 @@ net = sketch_mdn.MixtureRNN(mode=sketch_mdn.NET_MODE_RUN, n_hidden_units=units, 
                             batch_size=batch_s, sequence_length=n_steps, layers=layers)
 print("RNN Loaded.")
 rnn_output_buffer = queue.Queue()
+writing_queue = queue.Queue()
 # Touch storage for RNN.
 last_rnn_touch = sketch_mdn.random_touch()  # prepare previous touch input for RNN input
 last_user_touch = sketch_mdn.random_touch()
@@ -191,6 +192,10 @@ def interaction_loop(sess):
         if user_to_servo:
             print("Sending User to Servo:", userloc)
             command_servo(userloc)
+    # Send any waiting messages to the servo.
+    while not writing_queue.empty():
+        servo_pos = writing_queue.get()
+        command_servo(servo_pos)
 
     # Make predictions.
     if user_to_rnn and userloc:
@@ -213,14 +218,15 @@ def playback_rnn_loop():
         # convert to dt, byte format
         dt = item[0]
         x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
-        dt = max(dt, 0)  # stop accidental minus dt
+        dt = max(dt, 0.001)  # stop accidental minus and zero dt.
         servo_pos = int(255 * x_loc)  # Scale pos to 0-255
         time.sleep(dt)  # wait until time to play the sound
         last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
         if rnn_to_sound:
             # RNN can be disconnected from sound
             send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
-            command_servo(servo_pos)
+            # command_servo(servo_pos)
+            writing_queue.put_nowait(servo_pos)
             print("RNN Played:", servo_pos, "at", dt)
             logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
