@@ -27,7 +27,7 @@ parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", 
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
 parser.add_argument('-u', '--user', dest='usermodel', action="store_true", help='Use human RNN model.')
 parser.add_argument('-s', '--synthetic', dest='syntheticmodel', action='store_true', help='Use synthetic RNN model.')
-parser.add_argument('-u', '--untrained', dest='untrainedmodel', action='store_true', help='Use untrained RNN.')
+parser.add_argument('-n', '--untrained', dest='untrainedmodel', action='store_true', help='Use untrained RNN.')
 
 args = parser.parse_args()
 
@@ -269,10 +269,13 @@ print("Now running...")
 thread_running = True
 
 with tf.Session() as sess:
+    print("preparing RNN.")
     net.prepare_model_for_running(sess)
     # condition = Condition()
     # rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
+    print("preparting RNN thread.")
     rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
+    print("starting up.")
     try:
         # user_thread.start()
         rnn_thread.start()
