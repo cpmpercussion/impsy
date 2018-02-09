@@ -1,4 +1,4 @@
-#N canvas -1547 -168 546 681 10;
+#N canvas 0 22 546 681 10;
 #X declare -path metaPdLibs;
 #X obj 146 563 dac~;
 #X obj 118 43 r \$0-input;
@@ -105,7 +105,9 @@
 #X connect 3 1 28 0;
 #X connect 4 0 0 1;
 #X connect 4 0 7 0;
+#X connect 4 0 0 0;
 #X connect 7 0 0 1;
+#X connect 7 0 0 0;
 #X connect 8 0 7 2;
 #X connect 9 0 31 0;
 #X connect 10 0 3 0;
