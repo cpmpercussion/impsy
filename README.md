@@ -2,13 +2,19 @@
 
 Experiments with Mixture Density Networks for generating musical data.
 
-![Musical MDN Example](https://github.com/cpmpercussion/musical-mdns/raw/master/images/mdn-output.png)
+![Musical MDN Example](https://github.com/cpmpercussion/creative-mdns/raw/master/images/mdn-output.png)
 
 In this work musical data is considered to consist a time-series of continuous valued events. We seek to model the values of the events as well as the time in between each one. That means that these networks model data of at least two dimensions (event value and time).
 
 Multiple implementations of a mixture density recurrent neural network are included for comparison.
 
-## Installing on Raspberry Pi
+## MDN Interaction Interface
+
+Part of this work is concerned with using these networks in a Raspberry Pi-based musical interface.
+
+![Musical Interface](https://github.com/cpmpercussion/creative-mdns/raw/master/images/rnn-interface.jpg)
+
+### Installing on Raspberry Pi
 
 Some of these files are intended to be used on a Raspberry Pi. Installing Tensorflow on RPi is tricky given that there is no official build, however, various unofficial builds can be found.
 
