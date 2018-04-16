@@ -13,6 +13,9 @@ import numpy as np
 import tensorflow as tf
 import queue
 
+# Trying out a simple gui (mainly so we can quit)
+import tkinter
+
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Interface for RNN Box.')
@@ -268,6 +271,10 @@ def monitor_user_action():
 print("Now running...")
 thread_running = True
 
+# Tkinter Experiment
+root_window = tkinter.Tk()
+
+
 with tf.Session() as sess:
     print("preparing RNN.")
     net.prepare_model_for_running(sess)
@@ -281,11 +288,13 @@ with tf.Session() as sess:
         rnn_thread.start()
         while True:
             interaction_loop(sess)
+            root_window.update()
             if args.callresponse:
                 monitor_user_action()
     except KeyboardInterrupt:
         print("\nCtrl-C received... exiting.")
         thread_running = False
+        root_window.quit()
         # user_thread.join(timeout=1)
         rnn_thread.join(timeout=1)
         pass
