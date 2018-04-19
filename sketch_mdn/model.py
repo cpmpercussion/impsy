@@ -17,6 +17,12 @@ MDN_MODEL_SKETCH = 'sketch'
 MODEL_DIR = "./"
 LOG_PATH = "./output-logs/"
 
+def proc_generated_touch(touch):
+    """ Processes a generated touch to have dt > 0, and 0 <= x <= 1 """
+    dt = max(touch[0], 0.000454)
+    x_loc = min(max(touch[1], 0), 1)
+    return np.array([dt, x_loc])
+
 
 class MixtureRNN(object):
     """Mixture Density Network RNN using the SketchRNN's hand-coded loss function for the mixture of 2D Normals."""
@@ -196,5 +202,6 @@ class MixtureRNN(object):
         performance = [previous_touch.reshape((self.n_input_units,))]
         for i in range(number):
             previous_touch = self.generate_touch(previous_touch, sess)
+            previous_touch = proc_generated_touch(previous_touch)
             performance.append(previous_touch.reshape((self.n_input_units,)))
         return np.array(performance)
