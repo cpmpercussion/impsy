@@ -106,7 +106,7 @@ def generate_performance(model, n_mixtures, first_sample, time_limit=5.0, steps_
         params = model.predict(prev_sample.reshape(1,1,out_dim) * SCALE_FACTOR)
         prev_sample = mdn.sample_from_output(params[0], out_dim, n_mixtures, temp=temp, sigma_temp=sigma_temp) / SCALE_FACTOR
         output_touch = prev_sample.reshape(out_dim,)
-        # output_touch = constrain_touch(output_touch)
+        output_touch = proc_generated_touch(output_touch)
         performance.append(output_touch.reshape((out_dim,)))
         steps += 1
         time += output_touch[0]
