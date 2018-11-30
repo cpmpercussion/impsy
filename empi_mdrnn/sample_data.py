@@ -1,7 +1,4 @@
 """Manages Training Data for the Musical MDN and can generate fake datsets for testing."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import numpy as np
 import pandas as pd
 
