@@ -118,11 +118,30 @@ class MixtureRNN(object):
                 dtype=tf.float32,
                 scope='RNN'
             )
+            #final_state = tf.identity(final_state, name="state") # recurrent_network/state
         return rnn_outputs, init_state, final_state
 
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
         return "mixture-rnn-" + str(self.n_rnn_layers) + "layers-" + str(self.n_hidden_units) + "units"
+
+    def freeze_model(self, name=""):
+        input_graph_def = self.graph.as_graph_def()
+        sess = tf.Session()
+        self.prepare_model_for_running(sess)
+        output_node_names = "2d_mixture_split/logits_2d,2d_mixture_split/scales_2d_1,2d_mixture_split/scales_2d_2,2d_mixture_split/corr_2d,2d_mixture_split/locs_2d_1,2d_mixture_split/locs_2d_2,input/recurrent_network/state"#/input/(input)"
+        output_graph = "frozen_model.pb"
+        # We use a built-in TF helper to export variables to constants
+        output_graph_def = tf.graph_util.convert_variables_to_constants(
+            sess, # The session is used to retrieve the weights
+            tf.get_default_graph().as_graph_def(), # The graph_def is used to retrieve the nodes 
+            output_node_names.split(",") # The output node names are used to select the usefull nodes
+        )
+        # Finally we serialize and dump the output graph to the filesystem
+        with tf.gfile.GFile(output_graph, "wb") as f:
+            f.write(output_graph_def.SerializeToString())
+        print("%d ops in the final graph." % len(output_graph_def.node))
+
 
     def get_run_name(self):
         out = self.model_name() + "-"

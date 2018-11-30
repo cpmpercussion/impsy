@@ -21,6 +21,8 @@ def split_tensor_to_mixture_parameters(output):
         # Transform the sigmas to e^sigma (ish, using ELU now.)
         scales_1 = tf.add(tf.nn.elu(scales_1), 1. + 1e-8, name="scales_2d_1")  # shape and clip scales
         scales_2 = tf.add(tf.nn.elu(scales_2), 1. + 1e-8, name="scales_2d_2")  # shape and clip scales
+        locs_1 = tf.identity(locs_1, name="locs_2d_1")
+        locs_2 = tf.identity(locs_2, name="locs_2d_2")
         # Transform the correlations to tanh(corr)
         # TODO: Perhaps clip the corr to 1e-8 as well.
         corr = tf.tanh(corr, name="corr_2d")  # shape corr.
