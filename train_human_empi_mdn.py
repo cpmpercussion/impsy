@@ -6,6 +6,7 @@ import time
 
 import empi_mdrnn
 import keras
+import keras.backend as K
 import tensorflow as tf
 import os
 
