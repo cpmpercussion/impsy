@@ -6,6 +6,16 @@ import time
 
 import empi_mdrnn
 import keras
+import os
+
+# Set up environment.
+# Only for GPU use:
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+K.set_session(sess)
+
 
 # Model Hyperparameters
 SEQ_LEN = 50
