@@ -94,5 +94,3 @@ def generate_synthetic_3D_data():
     print(df.describe())
     return np.array(df)
 
-
-# TODO: is this class still relevant?
