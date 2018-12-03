@@ -3,3 +3,5 @@
 checkpoint
 output-logs
 
+*.hdf5
+*.no

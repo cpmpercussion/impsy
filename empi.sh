@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/pi/creative-mdns
+cd /home/pi/empi
 # Start Pd
 ./start_pd.sh
 # Start the RNN Box controller
