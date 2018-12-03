@@ -18,6 +18,7 @@ NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
 MODEL_DIR = "./models/"
 LOG_PATH = "./logs/"
+SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
 
 
 def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
@@ -82,10 +83,6 @@ def load_inference_model(model_file="", layers=2, units=512, mixtures=5, predict
     return decoder
 
 
-# Performance Helper Functions
-SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
-
-
 def random_sample():
     """ Generate a random sample in format (dt, x), where dt is positive
     and x is between 0 and 1."""
@@ -93,8 +90,8 @@ def random_sample():
 
 
 def proc_generated_touch(touch):
-    """ Processes a generated touch in the format (dt, x) 
-    such that dt > 0, and 0 <= x <= 1 """
+    """ Processes a generated touch in the format (dt, x)
+        such that dt > 0, and 0 <= x <= 1 """
     dt = max(touch[0], 0.000454)
     x_loc = min(max(touch[1], 0), 1)
     return np.array([dt, x_loc])
@@ -134,34 +131,8 @@ def generate_performance(model, n_mixtures, first_sample, time_limit=None, steps
     return np.array(performance)
 
 
-# def condition_and_generate(model, perf, n_mixtures, time_limit=5.0, steps_limit=1000, temp=1.0, sigma_temp=0.0, predict_moving=False):
-#     """Conditions the network on an existing tiny performance, then generates a new one."""
-#     if predict_moving:
-#         out_dim = 4
-#     else:
-#         out_dim = 3
-#     time = 0
-#     steps = 0
-#     # condition
-#     for touch in perf:
-#         params = model.predict(touch.reshape(1, 1, out_dim) * SCALE_FACTOR)
-#         previous_touch = mdn.sample_from_output(params[0], out_dim, n_mixtures, temp=temp, sigma_temp=sigma_temp) / SCALE_FACTOR
-#         output = [previous_touch.reshape((out_dim,))]
-#     # generate
-#     while (steps < steps_limit and time < time_limit):
-#         params = model.predict(previous_touch.reshape(1, 1, out_dim) * SCALE_FACTOR)
-#         previous_touch = mdn.sample_from_output(params[0], out_dim, n_mixtures, temp=temp, sigma_temp=sigma_temp) / SCALE_FACTOR
-#         output_touch = previous_touch.reshape(out_dim,)
-#         output_touch = constrain_touch(output_touch, with_moving=predict_moving)
-#         output.append(output_touch.reshape((out_dim,)))
-#         steps += 1
-#         time += output_touch[2]
-#     net_output = np.array(output)
-#     return net_output
-
-
 class EmpiRNN(object):
-    """EMPI MDRNN."""
+    """EMPI MDRNN object for convenience in the run script."""
 
     def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=5, batch_size=100, sequence_length=120, layers=2):
         """Initialise the MDRNN model. Use mode='run' for evaluation graph and
@@ -236,14 +207,10 @@ class EmpiRNN(object):
                                  epochs=num_epochs,
                                  validation_split=self.val_split,
                                  callbacks=callbacks)
-        #history = model.fit_generator(generator, steps_per_epoch=300, epochs=100, verbose=1, initial_epoch=0)
-        # Save final Model
-        #model.save('model_path' + '-final.hdf5')  # creates a HDF5 file of the model
         return history
 
     def prepare_model_for_running(self):
         """Reset RNN state."""
-        # with compute_graph.as_default():
         self.model.reset_states()  # reset LSTM state.
 
     def generate_touch(self, prev_sample):
