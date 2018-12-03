@@ -2,7 +2,7 @@
 
 Experiments with Mixture Density Networks for generating musical data.
 
-![Musical MDN Example](https://github.com/cpmpercussion/creative-mdns/raw/master/images/mdn-output.png)
+![Musical MDN Example](https://github.com/cpmpercussion/creative-mdns/raw/master/images/rnn_output.png)
 
 In this work musical data is considered to consist a time-series of continuous valued events. We seek to model the values of the events as well as the time in between each one. That means that these networks model data of at least two dimensions (event value and time).
 
