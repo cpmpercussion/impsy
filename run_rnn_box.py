@@ -8,9 +8,10 @@ import logging
 import datetime
 import argparse
 from threading import Thread, Condition
-import sketch_mdn
+import empi_mdrnn
 import numpy as np
 import tensorflow as tf
+from keras import backend as K
 import queue
 
 # Trying out a simple gui (mainly so we can quit)
@@ -98,22 +99,32 @@ def read_lever():
 
 
 # ## Load the Model
+compute_graph = tf.Graph()
+with compute_graph.as_default():
+   sess = tf.Session()
+
 # Hyperparameters
 units = 128
-mixes = 8
-layers = 1
-n_steps = 1
-batch_s = 1
-sketch_mdn.MODEL_DIR = "./"
+mixes = 5
+layers = 2
+empi_mdrnn.MODEL_DIR = "./models/"
+model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
 # Instantiate Running Network
-net = sketch_mdn.MixtureRNN(mode=sketch_mdn.NET_MODE_RUN, n_hidden_units=units, n_mixtures=mixes,
-                            batch_size=batch_s, sequence_length=n_steps, layers=layers)
+K.set_session(sess)
+with compute_graph.as_default():
+    net = empi_mdrnn.EmpiRNN(mode=empi_mdrnn.NET_MODE_RUN,
+                             n_hidden_units=units,
+                             n_mixtures=mixes,
+                             layers=layers)
+    net.load_model(model_file=model_file)
+    net.pi_temp = 1.0
+    net.sigma_temp = 0.0
 print("RNN Loaded.")
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 # Touch storage for RNN.
-last_rnn_touch = sketch_mdn.random_touch()  # prepare previous touch input for RNN input
-last_user_touch = sketch_mdn.random_touch()
+last_rnn_touch = empi_mdrnn.random_sample()  # prepare previos sample.
+last_user_touch = empi_mdrnn.random_sample()
 last_user_interaction = time.time()
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
@@ -129,7 +140,9 @@ listening_as_well = False
 
 
 if args.logging:
-    logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format=LOG_FORMAT)
+    logging.basicConfig(filename=LOG_FILE,
+                        level=logging.INFO,
+                        format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 
 # Interactive Mapping
@@ -177,7 +190,7 @@ elif args.syntheticmodel:
     print("Using synthetic RNN model.")
 
 
-def interaction_loop(sess):
+def interaction_loop(sess, compute_graph):
     # Interaction loop for the box, reads serial, makes predictions, outputs servo and sound.
     global last_user_touch
     global last_user_interaction
@@ -203,12 +216,16 @@ def interaction_loop(sess):
 
     # Make predictions.
     if user_to_rnn and userloc:
-        rnn_output = net.generate_touch(last_user_touch, sess)
+        K.set_session(sess)
+        with compute_graph.as_default():
+            rnn_output = net.generate_touch(last_user_touch)
         print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
     if rnn_to_rnn and rnn_output_buffer.empty():
-        rnn_output = net.generate_touch(last_rnn_touch, sess)
+        K.set_session(sess)
+        with compute_graph.as_default():
+            rnn_output = net.generate_touch(last_rnn_touch)
         print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
@@ -275,31 +292,33 @@ thread_running = True
 root_window = tkinter.Tk()
 
 
-with tf.Session() as sess:
-    print("preparing RNN.")
-    net.prepare_model_for_running(sess)
-    # condition = Condition()
-    # rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
-    print("preparting RNN thread.")
-    rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
-    print("starting up.")
-    try:
-        # user_thread.start()
-        rnn_thread.start()
-        while True:
-            interaction_loop(sess)
-            root_window.update()
-            if args.callresponse:
-                monitor_user_action()
-    except KeyboardInterrupt:
-        print("\nCtrl-C received... exiting.")
-        thread_running = False
-        root_window.quit()
-        # user_thread.join(timeout=1)
-        rnn_thread.join(timeout=1)
-        pass
-    finally:
-        print("\nDone, shutting down.")
+# Set up run loop.
+print("preparing RNN.")
+K.set_session(sess)
+with compute_graph.as_default():
+    net.load_model(model_file=model_file)
+# condition = Condition()
+# rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
+print("preparting RNN thread.")
+rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
+print("starting up.")
+try:
+    # user_thread.start()
+    rnn_thread.start()
+    while True:
+        interaction_loop(sess, compute_graph)
+        root_window.update()
+        if args.callresponse:
+            monitor_user_action()
+except KeyboardInterrupt:
+    print("\nCtrl-C received... exiting.")
+    thread_running = False
+    root_window.quit()
+    # user_thread.join(timeout=1)
+    rnn_thread.join(timeout=1)
+    pass
+finally:
+    print("\nDone, shutting down.")
 
 # New idea:
 # have a flag for "needs a new rnn note" and if that is unset, generate a new note in the interaction loop.
