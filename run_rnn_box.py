@@ -21,6 +21,7 @@ import tkinter
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Interface for RNN Box.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
+parser.add_argument('-g', '--nogui', dest='nogui', action='store_true', help='Disable the TKinter GUI.')
 # Individual Modes
 parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
 parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN or servo.")
@@ -289,7 +290,11 @@ print("Now running...")
 thread_running = True
 
 # Tkinter Experiment
-root_window = tkinter.Tk()
+if not args.nogui:
+    print("Loading GUI.")
+    root_window = tkinter.Tk()
+else:
+    print("Running without GUI.")
 
 
 # Set up run loop.
