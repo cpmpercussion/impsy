@@ -312,13 +312,15 @@ try:
     rnn_thread.start()
     while True:
         interaction_loop(sess, compute_graph)
-        root_window.update()
+        if not args.nogui:
+            root_window.update()
         if args.callresponse:
             monitor_user_action()
 except KeyboardInterrupt:
     print("\nCtrl-C received... exiting.")
     thread_running = False
-    root_window.quit()
+    if not args.nogui:
+        root_window.quit()
     # user_thread.join(timeout=1)
     rnn_thread.join(timeout=1)
     pass
