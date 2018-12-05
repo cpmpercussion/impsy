@@ -1,4 +1,4 @@
-#N canvas -2038 -144 902 796 10;
+#N canvas 592 139 902 796 10;
 #X declare -path metaPdLibs;
 #X obj 129 275 netreceive -u -b;
 #X msg 129 247 listen 5000;
@@ -146,5 +146,5 @@ address "inst".;
 #X connect 32 2 19 0;
 #X connect 32 3 35 0;
 #X connect 33 0 34 0;
-#X connect 34 0 7 0;
+#X connect 34 0 6 0;
 #X connect 35 0 33 0;
