@@ -131,13 +131,14 @@ def generate_performance(model, n_mixtures, first_sample, time_limit=None, steps
     return np.array(performance)
 
 
-class EmpiRNN(object):
+class PredictiveMusicMDRNN(object):
     """EMPI MDRNN object for convenience in the run script."""
 
-    def __init__(self, mode=NET_MODE_TRAIN, n_hidden_units=128, n_mixtures=5, batch_size=100, sequence_length=120, layers=2):
+    def __init__(self, mode=NET_MODE_TRAIN, dimension=2, n_hidden_units=128, n_mixtures=5, batch_size=100, sequence_length=120, layers=2):
         """Initialise the MDRNN model. Use mode='run' for evaluation graph and
         mode='train' for training graph."""
         # network parameters
+        self.dimension = dimension
         self.mode = mode
         self.n_hidden_units = n_hidden_units
         self.n_rnn_layers = layers
@@ -155,6 +156,7 @@ class EmpiRNN(object):
                                      hidden_units=self.n_hidden_units,
                                      num_mixtures=self.n_mixtures,
                                      layers=self.n_rnn_layers,
+                                     out_dim=self.dimension
                                      time_dist=True,
                                      inference=False,
                                      compile_model=True,
@@ -164,6 +166,7 @@ class EmpiRNN(object):
                                      hidden_units=self.n_hidden_units,
                                      num_mixtures=self.n_mixtures,
                                      layers=self.n_rnn_layers,
+                                     out_dim=self.dimension
                                      time_dist=False,
                                      inference=True,
                                      compile_model=False,
@@ -173,7 +176,7 @@ class EmpiRNN(object):
 
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
-        return "empi-mdrnn-" + "-layers" + str(self.n_rnn_layers) + "-units" + str(self.n_hidden_units) + "-mixtures" + str(self.n_mixtures) + "-scale" + str(SCALE_FACTOR)
+        return "musicMDRNN" + "-dim" + str(self.dimension) + "-layers" + str(self.n_rnn_layers) + "-units" + str(self.n_hidden_units) + "-mixtures" + str(self.n_mixtures) + "-scale" + str(SCALE_FACTOR)
 
     def load_model(self, model_file=None):
         if model_file is not None:
@@ -217,11 +220,13 @@ class EmpiRNN(object):
         # TODO - do something with the session.
         output = generate_sample(self.model, self.n_mixtures, prev_sample,
                                  pi_temp=self.pi_temp,
-                                 sigma_temp=self.sigma_temp)
+                                 sigma_temp=self.sigma_temp,
+                                 out_dim=self.dimension)
         return output
 
     def generate_performance(self, first_sample, number):
         return generate_performance(self.model, self.n_mixtures,
                                     first_sample, time_limit=None,
                                     steps_limit=number, pi_temp=self.pi_temp,
-                                    sigma_temp=self.sigma_temp)
+                                    sigma_temp=self.sigma_temp,
+                                    out_dim=self.dimension)
