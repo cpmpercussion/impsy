@@ -1,3 +1,6 @@
 pySerial
 numpy
 pandas
+keras
+tensorflow
+tensorflow_probability
