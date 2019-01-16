@@ -1,20 +1,23 @@
-import serial
-from serial.tools.list_ports import comports
-import time
-import struct
-import socket
 import logging
+import time
 import datetime
 import empi_mdrnn
-import numpy as np
 import tensorflow as tf
 from keras import backend as K
+import numpy as np
 import queue
+from pythonosc import dispatcher
+from pythonosc import osc_server
+from pythonosc import osc_message_builder
+from pythonosc import udp_client
+import argparse
+from threading import Thread
 
 
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
+parser.add_argument('-d', '--dimension', dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-g', '--nogui', dest='nogui', action='store_true', help='Disable the TKinter GUI.')
 # Individual Modes
@@ -25,47 +28,28 @@ parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RN
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
+# OSC addresses
+parser.add_argument("--clientip", default="localhost", help="The address of output device.")
+parser.add_argument("--clientport", type=int, default=5000, help="The port the output device is listening on.")
+parser.add_argument("--serverip", default="localhost", help="The address of this server.")
+parser.add_argument("--serverport", type=int, default=5001, help="The port this server should listen on.")
 
 args = parser.parse_args()
 
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
 LOG_FORMAT = '%(message)s'
-
 # ## OSC and Serial Communication
 # Details for OSC output
-ADDRESS = "localhost"
-PORT = 5000
-INT_FLOAT_DGRAM_LEN = 4
-STRING_DGRAM_PAD = 4
-# Socket for OSC output.
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setblocking(0)
+INPUT_MESSAGE_ADDRESS = "/interface"
+OUTPUT_MESSAGE_ADDRESS = "/prediction"
 
 # TODO: set up OSC server
 # TODO: set up OSC client
 # TODO set up interface to build MDRNN
 # TODO set up run loop for inference.
-# TODO set up 
 
-# Functions for OSC Connection.
-
-def send_sound_command(osc_datagram):
-    """Send OSC message via UDP."""
-    sock.sendto(osc_datagram, (ADDRESS, PORT))
-
-
-def pad_dgram_four_bytes(dgram):
-    """Pad a datagram up to a multiple of 4 bytes."""
-    return (dgram + (b'\x00' * (4 - len(dgram) % 4)))
-
-
-def touch_message_datagram(address="touch", pos=0.0):
-    """Construct an osc message with address /touch and one float."""
-    dgram = b''
-    dgram += pad_dgram_four_bytes(("/" + address).encode('utf-8'))
-    dgram += pad_dgram_four_bytes(b',f')  # (",f"), is this working? test again.
-    dgram += struct.pack('>f', pos)
-    return dgram
+osc_client = udp_client.SimpleUDPClient(args.clientip, args.clientport)
+# osc_client.send_message("OUTPUT_MESSAGE_ADDRESS", random.random())
 
 # ## Load the Model
 compute_graph = tf.Graph()
@@ -73,41 +57,45 @@ with compute_graph.as_default():
    sess = tf.Session()
 
 
-# Hyperparameters
-units = 128
-mixes = 5
-layers = 2
-empi_mdrnn.MODEL_DIR = "./models/"
-model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
-# Instantiate Running Network
-K.set_session(sess)
-with compute_graph.as_default():
-    net = empi_mdrnn.EmpiRNN(mode=empi_mdrnn.NET_MODE_RUN,
-                             n_hidden_units=units,
-                             n_mixtures=mixes,
-                             layers=layers)
-    net.load_model(model_file=model_file)
-    net.pi_temp = 1.0
-    net.sigma_temp = 0.0
-print("RNN Loaded.")
+def build_network(sess):
+    """Build the MDRNN."""
+    # Hyperparameters
+    units = 128
+    mixes = 5
+    layers = 2
+    empi_mdrnn.MODEL_DIR = "./models/"
+    model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
+    # Instantiate Running Network
+    K.set_session(sess)
+    with compute_graph.as_default():
+        net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
+                                              dimension=args.dimension,
+                                              n_hidden_units=units,
+                                              n_mixtures=mixes,
+                                              layers=layers)
+        net.load_model(model_file=model_file)
+        net.pi_temp = 1.0
+        net.sigma_temp = 0.0
+    print("RNN Loaded.")
+    return net
+
+net = build_network(sess)
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 # Touch storage for RNN.
-last_rnn_touch = empi_mdrnn.random_sample()  # prepare previos sample.
-last_user_touch = empi_mdrnn.random_sample()
+last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)  # prepare previos sample.
+last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
 last_user_interaction = time.time()
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 # Interaction Loop Parameters
 # All set to false before setting is chosen.
 thread_running = False
-user_to_sound = False
+# user_to_sound = False
 user_to_rnn = False
 rnn_to_rnn = False
-user_to_servo = False
 rnn_to_sound = False
 listening_as_well = False
-
 
 if args.logging:
     logging.basicConfig(filename=LOG_FILE,
@@ -119,66 +107,63 @@ if args.logging:
 if args.test:
     print("Entering test mode (no RNN).")
     # user to sound, user to servo.
-    user_to_sound = True
+    # user_to_sound = True
     user_to_servo = True
     user_to_rnn = False
     rnn_to_rnn = False
 elif args.callresponse:
     print("Entering call and response mode.")
     # set initial conditions.
-    user_to_sound = True
+    # user_to_sound = True
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = False
 elif args.polyphony:
     print("Entering polyphony mode.")
-    user_to_sound = True
+    # user_to_sound = True
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = True
 elif args.battle:
     print("Entering battle royale mode.")
-    user_to_sound = True
+    # user_to_sound = True
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
 elif args.useronly:
     print("Entering user only mode.")
-    user_to_sound = True
-    user_to_servo = False
+    # user_to_sound = True
 elif args.rnnonly:
     print("RNN Playback only mode.")
-    user_to_sound = False
+    # user_to_sound = False
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
 
-def interaction_loop(sess, compute_graph):
-    # Interaction loop for the box, reads serial, makes predictions, outputs servo and sound.
+
+def handle_interface_message(address: str, *osc_arguments) -> None:
+    """Handler for OSC messages from the interface"""
     global last_user_touch
     global last_user_interaction
     global last_rnn_touch
-    # Start Lever Processing
+    print(osc_arguments)
     userloc = None
-    while ser.in_waiting > 0:
-        userloc = read_lever()
-        userloc = min(max(userloc, 0), 255)
-        logging.info("{1},user,{0}".format(userloc, datetime.datetime.now().isoformat()))
-        userdt = time.time() - last_user_interaction
-        last_user_interaction = time.time()
-        last_user_touch = np.array([userdt, userloc / 255.0])
-        if user_to_sound:
-            send_sound_command(touch_message_datagram(address='user', pos=(userloc / 255.0)))
-        if user_to_servo:
-            print("Sending User to Servo:", userloc)
-            command_servo(userloc)
-    # Send any waiting messages to the servo.
-    while not writing_queue.empty():
-        servo_pos = writing_queue.get()
-        command_servo(servo_pos)
+    logging.info("{1},user,{0}".format(userloc, datetime.datetime.now().isoformat()))
+    userdt = time.time() - last_user_interaction
+    last_user_interaction = time.time()
+    last_user_touch = np.array([userdt, userloc])
+    # These values are accessed by the RNN in the interaction loop function.
 
+
+def make_prediction(sess, compute_graph):
+    # Interaction loop: reads input, makes predictions, outputs results.
+    global last_user_touch
+    global last_user_interaction
+    global last_rnn_touch
     # Make predictions.
-    if user_to_rnn and userloc:
+    # Need someway to know when a prediction is waiting to be made. use a queue as well.
+
+    if user_to_rnn:
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = net.generate_touch(last_user_touch)
@@ -248,43 +233,40 @@ def monitor_user_action():
             print("ready for call mode")
 
 
+# Set up OSC Server
+disp = dispatcher.Dispatcher()
+disp.map(INPUT_MESSAGE_ADDRESS, handle_interface_message)
+server = osc_server.ThreadingOSCUDPServer((args.serverip, args.serverport), disp)
+print("Serving on {}".format(server.server_address))
+
+
 print("Now running...")
 thread_running = True
 
-# Tkinter Experiment
-if not args.nogui:
-    print("Loading GUI.")
-    root_window = tkinter.Tk()
-else:
-    print("Running without GUI.")
-
-
 # Set up run loop.
-print("preparing RNN.")
+print("preparing MDRNN.")
 K.set_session(sess)
 with compute_graph.as_default():
     net.load_model(model_file=model_file)
 # condition = Condition()
 # rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
-print("preparting RNN thread.")
+print("preparting MDRNN thread.")
 rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
+print("Preparing Server thread.")
+server_thread = Thread(target=server.serve_forever, name="server_thread", daemon=True)
 print("starting up.")
 try:
-    # user_thread.start()
     rnn_thread.start()
+    server_thread.start()
     while True:
-        interaction_loop(sess, compute_graph)
-        if not args.nogui:
-            root_window.update()
+        make_prediction(sess, compute_graph)
         if args.callresponse:
             monitor_user_action()
 except KeyboardInterrupt:
     print("\nCtrl-C received... exiting.")
     thread_running = False
-    if not args.nogui:
-        root_window.quit()
-    # user_thread.join(timeout=1)
     rnn_thread.join(timeout=1)
+    server_thread.join(timeout=1)
     pass
 finally:
     print("\nDone, shutting down.")
