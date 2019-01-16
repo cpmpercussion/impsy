@@ -2,8 +2,6 @@ import logging
 import time
 import datetime
 import empi_mdrnn
-import tensorflow as tf
-from keras import backend as K
 import numpy as np
 import queue
 from pythonosc import dispatcher
@@ -12,12 +10,13 @@ from pythonosc import osc_message_builder
 from pythonosc import udp_client
 import argparse
 from threading import Thread
+import tensorflow as tf
+from keras import backend as K
 
 
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
-parser.add_argument('-d', '--dimension', dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-g', '--nogui', dest='nogui', action='store_true', help='Disable the TKinter GUI.')
 # Individual Modes
@@ -32,7 +31,11 @@ parser.add_argument("--clientip", default="localhost", help="The address of outp
 parser.add_argument("--clientport", type=int, default=5000, help="The port the output device is listening on.")
 parser.add_argument("--serverip", default="localhost", help="The address of this server.")
 parser.add_argument("--serverport", type=int, default=5001, help="The port this server should listen on.")
-
+# MDRNN arguments.
+parser.add_argument('-d', '--dimension', dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
+parser.add_argument("--modelsize", default="s", help="The model size: s, m, l, xl")
+parser.add_argument("--sigmatemp", default=0.01, help="The sigma temperature for sampling.")
+parser.add_argument("--pitemp", default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
 
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
@@ -55,27 +58,45 @@ compute_graph = tf.Graph()
 with compute_graph.as_default():
    sess = tf.Session()
 
+# Choose model parameters.
+if args.modelsize is 's':
+    mdrnn_units = 64
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize is 'm':
+    mdrnn_units = 128
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize is 'l':
+    mdrnn_units = 256
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize is 'xl':
+    mdrnn_units = 512
+    mdrnn_mixes = 5
+    mdrnn_layers = 3
+else:
+    mdrnn_units = 128
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+
 
 def build_network(sess):
     """Build the MDRNN."""
     # Hyperparameters
-    units = 128
-    mixes = 5
-    layers = 2
     empi_mdrnn.MODEL_DIR = "./models/"
-    model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
+    #model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
     # Instantiate Running Network
     K.set_session(sess)
     with compute_graph.as_default():
         net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
                                               dimension=args.dimension,
-                                              n_hidden_units=units,
-                                              n_mixtures=mixes,
-                                              layers=layers)
-        net.load_model(model_file=model_file)
-        net.pi_temp = 1.0
-        net.sigma_temp = 0.0
-    print("RNN Loaded.")
+                                              n_hidden_units=mdrnn_units,
+                                              n_mixtures=mdrnn_mixes,
+                                              layers=mdrnn_layers)
+        net.pi_temp = args.pitemp
+        net.sigma_temp = args.sigmatemp
+    print("MDRNN Loaded.")
     return net
 
 net = build_network(sess)
@@ -237,7 +258,7 @@ thread_running = True
 print("preparing MDRNN.")
 K.set_session(sess)
 with compute_graph.as_default():
-    net.load_model(model_file=model_file)
+    net.load_model() # try loading from default file location.
 # condition = Condition()
 # rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
 print("preparting MDRNN thread.")

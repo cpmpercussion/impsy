@@ -179,8 +179,13 @@ class PredictiveMusicMDRNN(object):
         return "musicMDRNN" + "-dim" + str(self.dimension) + "-layers" + str(self.n_rnn_layers) + "-units" + str(self.n_hidden_units) + "-mixtures" + str(self.n_mixtures) + "-scale" + str(SCALE_FACTOR)
 
     def load_model(self, model_file=None):
-        if model_file is not None:
+        if model_file is None:
+            model_file = MODEL_DIR + self.model_name() + ".h5"
+        try:
             self.model.load_weights(model_file)
+        except OSError:
+            print("MDRNN could not be loaded from file:", model_file)
+            print("MDRNN is untrained.")
 
     def get_run_name(self):
         out = self.model_name() + "-"
