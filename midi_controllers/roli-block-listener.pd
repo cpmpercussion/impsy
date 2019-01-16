@@ -60,6 +60,7 @@
 to record them.;
 #X obj 227 303 oscformat interface;
 #X msg 420 230 connect localhost 5001;
+#X msg 571 289 disconnect;
 #X connect 0 0 11 0;
 #X connect 0 0 17 0;
 #X connect 1 0 0 0;
@@ -85,3 +86,4 @@ to record them.;
 #X connect 27 0 14 0;
 #X connect 27 0 24 0;
 #X connect 28 0 13 0;
+#X connect 29 0 13 0;
