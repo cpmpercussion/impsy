@@ -1,7 +1,6 @@
 import logging
 import time
 import datetime
-import empi_mdrnn
 import numpy as np
 import queue
 from pythonosc import dispatcher
@@ -10,9 +9,6 @@ from pythonosc import osc_message_builder
 from pythonosc import udp_client
 import argparse
 from threading import Thread
-import tensorflow as tf
-from keras import backend as K
-
 
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
@@ -38,6 +34,15 @@ parser.add_argument("--sigmatemp", default=0.01, help="The sigma temperature for
 parser.add_argument("--pitemp", default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
 
+# Import Keras and tensorflow, doing this later to make CLI more responsive.
+print("Importing Keras and MDRNN.")
+start_import = time.time()
+import empi_mdrnn
+import tensorflow as tf
+from keras import backend as K
+print("Done. That took", time.time() - start_import, "seconds.")
+
+# Logging
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
 LOG_FORMAT = '%(message)s'
 # ## OSC and Serial Communication
@@ -100,6 +105,7 @@ def build_network(sess):
     return net
 
 net = build_network(sess)
+interface_input_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 # Touch storage for RNN.
@@ -110,8 +116,6 @@ CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 # Interaction Loop Parameters
 # All set to false before setting is chosen.
-thread_running = False
-# user_to_sound = False
 user_to_rnn = False
 rnn_to_rnn = False
 rnn_to_sound = False
@@ -127,28 +131,23 @@ if args.logging:
 if args.callresponse:
     print("Entering call and response mode.")
     # set initial conditions.
-    # user_to_sound = True
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = False
 elif args.polyphony:
     print("Entering polyphony mode.")
-    # user_to_sound = True
     user_to_rnn = True
     rnn_to_rnn = False
     rnn_to_sound = True
 elif args.battle:
     print("Entering battle royale mode.")
-    # user_to_sound = True
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
 elif args.useronly:
     print("Entering user only mode.")
-    # user_to_sound = True
 elif args.rnnonly:
     print("RNN Playback only mode.")
-    # user_to_sound = False
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
@@ -160,29 +159,31 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     global last_user_interaction
     global last_rnn_touch
     print(osc_arguments)
-    userloc = None
+    userloc = osc_arguments[0] # just try 1D for now.
     logging.info("{1},user,{0}".format(userloc, datetime.datetime.now().isoformat()))
     userdt = time.time() - last_user_interaction
     last_user_interaction = time.time()
     last_user_touch = np.array([userdt, userloc])
     # These values are accessed by the RNN in the interaction loop function.
+    interface_input_queue.put_nowait(last_user_touch)
 
 
 def make_prediction(sess, compute_graph):
     # Interaction loop: reads input, makes predictions, outputs results.
-    global last_user_touch
-    global last_user_interaction
-    global last_rnn_touch
     # Make predictions.
-    # Need someway to know when a prediction is waiting to be made. use a queue as well.
 
-    if user_to_rnn:
+    # First deal with user --> MDRNN prediction
+    if user_to_rnn and not interface_input_queue.empty:
+        item = interface_input_queue.get(block=True, timeout=None)
         K.set_session(sess)
         with compute_graph.as_default():
-            rnn_output = net.generate_touch(last_user_touch)
+            rnn_output = net.generate_touch(item)
         print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
+        interface_input_queue.task_done()
+
+    # Now deal with MDRNN --> MDRNN prediction.
     if rnn_to_rnn and rnn_output_buffer.empty():
         K.set_session(sess)
         with compute_graph.as_default():
@@ -190,6 +191,8 @@ def make_prediction(sess, compute_graph):
         print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
+def send_sound_command(args):
+    print("Not implemented yet.")
 
 def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
@@ -205,7 +208,7 @@ def playback_rnn_loop():
         last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
         if rnn_to_sound:
             # RNN can be disconnected from sound
-            send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
+            send_sound_command(x_loc)
             # TODO, send sound via OSC.
             print("RNN Played:", x_loc, "at", dt)
             logging.info("{1},rnn,{0}".format(x_loc, datetime.datetime.now().isoformat()))
@@ -259,8 +262,6 @@ print("preparing MDRNN.")
 K.set_session(sess)
 with compute_graph.as_default():
     net.load_model() # try loading from default file location.
-# condition = Condition()
-# rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", args=(condition,), daemon=True)
 print("preparting MDRNN thread.")
 rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
 print("Preparing Server thread.")
