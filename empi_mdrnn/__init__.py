@@ -21,7 +21,7 @@ LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
 
 
-def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2, out_dim=2
+def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2, out_dim=2,
                      time_dist=True, inference=False, compile_model=True,
                      print_summary=True):
     """Builds a EMPI MDRNN model for training or inference.
@@ -156,7 +156,7 @@ class PredictiveMusicMDRNN(object):
                                      hidden_units=self.n_hidden_units,
                                      num_mixtures=self.n_mixtures,
                                      layers=self.n_rnn_layers,
-                                     out_dim=self.dimension
+                                     out_dim=self.dimension,
                                      time_dist=True,
                                      inference=False,
                                      compile_model=True,
@@ -166,7 +166,7 @@ class PredictiveMusicMDRNN(object):
                                      hidden_units=self.n_hidden_units,
                                      num_mixtures=self.n_mixtures,
                                      layers=self.n_rnn_layers,
-                                     out_dim=self.dimension
+                                     out_dim=self.dimension,
                                      time_dist=False,
                                      inference=True,
                                      compile_model=False,
