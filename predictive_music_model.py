@@ -42,26 +42,11 @@ import tensorflow as tf
 from keras import backend as K
 print("Done. That took", time.time() - start_import, "seconds.")
 
-# Logging
-LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
-LOG_FORMAT = '%(message)s'
-# ## OSC and Serial Communication
-# Details for OSC output
-INPUT_MESSAGE_ADDRESS = "/interface"
-OUTPUT_MESSAGE_ADDRESS = "/prediction"
-
 # TODO: set up OSC server
 # TODO: set up OSC client
 # TODO set up interface to build MDRNN
 # TODO set up run loop for inference.
 
-osc_client = udp_client.SimpleUDPClient(args.clientip, args.clientport)
-# osc_client.send_message("OUTPUT_MESSAGE_ADDRESS", random.random())
-
-# ## Load the Model
-compute_graph = tf.Graph()
-with compute_graph.as_default():
-   sess = tf.Session()
 
 # Choose model parameters.
 if args.modelsize is 's':
@@ -85,47 +70,12 @@ else:
     mdrnn_mixes = 5
     mdrnn_layers = 2
 
-
-def build_network(sess):
-    """Build the MDRNN."""
-    # Hyperparameters
-    empi_mdrnn.MODEL_DIR = "./models/"
-    #model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
-    # Instantiate Running Network
-    K.set_session(sess)
-    with compute_graph.as_default():
-        net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
-                                              dimension=args.dimension,
-                                              n_hidden_units=mdrnn_units,
-                                              n_mixtures=mdrnn_mixes,
-                                              layers=mdrnn_layers)
-        net.pi_temp = args.pitemp
-        net.sigma_temp = args.sigmatemp
-    print("MDRNN Loaded.")
-    return net
-
-net = build_network(sess)
-interface_input_queue = queue.Queue()
-rnn_output_buffer = queue.Queue()
-writing_queue = queue.Queue()
-# Touch storage for RNN.
-last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)  # prepare previos sample.
-last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
-last_user_interaction = time.time()
-CALL_RESPONSE_THRESHOLD = 2.0
-call_response_mode = 'call'
 # Interaction Loop Parameters
 # All set to false before setting is chosen.
 user_to_rnn = False
 rnn_to_rnn = False
 rnn_to_sound = False
 listening_as_well = False
-
-if args.logging:
-    logging.basicConfig(filename=LOG_FILE,
-                        level=logging.INFO,
-                        format=LOG_FORMAT)
-    print("Logging enabled:", LOG_FILE)
 
 # Interactive Mapping
 if args.callresponse:
@@ -151,6 +101,24 @@ elif args.rnnonly:
     user_to_rnn = False
     rnn_to_rnn = True
     rnn_to_sound = True
+
+def build_network(sess):
+    """Build the MDRNN."""
+    # Hyperparameters
+    empi_mdrnn.MODEL_DIR = "./models/"
+    #model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
+    # Instantiate Running Network
+    K.set_session(sess)
+    with compute_graph.as_default():
+        net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
+                                              dimension=args.dimension,
+                                              n_hidden_units=mdrnn_units,
+                                              n_mixtures=mdrnn_mixes,
+                                              layers=mdrnn_layers)
+        net.pi_temp = args.pitemp
+        net.sigma_temp = args.sigmatemp
+    print("MDRNN Loaded.")
+    return net
 
 
 def handle_interface_message(address: str, *osc_arguments) -> None:
@@ -214,7 +182,6 @@ def playback_rnn_loop():
             logging.info("{1},rnn,{0}".format(x_loc, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
-
 def monitor_user_action():
     # Handles changing responsibility in Call-Response mode.
     global call_response_mode
@@ -246,7 +213,38 @@ def monitor_user_action():
                 print("Cleared an RNN buffer item")
             print("ready for call mode")
 
+# Logging
+LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
+LOG_FORMAT = '%(message)s'
 
+if args.logging:
+    logging.basicConfig(filename=LOG_FILE,
+                        level=logging.INFO,
+                        format=LOG_FORMAT)
+    print("Logging enabled:", LOG_FILE)
+# Details for OSC output
+INPUT_MESSAGE_ADDRESS = "/interface"
+OUTPUT_MESSAGE_ADDRESS = "/prediction"
+
+# Set up runtime variables.
+# ## Load the Model
+compute_graph = tf.Graph()
+with compute_graph.as_default():
+   sess = tf.Session()
+net = build_network(sess)
+interface_input_queue = queue.Queue()
+rnn_output_buffer = queue.Queue()
+writing_queue = queue.Queue()
+# Touch storage for RNN.
+last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)  # prepare previos sample.
+last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
+last_user_interaction = time.time()
+CALL_RESPONSE_THRESHOLD = 2.0
+call_response_mode = 'call'
+
+# Set up OSC client
+osc_client = udp_client.SimpleUDPClient(args.clientip, args.clientport)
+# osc_client.send_message("OUTPUT_MESSAGE_ADDRESS", random.random())
 # Set up OSC Server
 disp = dispatcher.Dispatcher()
 disp.map(INPUT_MESSAGE_ADDRESS, handle_interface_message)
