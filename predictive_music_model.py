@@ -21,8 +21,7 @@ parser.add_argument('-d', '--dimension', dest='dimension', default=2, help='The 
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-g', '--nogui', dest='nogui', action='store_true', help='Disable the TKinter GUI.')
 # Individual Modes
-parser.add_argument('-t', '--test', dest='test', action="store_true", help='No RNN, user input only directly connected to servo.')
-parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN or servo.")
+parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN.")
 parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RNN interaction only.')
 # Duo Modes
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
@@ -104,14 +103,7 @@ if args.logging:
     print("Logging enabled:", LOG_FILE)
 
 # Interactive Mapping
-if args.test:
-    print("Entering test mode (no RNN).")
-    # user to sound, user to servo.
-    # user_to_sound = True
-    user_to_servo = True
-    user_to_rnn = False
-    rnn_to_rnn = False
-elif args.callresponse:
+if args.callresponse:
     print("Entering call and response mode.")
     # set initial conditions.
     # user_to_sound = True
@@ -193,8 +185,8 @@ def playback_rnn_loop():
         if rnn_to_sound:
             # RNN can be disconnected from sound
             send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
-            # command_servo(servo_pos)
-            print("RNN Played:", servo_pos, "at", dt)
+            # TODO, send sound via OSC.
+            print("RNN Played:", x_loc, "at", dt)
             logging.info("{1},rnn,{0}".format(x_loc, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
