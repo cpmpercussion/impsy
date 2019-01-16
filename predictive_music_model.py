@@ -188,16 +188,14 @@ def playback_rnn_loop():
         dt = item[0]
         x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
         dt = max(dt, 0.001)  # stop accidental minus and zero dt.
-        servo_pos = int(255 * x_loc)  # Scale pos to 0-255
         time.sleep(dt)  # wait until time to play the sound
         last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
         if rnn_to_sound:
             # RNN can be disconnected from sound
             send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
             # command_servo(servo_pos)
-            writing_queue.put_nowait(servo_pos)
             print("RNN Played:", servo_pos, "at", dt)
-            logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
+            logging.info("{1},rnn,{0}".format(x_loc, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
 
