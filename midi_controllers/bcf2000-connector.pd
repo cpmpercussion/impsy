@@ -1,0 +1,5 @@
+#N canvas -1938 -173 809 672 10;
+#X obj 181 277 control-bank 100;
+#X floatatom 188 491 5 0 0 0 - - -, f 5;
+#X obj 179 94 control-bank 90;
+#X connect 0 0 1 0;
