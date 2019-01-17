@@ -21,9 +21,9 @@ LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
 
 
-def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2, out_dim=2,
-                     time_dist=True, inference=False, compile_model=True,
-                     print_summary=True):
+def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
+                out_dim=2, time_dist=True, inference=False, compile_model=True,
+                print_summary=True):
     """Builds a EMPI MDRNN model for training or inference.
 
     Keyword Arguments:
