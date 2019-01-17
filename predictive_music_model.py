@@ -246,8 +246,6 @@ interface_input_queue = queue.Queue()
 rnn_prediction_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
-# Touch storage for RNN.
-#last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
 last_user_interaction = time.time()
 rnn_prediction_queue.put_nowait(empi_mdrnn.random_sample(out_dim=args.dimension))
 CALL_RESPONSE_THRESHOLD = 2.0
