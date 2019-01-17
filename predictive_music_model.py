@@ -121,18 +121,16 @@ def build_network(sess):
 
 def handle_interface_message(address: str, *osc_arguments) -> None:
     """Handler for OSC messages from the interface"""
-    global last_user_touch
     global last_user_interaction
-    global last_rnn_touch
     int_input = osc_arguments
     logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                  datetime.datetime.now().isoformat()))
     dt = time.time() - last_user_interaction
     last_user_interaction = time.time()
-    last_user_touch = np.array([dt, *int_input])
-    assert len(last_user_touch) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(last_user_touch)
+    user_interaction = np.array([dt, *int_input])
+    assert len(user_interaction) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(user_interaction)
     # These values are accessed by the RNN in the interaction loop function.
-    interface_input_queue.put_nowait(last_user_touch)
+    interface_input_queue.put_nowait(user_interaction)
 
 
 def request_rnn_prediction(input_value):
@@ -149,23 +147,25 @@ def make_prediction(sess, compute_graph):
     # Make predictions.
 
     # First deal with user --> MDRNN prediction
-    if user_to_rnn and not interface_input_queue.empty:
+    if user_to_rnn and not interface_input_queue.empty():
         item = interface_input_queue.get(block=True, timeout=None)
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        print("conditioned RNN state", str(time.time()))
+        print("User->RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
         interface_input_queue.task_done()
 
     # Now deal with MDRNN --> MDRNN prediction.
-    if rnn_to_rnn and rnn_output_buffer.empty():
+    if rnn_to_rnn and rnn_output_buffer.empty() and not rnn_prediction_queue.empty():
+        item = rnn_prediction_queue.get(block=True, timeout=None)
         K.set_session(sess)
         with compute_graph.as_default():
-            rnn_output = request_rnn_prediction(last_rnn_touch)
-        print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
+            rnn_output = request_rnn_prediction(item)
+        print("RNN->RNN prediction in:", item, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+        rnn_prediction_queue.task_done()
 
 
 def send_sound_command(command_args):
@@ -176,19 +176,18 @@ def send_sound_command(command_args):
 
 def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
-    global last_rnn_touch
     while True:
         item = rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
-        print("processing an rnn command", time.time())
-        # convert to dt, byte format
+        # print("processing an rnn command", time.time())
         dt = item[0]
         x_pred = np.minimum(np.maximum(item[1:], 0), 1)
         dt = max(dt, 0.001)  # stop accidental minus and zero dt.
         time.sleep(dt)  # wait until time to play the sound
-        last_rnn_touch = np.concatenate([np.array([dt]), x_pred])
+        # put last played in queue for prediction.
+        rnn_prediction_queue.put_nowait(np.concatenate([np.array([dt]), x_pred]))
         if rnn_to_sound:
             send_sound_command(x_pred)
-            print("RNN Played:", x_pred, "at", dt)
+            # print("RNN Played:", x_pred, "at", dt)
             logging.info("{1},rnn,{0}".format(x_pred, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
@@ -217,11 +216,10 @@ def monitor_user_action():
         if call_response_mode is 'response':
             print("switching to call.")
             call_response_mode = 'call'
-            print("Clearning RNN buffer")
+            print("Clearing RNN buffer")
             while not rnn_output_buffer.empty():
                 rnn_output_buffer.get()
                 rnn_output_buffer.task_done()
-                print("Cleared an RNN buffer item")
             print("ready for call mode")
 
 # Logging
@@ -245,12 +243,13 @@ with compute_graph.as_default():
     sess = tf.Session()
 net = build_network(sess)
 interface_input_queue = queue.Queue()
+rnn_prediction_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 # Touch storage for RNN.
-last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
-last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
+#last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
 last_user_interaction = time.time()
+rnn_prediction_queue.put_nowait(empi_mdrnn.random_sample(out_dim=args.dimension))
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 
