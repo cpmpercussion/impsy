@@ -226,6 +226,7 @@ def monitor_user_action():
 
 # Logging
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-" + str(args.dimension) + "d" +  "-mdrnn.log"  # Log file name.
+LOG_FILE = "logs/" + LOG_FILE
 LOG_FORMAT = '%(message)s'
 
 if args.logging:
