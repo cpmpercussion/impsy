@@ -105,11 +105,7 @@ elif args.rnnonly:
 
 def build_network(sess):
     """Build the MDRNN."""
-    print(args.dimension)
-    print(type(args.dimension))
-    # Hyperparameters
     empi_mdrnn.MODEL_DIR = "./models/"
-    # Instantiate Running Network
     K.set_session(sess)
     with compute_graph.as_default():
         net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
@@ -229,7 +225,7 @@ def monitor_user_action():
             print("ready for call mode")
 
 # Logging
-LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-mdrnn.log"  # Log file name.
+LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-" + str(args.dimension) + "d" +  "-mdrnn.log"  # Log file name.
 LOG_FORMAT = '%(message)s'
 
 if args.logging:
