@@ -1,11 +1,13 @@
 #!/usr/bin/python
 import random
 import numpy as np
-import pandas as pd
 import os
 import argparse
 import time
 
+# Hack to get openMP working annoyingly.
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 print("Script to train a predictive music interaction model.")
 
@@ -72,7 +74,7 @@ np.random.seed(SEED)
 
 # Load dataset
 # Load tiny performance data from compressed file.
-dataset_location = '../datasets/'
+dataset_location = 'datasets/'
 dataset_filename = 'training-dataset-' + str(args.dimension) + 'd.npz'
 
 with np.load(dataset_location + dataset_filename) as loaded:
@@ -87,7 +89,9 @@ print("Corpus Examples:", len(corpus))
 # Prepare training data as X and Y.
 slices = []
 for seq in corpus:
-    slices += empi_mdrnn.slice_sequence_examples(seq, SEQ_LEN+1, step_size=SEQ_STEP)
+    slices += empi_mdrnn.slice_sequence_examples(seq,
+                                                 SEQ_LEN+1,
+                                                 step_size=SEQ_STEP)
 X, y = empi_mdrnn.seq_to_overlapping_format(slices)
 X = np.array(X) * empi_mdrnn.SCALE_FACTOR
 y = np.array(y) * empi_mdrnn.SCALE_FACTOR
@@ -97,20 +101,40 @@ print("X:", X.shape)
 print("y:", y.shape)
 
 # Setup Training Model
-model = empi_mdrnn.build_model(seq_len=SEQ_LEN, hidden_units=mdrnn_units, num_mixtures=mdrnn_mixes, layers=mdrnn_layers, time_dist=TIME_DIST, inference=False, compile_model=True, print_summary=True)
+model = empi_mdrnn.build_model(seq_len=SEQ_LEN,
+                               hidden_units=mdrnn_units,
+                               num_mixtures=mdrnn_mixes,
+                               layers=mdrnn_layers,
+                               out_dim=args.dimension,
+                               time_dist=TIME_DIST,
+                               inference=False,
+                               compile_model=True,
+                               print_summary=True)
 
-# Setup callbacks
-model_path = "empi_mdrnn" + "-layers" + str(N_LAYERS) + "-units" + str(HIDDEN_UNITS) + "-mixtures" + str(NUMBER_MIXTURES) + "-scale" + str(empi_mdrnn.SCALE_FACTOR)
-filepath = model_path + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
-checkpoint = keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+model_dir = "models/"
+model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(empi_mdrnn.SCALE_FACTOR)
+
+
+filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
+checkpoint = keras.callbacks.ModelCheckpoint(filepath,
+                                             monitor='val_loss',
+                                             verbose=1,
+                                             save_best_only=True,
+                                             mode='min')
 terminateOnNaN = keras.callbacks.TerminateOnNaN()
-tboard = keras.callbacks.TensorBoard(log_dir='./logs/'+model_path, histogram_freq=2, batch_size=32, write_graph=True, update_freq='epoch')
+tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + model_name,
+                                     histogram_freq=2,
+                                     batch_size=32,
+                                     write_graph=True,
+                                     update_freq='epoch')
 
 # Train
-history = model.fit(X, y, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_split=VAL_SPLIT, callbacks=[checkpoint, terminateOnNaN, tboard])
-#history = model.fit_generator(generator, steps_per_epoch=300, epochs=100, verbose=1, initial_epoch=0)
+history = model.fit(X, y, batch_size=BATCH_SIZE,
+                    epochs=EPOCHS,
+                    validation_split=VAL_SPLIT,
+                    callbacks=[checkpoint, terminateOnNaN, tboard])
 
 # Save final Model
-model.save_weights('model_path' + '-final.hdf5')  # creates a HDF5 file of the model
+model.save_weights(model_dir + model_name + ".h5")
 
 print("Done, bye.")
