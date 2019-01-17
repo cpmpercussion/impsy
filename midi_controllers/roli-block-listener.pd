@@ -1,4 +1,4 @@
-#N canvas 954 80 1369 616 10;
+#N canvas 109 75 1369 616 10;
 #X floatatom 39 79 0 0 0 0 - - -;
 #X obj 34 51 ctlin 113 1;
 #X floatatom 132 76 0 0 0 0 - - -;
@@ -58,7 +58,7 @@
 to record them.;
 #X obj 227 303 oscformat interface;
 #X msg 420 230 connect localhost 5001;
-#X msg 571 289 disconnect;
+#X msg 560 81 disconnect;
 #X obj 49 105 / 128;
 #X obj 127 110 / 128;
 #X obj 217 113 / 128;
@@ -109,6 +109,7 @@ to record them.;
 #X connect 15 0 14 0;
 #X connect 16 0 21 0;
 #X connect 17 0 26 0;
+#X connect 17 0 32 0;
 #X connect 20 0 18 0;
 #X connect 21 0 25 0;
 #X connect 22 0 23 0;
