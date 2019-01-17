@@ -28,10 +28,10 @@ parser.add_argument("--clientport", type=int, default=5000, help="The port the o
 parser.add_argument("--serverip", default="localhost", help="The address of this server.")
 parser.add_argument("--serverport", type=int, default=5001, help="The port this server should listen on.")
 # MDRNN arguments.
-parser.add_argument('-d', '--dimension', dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
+parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
 parser.add_argument("--modelsize", default="s", help="The model size: s, m, l, xl")
-parser.add_argument("--sigmatemp", default=0.01, help="The sigma temperature for sampling.")
-parser.add_argument("--pitemp", default=1, help="The pi temperature for sampling.")
+parser.add_argument("--sigmatemp", type=float, default=0.01, help="The sigma temperature for sampling.")
+parser.add_argument("--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
 
 # Import Keras and tensorflow, doing this later to make CLI more responsive.
@@ -102,11 +102,13 @@ elif args.rnnonly:
     rnn_to_rnn = True
     rnn_to_sound = True
 
+
 def build_network(sess):
     """Build the MDRNN."""
+    print(args.dimension)
+    print(type(args.dimension))
     # Hyperparameters
     empi_mdrnn.MODEL_DIR = "./models/"
-    #model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68.hdf5"
     # Instantiate Running Network
     K.set_session(sess)
     with compute_graph.as_default():
@@ -126,14 +128,24 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     global last_user_touch
     global last_user_interaction
     global last_rnn_touch
-    print(osc_arguments)
-    userloc = osc_arguments[0] # just try 1D for now.
-    logging.info("{1},user,{0}".format(userloc, datetime.datetime.now().isoformat()))
-    userdt = time.time() - last_user_interaction
+    int_input = osc_arguments
+    logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
+                 datetime.datetime.now().isoformat()))
+    dt = time.time() - last_user_interaction
     last_user_interaction = time.time()
-    last_user_touch = np.array([userdt, userloc])
+    last_user_touch = np.array([dt, *int_input])
+    assert len(last_user_touch) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(last_user_touch)
     # These values are accessed by the RNN in the interaction loop function.
     interface_input_queue.put_nowait(last_user_touch)
+
+
+def request_rnn_prediction(input_value):
+    """ Accesses a single prediction from the RNN. """
+    start = time.time()
+    output_value = net.generate_touch(input_value)
+    time_delta = time.time() - start
+    #print("Prediction took:", time_delta)
+    return output_value
 
 
 def make_prediction(sess, compute_graph):
@@ -145,7 +157,7 @@ def make_prediction(sess, compute_graph):
         item = interface_input_queue.get(block=True, timeout=None)
         K.set_session(sess)
         with compute_graph.as_default():
-            rnn_output = net.generate_touch(item)
+            rnn_output = request_rnn_prediction(item)
         print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
@@ -155,12 +167,16 @@ def make_prediction(sess, compute_graph):
     if rnn_to_rnn and rnn_output_buffer.empty():
         K.set_session(sess)
         with compute_graph.as_default():
-            rnn_output = net.generate_touch(last_rnn_touch)
+            rnn_output = request_rnn_prediction(last_rnn_touch)
         print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
-def send_sound_command(args):
-    print("Not implemented yet.")
+
+def send_sound_command(command_args):
+    """Send a sound command back to the interface/synth"""
+    assert len(command_args)+1 == args.dimension, "Dimension not same as prediction size." # Todo more useful error.
+    osc_client.send_message(OUTPUT_MESSAGE_ADDRESS, command_args)
+
 
 def playback_rnn_loop():
     # Plays back RNN notes from its buffer queue.
@@ -170,17 +186,16 @@ def playback_rnn_loop():
         print("processing an rnn command", time.time())
         # convert to dt, byte format
         dt = item[0]
-        x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
+        x_pred = np.minimum(np.maximum(item[1:], 0), 1)
         dt = max(dt, 0.001)  # stop accidental minus and zero dt.
         time.sleep(dt)  # wait until time to play the sound
-        last_rnn_touch = np.array([dt, x_loc])  # set the last rnn movement to the corrected value.
+        last_rnn_touch = np.concatenate([np.array([dt]), x_pred])
         if rnn_to_sound:
-            # RNN can be disconnected from sound
-            send_sound_command(x_loc)
-            # TODO, send sound via OSC.
-            print("RNN Played:", x_loc, "at", dt)
-            logging.info("{1},rnn,{0}".format(x_loc, datetime.datetime.now().isoformat()))
+            send_sound_command(x_pred)
+            print("RNN Played:", x_pred, "at", dt)
+            logging.info("{1},rnn,{0}".format(x_pred, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
+
 
 def monitor_user_action():
     # Handles changing responsibility in Call-Response mode.
@@ -230,44 +245,41 @@ OUTPUT_MESSAGE_ADDRESS = "/prediction"
 # ## Load the Model
 compute_graph = tf.Graph()
 with compute_graph.as_default():
-   sess = tf.Session()
+    sess = tf.Session()
 net = build_network(sess)
 interface_input_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 # Touch storage for RNN.
-last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)  # prepare previos sample.
+last_rnn_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
 last_user_touch = empi_mdrnn.random_sample(out_dim=args.dimension)
 last_user_interaction = time.time()
 CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 
-# Set up OSC client
+# Set up OSC client and server
 osc_client = udp_client.SimpleUDPClient(args.clientip, args.clientport)
-# osc_client.send_message("OUTPUT_MESSAGE_ADDRESS", random.random())
-# Set up OSC Server
 disp = dispatcher.Dispatcher()
 disp.map(INPUT_MESSAGE_ADDRESS, handle_interface_message)
 server = osc_server.ThreadingOSCUDPServer((args.serverip, args.serverport), disp)
-print("Serving on {}".format(server.server_address))
 
-
-print("Now running...")
-thread_running = True
+thread_running = True  # todo is this line needed?
 
 # Set up run loop.
-print("preparing MDRNN.")
+print("Preparing MDRNN.")
 K.set_session(sess)
 with compute_graph.as_default():
-    net.load_model() # try loading from default file location.
-print("preparting MDRNN thread.")
+    net.load_model()  # try loading from default file location.
+print("Preparting MDRNN thread.")
 rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
 print("Preparing Server thread.")
 server_thread = Thread(target=server.serve_forever, name="server_thread", daemon=True)
-print("starting up.")
+
 try:
     rnn_thread.start()
     server_thread.start()
+    print("Prediction server started.")
+    print("Serving on {}".format(server.server_address))
     while True:
         make_prediction(sess, compute_graph)
         if args.callresponse:
