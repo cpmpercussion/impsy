@@ -3,4 +3,6 @@ numpy
 pandas
 keras
 tensorflow
-tensorflow_probability
+tensorflow-probability
+python-osc
+
