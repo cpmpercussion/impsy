@@ -22,6 +22,7 @@ parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RN
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
+parser.add_argument('--callresponsethresh', type=float, default=2.0, help="Seconds to wait before switching to response")
 # OSC addresses
 parser.add_argument("--clientip", default="localhost", help="The address of output device.")
 parser.add_argument("--clientport", type=int, default=5000, help="The port the output device is listening on.")
@@ -121,24 +122,23 @@ def build_network(sess):
 
 def handle_interface_message(address: str, *osc_arguments) -> None:
     """Handler for OSC messages from the interface"""
-    global last_user_interaction
+    global last_user_interaction_time
+    global last_user_interaction_data
+    # print("User Interaction:", time.time())
     int_input = osc_arguments
     logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                  datetime.datetime.now().isoformat()))
-    dt = time.time() - last_user_interaction
-    last_user_interaction = time.time()
-    user_interaction = np.array([dt, *int_input])
-    assert len(user_interaction) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(user_interaction)
+    dt = time.time() - last_user_interaction_time
+    last_user_interaction_time = time.time()
+    last_user_interaction_data = np.array([dt, *int_input])
+    assert len(last_user_interaction_data) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(last_user_interaction_data)
     # These values are accessed by the RNN in the interaction loop function.
-    interface_input_queue.put_nowait(user_interaction)
+    interface_input_queue.put_nowait(last_user_interaction_data)
 
 
 def request_rnn_prediction(input_value):
     """ Accesses a single prediction from the RNN. """
-    start = time.time()
     output_value = net.generate_touch(input_value)
-    time_delta = time.time() - start
-    #print("Prediction took:", time_delta)
     return output_value
 
 
@@ -152,7 +152,7 @@ def make_prediction(sess, compute_graph):
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        print("User->RNN state", str(time.time()))
+        print("User->RNN prediction:", rnn_output)
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
         interface_input_queue.task_done()
@@ -163,7 +163,7 @@ def make_prediction(sess, compute_graph):
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        print("RNN->RNN prediction in:", item, "out:", rnn_output)
+        print("RNN->RNN prediction out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
         rnn_prediction_queue.task_done()
 
@@ -199,8 +199,8 @@ def monitor_user_action():
     global rnn_to_rnn
     global rnn_to_sound
     # Check when the last user interaction was
-    dt = time.time() - last_user_interaction
-    if dt > CALL_RESPONSE_THRESHOLD:
+    dt = time.time() - last_user_interaction_time
+    if dt > args.callresponsethresh:
         # switch to response modes.
         user_to_rnn = False
         rnn_to_rnn = True
@@ -208,6 +208,11 @@ def monitor_user_action():
         if call_response_mode is 'call':
             print("switching to response.")
             call_response_mode = 'response'
+            while not rnn_prediction_queue.empty():
+                # Make sure there's no inputs waiting to be predicted.
+                rnn_prediction_queue.get()
+                rnn_prediction_queue.task_done()
+            rnn_prediction_queue.put_nowait(last_user_interaction_data)  # prime the RNN queue
     else:
         # switch to call mode.
         user_to_rnn = True
@@ -216,11 +221,12 @@ def monitor_user_action():
         if call_response_mode is 'response':
             print("switching to call.")
             call_response_mode = 'call'
-            print("Clearing RNN buffer")
+            # Empty the RNN queues.
             while not rnn_output_buffer.empty():
+                # Make sure there's no actions waiting to be synthesised.
                 rnn_output_buffer.get()
                 rnn_output_buffer.task_done()
-            print("ready for call mode")
+
 
 # Logging
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-" + str(args.dimension) + "d" +  "-mdrnn.log"  # Log file name.
@@ -246,9 +252,9 @@ interface_input_queue = queue.Queue()
 rnn_prediction_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
-last_user_interaction = time.time()
+last_user_interaction_time = time.time()
+last_user_interaction_data = empi_mdrnn.random_sample(out_dim=args.dimension)
 rnn_prediction_queue.put_nowait(empi_mdrnn.random_sample(out_dim=args.dimension))
-CALL_RESPONSE_THRESHOLD = 2.0
 call_response_mode = 'call'
 
 # Set up OSC client and server
