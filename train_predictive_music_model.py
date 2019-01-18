@@ -14,7 +14,7 @@ print("Script to train a predictive music interaction model.")
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Trains a predictive music interaction model')
-parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=2,
+parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=4,
                     help='The dimension of the data to model, must be >= 2.')
 parser.add_argument('-s', '--source', dest='sourcedir', default='logs',
                     help='The source directory to obtain .log files')
