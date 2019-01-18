@@ -14,11 +14,9 @@ from threading import Thread
 # Output to Pd is a float (0-1)
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
-parser.add_argument('-g', '--nogui', dest='nogui', action='store_true', help='Disable the TKinter GUI.')
-# Individual Modes
+parser.add_argument('-v', '--verbose', dest='verbose', action="store_true", help='Verbose mode, print prediction results.')
+# Performance modes
 parser.add_argument('-o', '--only', dest='useronly', action="store_true", help="User control only mode, no RNN.")
-parser.add_argument('-r', '--rnn', dest='rnnonly', action="store_true", help='RNN interaction only.')
-# Duo Modes
 parser.add_argument('-c', '--call', dest='callresponse', action="store_true", help='Call and response mode.')
 parser.add_argument('-p', '--polyphony', dest='polyphony', action="store_true", help='Harmony mode.')
 parser.add_argument('-b', '--battle', dest='battle', action="store_true", help='Battle royale mode.')
@@ -76,7 +74,6 @@ else:
 user_to_rnn = False
 rnn_to_rnn = False
 rnn_to_sound = False
-listening_as_well = False
 
 # Interactive Mapping
 if args.callresponse:
@@ -97,11 +94,9 @@ elif args.battle:
     rnn_to_sound = True
 elif args.useronly:
     print("Entering user only mode.")
-elif args.rnnonly:
-    print("RNN Playback only mode.")
     user_to_rnn = False
-    rnn_to_rnn = True
-    rnn_to_sound = True
+    rnn_to_rnn = False
+    rnn_to_sound = False
 
 
 def build_network(sess):
@@ -152,7 +147,8 @@ def make_prediction(sess, compute_graph):
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        print("User->RNN prediction:", rnn_output)
+        if args.verbose:
+            print("User->RNN prediction:", rnn_output)
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
         interface_input_queue.task_done()
@@ -163,7 +159,8 @@ def make_prediction(sess, compute_graph):
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        print("RNN->RNN prediction out:", rnn_output)
+        if args.verbose:
+            print("RNN->RNN prediction out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
         rnn_prediction_queue.task_done()
 
@@ -287,8 +284,8 @@ try:
 except KeyboardInterrupt:
     print("\nCtrl-C received... exiting.")
     thread_running = False
-    rnn_thread.join(timeout=1)
-    server_thread.join(timeout=1)
+    rnn_thread.join(timeout=0.1)
+    server_thread.join(timeout=0.1)
     pass
 finally:
     print("\nDone, shutting down.")
