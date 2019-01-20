@@ -25,11 +25,13 @@ def transform_log_to_sequence_example(logfile, dimension):
     perf_df = pd.read_csv(logfile,
                           header=None, parse_dates=True,
                           index_col=0, names=column_names)
+    #  Filter out RNN lines, just keep 'interface'
+    perf_df = perf_df[perf_df.source == 'interface']
+    #  Process times.
     perf_df['t'] = perf_df.index
     perf_df.t = perf_df.t.diff()
     perf_df.t = perf_df.t.dt.total_seconds()
     perf_df = perf_df.dropna()
-    # TODO: filter by interface/rnn source.
     return np.array(perf_df[['t']+data_names])
 
 
@@ -40,10 +42,13 @@ log_arrays = []
 
 for local_file in os.listdir(log_location):
     if local_file.endswith(log_file_ending):
-        log = transform_log_to_sequence_example(log_location + local_file,
+        print("Processing:", local_file)
+        try:
+            log = transform_log_to_sequence_example(log_location + local_file,
                                                 args.dimension)
-        log_arrays.append(log)
-        print("Found:", local_file)
+            log_arrays.append(log)
+        except Exception:
+            print("Processing failed for", local_file)        
 
 # Save Performance Data in a compressed numpy file.
 dataset_location = 'datasets/'

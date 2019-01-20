@@ -4,6 +4,7 @@ import numpy as np
 import os
 import argparse
 import time
+import datetime
 
 # Hack to get openMP working annoyingly.
 import os
@@ -19,6 +20,8 @@ parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=4,
 parser.add_argument('-s', '--source', dest='sourcedir', default='logs',
                     help='The source directory to obtain .log files')
 parser.add_argument("--modelsize", default="s", help="The model size: s, m, l, xl")
+parser.add_argument('-e', "--earlystopping", dest='earlystopping', action="store_true", help="Use early stopping")
+parser.add_argument('-p', "--patience", default=10, help="The number of epochs patience for early stopping.")
 args = parser.parse_args()
 
 
@@ -113,7 +116,7 @@ model = empi_mdrnn.build_model(seq_len=SEQ_LEN,
 
 model_dir = "models/"
 model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(empi_mdrnn.SCALE_FACTOR)
-
+date_string = datetime.datetime.today().strftime('%Y%m%d-%H_%M_%S')
 
 filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
 checkpoint = keras.callbacks.ModelCheckpoint(filepath,
@@ -122,12 +125,17 @@ checkpoint = keras.callbacks.ModelCheckpoint(filepath,
                                              save_best_only=True,
                                              mode='min')
 terminateOnNaN = keras.callbacks.TerminateOnNaN()
-tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + model_name,
+early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=args.patience)
+tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + date_string + model_name,
                                      histogram_freq=2,
                                      batch_size=32,
                                      write_graph=True,
                                      update_freq='epoch')
 
+callbacks = [checkpoint, terminateOnNaN, tboard]
+if args.earlystopping:
+    print("Enabling Early Stopping.")
+    callbacks.append(early_stopping)
 # Train
 history = model.fit(X, y, batch_size=BATCH_SIZE,
                     epochs=EPOCHS,
