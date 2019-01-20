@@ -184,7 +184,8 @@ def playback_rnn_loop():
         if rnn_to_sound:
             send_sound_command(x_pred)
             # print("RNN Played:", x_pred, "at", dt)
-            logging.info("{1},rnn,{0}".format(x_pred, datetime.datetime.now().isoformat()))
+            logging.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
+                         datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
 
