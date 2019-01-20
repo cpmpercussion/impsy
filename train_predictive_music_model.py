@@ -56,9 +56,14 @@ elif args.modelsize is 'xl':
     mdrnn_mixes = 5
     mdrnn_layers = 3
 else:
-    mdrnn_units = 128
+    mdrnn_units = 512
     mdrnn_mixes = 5
     mdrnn_layers = 2
+
+print("Model size:", args.modelsize)
+print("Units:", mdrnn_units)
+print("Layers:", mdrnn_layers)
+print("Mixtures:", mdrnn_mixes)
 
 # Model Hyperparameters
 SEQ_LEN = 50
