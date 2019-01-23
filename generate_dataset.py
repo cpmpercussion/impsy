@@ -61,12 +61,18 @@ dataset_filename = 'training-dataset-' + str(args.dimension) + 'd.npz'
 raw_perfs = []
 
 acc = 0
+time = 0
+interactions = 0
 for l in log_arrays:
     acc += l.shape[0] * l.shape[1]
+    interactions += l.shape[0]
+    time += l.T[0].sum()
     raw = l.astype('float32')  # dt, x_1, ... , x_n
     raw_perfs.append(raw)
 
 print("total number of values:", acc)
+print("total number of interactions:", interactions)
+print("total time represented:", time)
 print("total number of perfs in raw array:", len(raw_perfs))
 raw_perfs = np.array(raw_perfs)
 np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)

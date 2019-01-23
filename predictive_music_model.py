@@ -118,7 +118,8 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     """Handler for OSC messages from the interface"""
     global last_user_interaction_time
     global last_user_interaction_data
-    # print("User Interaction:", time.time())
+    if args.verbose:
+        print("User:", time.time(), ','.join(map(str, osc_arguments)))
     int_input = osc_arguments
     logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                  datetime.datetime.now().isoformat()))
