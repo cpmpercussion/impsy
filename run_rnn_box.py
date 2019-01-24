@@ -8,14 +8,15 @@ import logging
 import datetime
 import argparse
 from threading import Thread, Condition
-import empi_mdrnn
 import numpy as np
-import tensorflow as tf
-from keras import backend as K
 import queue
 
 # Trying out a simple gui (mainly so we can quit)
 import tkinter
+
+# Hack to get openMP working annoyingly.
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 # Input and output to serial are bytes (0-255)
 # Output to Pd is a float (0-1)
@@ -35,6 +36,14 @@ parser.add_argument('-s', '--synthetic', dest='syntheticmodel', action='store_tr
 parser.add_argument('-n', '--untrained', dest='untrainedmodel', action='store_true', help='Use untrained RNN.')
 
 args = parser.parse_args()
+
+# Import Keras and tensorflow, doing this later to make CLI more responsive.
+print("Importing Keras and MDRNN.")
+start_import = time.time()
+import tensorflow as tf
+from keras import backend as K
+import empi_mdrnn
+print("Done. That took", time.time() - start_import, "seconds.")
 
 LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-rnnbox.log"  # Log file name.
 LOG_FORMAT = '%(message)s'
@@ -113,10 +122,10 @@ model_file = "./models/empi_mdrnn-layers2-units128-mixtures5-scale10-E84-VL-3.68
 # Instantiate Running Network
 K.set_session(sess)
 with compute_graph.as_default():
-    net = empi_mdrnn.EmpiRNN(mode=empi_mdrnn.NET_MODE_RUN,
-                             n_hidden_units=units,
-                             n_mixtures=mixes,
-                             layers=layers)
+    net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
+                                          n_hidden_units=units,
+                                          n_mixtures=mixes,
+                                          layers=layers)
     net.load_model(model_file=model_file)
     net.pi_temp = 1.0
     net.sigma_temp = 0.0
@@ -208,7 +217,7 @@ def interaction_loop(sess, compute_graph):
         if user_to_sound:
             send_sound_command(touch_message_datagram(address='user', pos=(userloc / 255.0)))
         if user_to_servo:
-            print("Sending User to Servo:", userloc)
+            # print("Sending User to Servo:", userloc)
             command_servo(userloc)
     # Send any waiting messages to the servo.
     while not writing_queue.empty():
@@ -220,14 +229,14 @@ def interaction_loop(sess, compute_graph):
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = net.generate_touch(last_user_touch)
-        print("conditioned RNN state", str(time.time()))
+        # print("conditioned RNN state", str(time.time()))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
     if rnn_to_rnn and rnn_output_buffer.empty():
         K.set_session(sess)
         with compute_graph.as_default():
             rnn_output = net.generate_touch(last_rnn_touch)
-        print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
+        # print("made RNN prediction in:", last_rnn_touch, "out:", rnn_output)
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
 
 
@@ -236,7 +245,7 @@ def playback_rnn_loop():
     global last_rnn_touch
     while True:
         item = rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
-        print("processing an rnn command", time.time())
+        # print("processing an rnn command", time.time())
         # convert to dt, byte format
         dt = item[0]
         x_loc = min(max(item[1], 0), 1)  # x_loc in [0,1]
@@ -249,7 +258,7 @@ def playback_rnn_loop():
             send_sound_command(touch_message_datagram(address='rnn', pos=x_loc))
             # command_servo(servo_pos)
             writing_queue.put_nowait(servo_pos)
-            print("RNN Played:", servo_pos, "at", dt)
+            # print("RNN Played:", servo_pos, "at", dt)
             logging.info("{1},rnn,{0}".format(servo_pos, datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
