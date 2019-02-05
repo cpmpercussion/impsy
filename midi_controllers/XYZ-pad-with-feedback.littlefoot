@@ -1,0 +1,164 @@
+/*
+<metadata description="An XYZ controller that displays MIDI input with visual feedback." details="An XYZ controller that displays MIDI input with visual feedback." 
+          target="Lightpad" 
+          tags="MIDI;Controller;">
+    <variables>
+        <variable name="xCC" displayName="X axis CC" type="int" min="0" max="127" value="113" displayMode="stepper" tooltip="The MIDI CC that is sent for X position changes" />
+        <variable name="yCC" displayName="Y axis CC" type="int" min="0" max="127" value="114" displayMode="stepper" tooltip="The MIDI CC that is sent for Y position changes" />
+        <variable name="zCC" displayName="Z axis CC" type="int" min="0" max="127" value="115" displayMode="stepper" tooltip="The MIDI CC that is sent for Z (pressure) position changes" />
+        <variable name="channel" displayName="MIDI Channel" type="int" min="1" max="16" value="1" displayMode="stepper" tooltip="The MIDI channel that values are sent on" />
+        <variable name="colour" displayName="Touch colour" type="colour" value="0xFF0000"  tooltip="Colour of the touch heat map" />/
+        <variable name="feedbackcolour" displayName="Feedback colour" type="colour" value="0x00FF00"  tooltip="Colour of feedback data" />
+        <variable name="backgroundColour" displayName="Background colour" type="colour" value="0xFF632255" tooltip="Colour of the pad fill" />
+        <variable name="send" displayName="Send" type="option" value="All" options="All;X;Y;Z;" tooltip="Which parts of a touch should be sent" />
+    </variables>
+</metadata>
+*/
+
+int X;
+int Y;
+int Z;
+
+void initialise()
+{
+	for (int i = 0; i < 32; ++i)
+        setLocalConfigActiveState (i, false, false);
+}
+
+int mapTouchToRange (float v, float inMin, float inMax, float outMax)
+{
+    return int (map (v, inMin / 100.0, inMax / 100.0, 0.0, outMax));
+}
+
+void outputCC (float v, int cc, float inMin, float inMax, bool invert)
+{
+    int value = mapTouchToRange (v, inMin, inMax, 127.0);
+    if (invert)
+        value = 127 - value;
+    
+    sendCC ((channel - 1), cc, value);
+}
+
+void handleTouch (int index, float x, float y, float z, float scale)
+{
+	if (index == 1)
+    {
+        addPressurePoint (colour, x, y, z * scale);
+        //log(int(x*10));
+        if (send == 0 || send == 1) outputCC (x, xCC, 7.0, 193.0, false);
+        if (send == 0 || send == 2) outputCC (y, yCC, 7.0, 193.0, true);
+        if (send == 0 || send == 3) outputCC (z, zCC, 0.0, 100.0, false);
+    }
+}
+
+void touchStart (int index, float x, float y, float z, float vz)
+{
+    handleTouch (index, x, y, z, 75.0);
+}
+
+void touchMove (int index, float x, float y, float z, float vz)
+{
+    handleTouch (index, x, y, z, 20.0);
+}
+
+void handleMIDI (int byte0, int byte1, int byte2)
+{
+    int status = byte0 & 0xF0;
+    if (status == 0xB0)
+        handleCCMessage (byte0 & 0x0F, byte1, byte2);
+}
+
+void handleCCMessage (int channel, int cc, int value)
+{
+    //     store X, Y, and when Z is sent update the pressure map with addPressurePoint
+    if (cc == 113) X = value;
+    if (cc == 114) Y = value;
+    if (cc == 115) Z = value;
+    if (cc == 113) addFeedbackPressurePoint(X,Y,Z);
+    //addPressurePoint(0x0000FF, 0.5, 1.0, 10.);
+}
+
+void addFeedbackPressurePoint(int xin, int yin, int zin)
+{
+    //log(xin);
+    float xout = map(float(xin), 0., 127., 0.07, 1.93);
+    float yout = map(float(yin), 0., 127., 0.07, 1.93);
+    float zout = map(float(zin), 0., 127., 0.0, 100.0);
+    // Do some important stuff
+    addPressurePoint(feedbackcolour, xout, yout, zout);
+}
+
+void repaint()
+{
+    fillRect (backgroundColour, 0, 0, 15, 15);
+    drawPressureMap();
+    fadePressureMap();
+}
+
+/*
+<display backgroundColour="0xFF83DD79" textColour ="0xFF000000">
+    <pixels>
+        <pixel index="16" colour="0xFF001FFF" />
+        <pixel index="17" colour="0xFF001FFF" />
+        <pixel index="18" colour="0xFF001FFF" />
+        <pixel index="19" colour="0xFF001FFF" />
+        <pixel index="20" colour="0xFF001FFF" />
+        <pixel index="21" colour="0xFF001FFF" />
+        <pixel index="24" colour="0xFF001FFF" />
+        <pixel index="25" colour="0xFF001FFF" />
+        <pixel index="26" colour="0xFF001FFF" />
+        <pixel index="27" colour="0xFF001FFF" />
+        <pixel index="31" colour="0xFF001FFF" />
+        <pixel index="38" colour="0xFF001FFF" />
+        <pixel index="39" colour="0xFF001FFF" />
+        <pixel index="46" colour="0xFF001FFF" />
+        <pixel index="47" colour="0xFF001FFF" />
+        <pixel index="48" colour="0xFF001FFF" />
+        <pixel index="53" colour="0xFF001FFF" />
+        <pixel index="61" colour="0xFF001FFF" />
+        <pixel index="68" colour="0xFF001FFF" />
+        <pixel index="76" colour="0xFF001FFF" />
+        <pixel index="77" colour="0xFF001FFF" />
+        <pixel index="78" colour="0xFF001FFF" />
+        <pixel index="79" colour="0xFF001FFF" />
+        <pixel index="80" colour="0xFF001FFF" />
+        <pixel index="83" colour="0xFF001FFF" />
+        <pixel index="84" colour="0xFF001FFF" />
+        <pixel index="85" colour="0xFF001FFF" />
+        <pixel index="86" colour="0xFF001FFF" />
+        <pixel index="87" colour="0xFF001FFF" />
+        <pixel index="107" colour="0xFF001FFF" />
+        <pixel index="108" colour="0xFF001FFF" />
+        <pixel index="109" colour="0xFF001FFF" />
+        <pixel index="110" colour="0xFF001FFF" />
+        <pixel index="121" colour="0xFF001FFF" />
+        <pixel index="122" colour="0xFF001FFF" />
+        <pixel index="128" colour="0xFF001FFF" />
+        <pixel index="136" colour="0xFF001FFF" />
+        <pixel index="143" colour="0xFF001FFF" />
+        <pixel index="151" colour="0xFF001FFF" />
+        <pixel index="152" colour="0xFF001FFF" />
+        <pixel index="153" colour="0xFF001FFF" />
+        <pixel index="154" colour="0xFF001FFF" />
+        <pixel index="158" colour="0xFF001FFF" />
+        <pixel index="159" colour="0xFF001FFF" />
+        <pixel index="160" colour="0xFF001FFF" />
+        <pixel index="166" colour="0xFF001FFF" />
+        <pixel index="173" colour="0xFF001FFF" />
+        <pixel index="175" colour="0xFF001FFF" />
+        <pixel index="176" colour="0xFF001FFF" />
+        <pixel index="181" colour="0xFF001FFF" />
+        <pixel index="182" colour="0xFF001FFF" />
+        <pixel index="187" colour="0xFF001FFF" />
+        <pixel index="191" colour="0xFF001FFF" />
+        <pixel index="197" colour="0xFF001FFF" />
+        <pixel index="198" colour="0xFF001FFF" />
+        <pixel index="199" colour="0xFF001FFF" />
+        <pixel index="202" colour="0xFF001FFF" />
+        <pixel index="203" colour="0xFF001FFF" />
+        <pixel index="204" colour="0xFF001FFF" />
+        <pixel index="205" colour="0xFF001FFF" />
+        <pixel index="206" colour="0xFF001FFF" />
+    </pixels>
+</display>
+*/

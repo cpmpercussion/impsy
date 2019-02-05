@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project name="My Project">
-  <file file="/Users/charles/Desktop/LightPadBlock_XYZ_input_output.littlefoot"
-        uuid="dbbab843431540d4b08b93b3114082d5"/>
+  <file file="/Users/charles/src/Littlefoot-Examples/XYZ-pad-with-feedback.littlefoot"
+        uuid="603d851a818c4bb59fa1d87263b9b01a"/>
   <openFiles>
-    <openFile uuid="dbbab843431540d4b08b93b3114082d5"/>
+    <openFile uuid="603d851a818c4bb59fa1d87263b9b01a"/>
   </openFiles>
 </project>
