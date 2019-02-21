@@ -130,7 +130,7 @@ checkpoint = keras.callbacks.ModelCheckpoint(filepath,
                                              save_best_only=True,
                                              mode='min')
 terminateOnNaN = keras.callbacks.TerminateOnNaN()
-early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=args.patience)
+early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, save_weights_only=True, patience=args.patience)
 tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + date_string + model_name,
                                      histogram_freq=2,
                                      batch_size=32,
