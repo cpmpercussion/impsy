@@ -1,8 +1,7 @@
-pySerial
 numpy
 pandas
 keras
 tensorflow
 tensorflow-probability
 python-osc
-
+-e git://github.com/cpmpercussion/keras-mdn-layer.git#egg=keras-mdn-layer
