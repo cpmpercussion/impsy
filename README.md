@@ -35,6 +35,14 @@ These could be the same piece of software or hardware!
 
 You need to decide on the number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9.
 
+Now you need your music interface to send messages to IMPS over OSC. The default address for IMPS is: localhost:5001. The messages to IMPS should have the OSC address `/interface`, and then a float between 0 and 1 for each continuous output on your interface, e.g.:
+
+    /interface 0 0.5 0.23 0.87 0.9 0.7 0.45 0.654
+
+For an 8-dimensional interface.
+
+Your synthesiser software or interface needs to listen for messages from the IMPS system as well. These have the same format with the OSC address `/prediction`. You can interpret these as interactions predicted to occur right when the message is sent.
+
 ### 2. Log some training data
 
 You use the `predictive_music_model` command to log training data. If your interface has N inputs the dimension is N+1:
@@ -80,7 +88,14 @@ Now that you have a trained model, you can run this command to start making pred
 
 THe `--log` switch logs all of your interactions as well as predictions for later re-training. (The dataset generator filters out RNN records so that you only train on human sourced data).
 
+PS: the three scripts respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know or get in touch on Twitter at [@cpmpercussion](https://twitter.com/cpmpercussion).
+
 ## More about Mixture Density Recurrent Neural Networks
+
+IMPS uses a mixture density recurrent neural network MDRNN to make predictions. This machine learning architecture is set up to predict the next in a sequence of multi-valued elements. The recurrent neural network uses LSTM units to remember information about past inputs and use this to help make decisions. The mixture density model at the end of the network allows continuous multi-valued elements to be sampled from a rich probability distribution. 
+
+The network is illustrated here---every time IMPS receives an interaction message from your interface, it is sent to thorugh the LSTM layers to produce the parameters of a Gaussian mixture model. The predicted next interaction is sampled from this probability model.
 
 ![A Musical MDRNN](https://github.com/cpmpercussion/imps/raw/master/images/mdn_diagram.png)
 
+The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. There's more info and tutorials about MDNs on [that github repo](https://github.com/cpmpercussion/keras-mdn-layer).
