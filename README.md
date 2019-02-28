@@ -1,6 +1,7 @@
 # IMPS: The Interactive Musical Predictive System
 
 ![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580176.svg)](https://doi.org/10.5281/zenodo.2580176)
 
 ![Predictive Musical Interaction](https://github.com/cpmpercussion/imps/raw/master/images/predictive_interaction.png)
 
