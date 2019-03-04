@@ -53,6 +53,14 @@ For an 8-dimensional interface.
 
 Your synthesiser software or interface needs to listen for messages from the IMPS system as well. These have the same format with the OSC address `/prediction`. You can interpret these as interactions predicted to occur right when the message is sent.
 
+Here's an example diagram for our 8-controller example, the Xtouch mini controller.
+
+![Predictive Musical Interaction](https://github.com/cpmpercussion/imps/raw/master/images/IMPS_connection_example.png)
+
+In this example we've used Pd to connect the xtouch mini to IMPS and to synthesis sounds. Our Pd mapping patch takes data from the xtouch and sends `/interface` OSC messages to IMPS, it also receives `/prediction` OSC message back from IMPS whenever they occur. Of course, whenever the user performs with the controller, the mapping patch sends commands to the synthesiser patch to make sound. Whenever `/prediction` messages are received, these also trigger changes in the synth patch, and we also send MIDI messages back to the xtouch controller to update its lights so that the performer knows what IMPS is predicting.
+
+So what happens if IMPS and the performer play at the same time? In this example, it doesn't make sense for both to control the synthesiser at the same time, so we set IMPS to run in "call and response" mode, so that it only makes predictions when the human has stopped performing. We could also set up our mapping patch to use prediction messages for a different synth and use one of the simultaneous performance modes of IMPS.
+
 ### 2. Log some training data
 
 You use the `predictive_music_model` command to log training data. If your interface has N inputs the dimension is N+1:
