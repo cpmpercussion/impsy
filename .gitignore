@@ -2,6 +2,9 @@
 .ipynb_checkpoints
 checkpoint
 output-logs
+models
+logs
+datasets
 
 *.hdf5
 *.no
