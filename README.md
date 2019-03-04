@@ -9,7 +9,14 @@ IMPS is a system for predicting musical control data in live performance. It use
 
 ## Installation
 
-IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required. The python requirements can be installed as follows:
+IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required. 
+
+First you should clone this repository or download it to your computer:
+
+    git clone https://github.com/cpmpercussion/imps.git
+    cd imps
+
+The python requirements can be installed as follows:
 
     pip install -r requirements.txt
 
