@@ -1,4 +1,4 @@
-#N canvas -1987 295 890 566 10;
+#N canvas 925 57 925 565 10;
 #X floatatom 39 79 0 0 0 0 - - -;
 #X obj 34 51 ctlin 113 1;
 #X floatatom 132 76 0 0 0 0 - - -;
@@ -55,9 +55,9 @@
 #X obj 49 105 / 128;
 #X obj 127 110 / 128;
 #X obj 217 113 / 128;
-#X obj 521 259 netreceive -u -b;
-#X msg 522 236 listen 5000;
-#X obj 522 283 oscparse;
+#X obj 522 244 netreceive -u -b;
+#X msg 522 223 listen 5000;
+#X obj 523 268 oscparse;
 #X obj 522 307 list trim;
 #X floatatom 517 414 5 0 0 0 - - -, f 5;
 #X obj 521 330 unpack s f f f;
@@ -124,7 +124,7 @@
 #X connect 14 0 15 0;
 #X connect 15 0 6 0;
 #X restore 16 477 pd mdrnn-output;
-#N canvas -2548 538 450 300 test_block_ui 1;
+#N canvas 0 538 450 300 test_block_ui 0;
 #X obj 19 25 inlet;
 #X msg 93 86 64;
 #X obj 130 124 t f f f;
@@ -136,7 +136,7 @@
 #X obj 249 158 ctlout 115 17;
 #X obj 94 62 delay 1000;
 #X obj 373 33 vsl 15 128 0 127 0 0 empty empty empty 0 -9 0 10 -262144
--1 -1 7800 1;
+-1 -1 0 1;
 #X obj 363 193 int;
 #X obj 43 185 ctlout 113 1;
 #X obj 144 186 ctlout 114 1;
@@ -176,6 +176,7 @@
 #X obj 221 332 ctlout 109 2;
 #X obj 125 358 ctlout 111 2;
 #X text 94 389 block output \, channel 2;
+#X floatatom 29 169 5 0 0 0 - - -, f 5;
 #X connect 0 0 1 0;
 #X connect 1 0 7 0;
 #X connect 2 0 15 0;
@@ -186,6 +187,7 @@
 #X connect 5 0 16 0;
 #X connect 6 0 5 0;
 #X connect 7 0 2 0;
+#X connect 7 0 21 0;
 #X connect 7 1 5 0;
 #X connect 7 2 3 0;
 #X connect 7 3 8 0;
@@ -196,6 +198,9 @@
 #X connect 13 0 10 1;
 #X connect 14 0 10 2;
 #X restore 19 451 pd block_to_notes;
+#X obj 592 287 spigot;
+#X obj 716 32 tgl 180 0 empty empty empty 17 7 0 10 -260097 -1 -1 1
+1;
 #X connect 0 0 23 0;
 #X connect 1 0 0 0;
 #X connect 2 0 24 0;
@@ -209,6 +214,7 @@
 #X connect 13 0 12 0;
 #X connect 14 0 19 0;
 #X connect 15 0 54 0;
+#X connect 15 0 60 0;
 #X connect 18 0 16 0;
 #X connect 19 0 20 0;
 #X connect 20 0 10 0;
@@ -219,7 +225,7 @@
 #X connect 25 0 14 1;
 #X connect 26 0 28 0;
 #X connect 27 0 26 0;
-#X connect 28 0 29 0;
+#X connect 28 0 59 0;
 #X connect 29 0 31 0;
 #X connect 30 0 43 0;
 #X connect 30 0 44 0;
@@ -248,3 +254,5 @@
 #X connect 54 0 21 0;
 #X connect 54 0 27 0;
 #X connect 54 0 57 0;
+#X connect 59 0 29 0;
+#X connect 60 0 59 1;
