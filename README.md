@@ -108,7 +108,7 @@ Now that you have a trained model, you can run this command to start making pred
 
     python predictive_music_model.py -d=(N+1) --modelsize=xs --log
 
-THe `--log` switch logs all of your interactions as well as predictions for later re-training. (The dataset generator filters out RNN records so that you only train on human sourced data).
+The `--log` switch logs all of your interactions as well as predictions for later re-training. (The dataset generator filters out RNN records so that you only train on human sourced data).
 
 PS: the three scripts respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know or get in touch on Twitter at [@cpmpercussion](https://twitter.com/cpmpercussion).
 
