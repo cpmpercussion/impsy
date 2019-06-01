@@ -120,7 +120,8 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     if args.verbose:
         print("User:", time.time(), ','.join(map(str, osc_arguments)))
     int_input = osc_arguments
-    logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
+    logger = logging.getLogger("impslogger")
+    logger.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                  datetime.datetime.now().isoformat()))
     dt = time.time() - last_user_interaction_time
     last_user_interaction_time = time.time()
@@ -184,7 +185,8 @@ def playback_rnn_loop():
         if rnn_to_sound:
             send_sound_command(x_pred)
             # print("RNN Played:", x_pred, "at", dt)
-            logging.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
+            logger = logging.getLogger("impslogger")
+            logger.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
                          datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
@@ -231,9 +233,15 @@ LOG_FILE = "logs/" + LOG_FILE
 LOG_FORMAT = '%(message)s'
 
 if args.logging:
-    logging.basicConfig(filename=LOG_FILE,
-                        level=logging.INFO,
-                        format=LOG_FORMAT)
+    formatter = logging.Formatter(LOG_FORMAT)
+    handler = logging.FileHandler(LOG_FILE)        
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("impslogger")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    # logging.basicConfig(filename=LOG_FILE,
+    #                     level=logging.INFO,
+    #                     format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 # Details for OSC output
 INPUT_MESSAGE_ADDRESS = "/interface"
