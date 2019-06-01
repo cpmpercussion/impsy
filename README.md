@@ -89,13 +89,13 @@ Every time you run the `predictive_music_model`, a new log file is created so th
 
 There's two steps for training: Generate a dataset file, and train the predictive model.
 
-Use the `generate_dataset` command:
+Use the `generate_dataset.py` command:
 
-    python generate_dataset --dimension=(N+1)
+    python generate_dataset.py --dimension=(N+1)
 
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
-To train the model, use the `train_predictive_music_model` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
+To train the model, use the `train_predictive_music_model.py` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
 It's a good idea to start with an `xs` or `s` model, and the larger models are more relevant for quite large datasets (e.g., >1M individual interactions).
 
     python train_predictive_music_model.py --dimension=(N+1) --modelsize=xs --earlystopping
