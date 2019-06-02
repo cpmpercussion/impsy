@@ -19,7 +19,7 @@ parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=4,
                     help='The dimension of the data to model, must be >= 2.')
 parser.add_argument('-s', '--source', dest='sourcedir', default='logs',
                     help='The source directory to obtain .log files')
-parser.add_argument("--modelsize", default="s", help="The model size: s, m, l, xl")
+parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
 parser.add_argument('-e', "--earlystopping", dest='earlystopping', action="store_true", help="Use early stopping")
 parser.add_argument('-p', "--patience", default=10, help="The number of epochs patience for early stopping.")
 args = parser.parse_args()
@@ -39,24 +39,28 @@ sess = tf.Session(config=config)
 K.set_session(sess)
 
 # Choose model parameters.
-if args.modelsize is 's':
+if args.modelsize == 'xs':
+    mdrnn_units = 32
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize == 's':
     mdrnn_units = 64
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'm':
+elif args.modelsize == 'm':
     mdrnn_units = 128
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'l':
+elif args.modelsize == 'l':
     mdrnn_units = 256
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'xl':
+elif args.modelsize == 'xl':
     mdrnn_units = 512
     mdrnn_mixes = 5
     mdrnn_layers = 3
 else:
-    mdrnn_units = 512
+    mdrnn_units = 128
     mdrnn_mixes = 5
     mdrnn_layers = 2
 
@@ -85,7 +89,7 @@ np.random.seed(SEED)
 dataset_location = 'datasets/'
 dataset_filename = 'training-dataset-' + str(args.dimension) + 'd.npz'
 
-with np.load(dataset_location + dataset_filename) as loaded:
+with np.load(dataset_location + dataset_filename, allow_pickle=True) as loaded:
     perfs = loaded['perfs']
 
 print("Loaded perfs:", len(perfs))
@@ -130,7 +134,7 @@ checkpoint = keras.callbacks.ModelCheckpoint(filepath,
                                              save_best_only=True,
                                              mode='min')
 terminateOnNaN = keras.callbacks.TerminateOnNaN()
-early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, save_weights_only=True, patience=args.patience)
+early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=args.patience)
 tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + date_string + model_name,
                                      histogram_freq=2,
                                      batch_size=32,

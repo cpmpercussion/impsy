@@ -28,7 +28,7 @@ parser.add_argument("--serverip", default="localhost", help="The address of this
 parser.add_argument("--serverport", type=int, default=5001, help="The port this server should listen on.")
 # MDRNN arguments.
 parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
-parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl")
+parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
 parser.add_argument("--sigmatemp", type=float, default=0.01, help="The sigma temperature for sampling.")
 parser.add_argument("--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
@@ -42,23 +42,23 @@ from keras import backend as K
 print("Done. That took", time.time() - start_import, "seconds.")
 
 # Choose model parameters.
-if args.modelsize is 'xs':
+if args.modelsize == 'xs':
     mdrnn_units = 32
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 's':
+elif args.modelsize == 's':
     mdrnn_units = 64
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'm':
+elif args.modelsize == 'm':
     mdrnn_units = 128
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'l':
+elif args.modelsize == 'l':
     mdrnn_units = 256
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'xl':
+elif args.modelsize == 'xl':
     mdrnn_units = 512
     mdrnn_mixes = 5
     mdrnn_layers = 3
@@ -120,7 +120,8 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     if args.verbose:
         print("User:", time.time(), ','.join(map(str, osc_arguments)))
     int_input = osc_arguments
-    logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
+    logger = logging.getLogger("impslogger")
+    logger.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                  datetime.datetime.now().isoformat()))
     dt = time.time() - last_user_interaction_time
     last_user_interaction_time = time.time()
@@ -184,7 +185,8 @@ def playback_rnn_loop():
         if rnn_to_sound:
             send_sound_command(x_pred)
             # print("RNN Played:", x_pred, "at", dt)
-            logging.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
+            logger = logging.getLogger("impslogger")
+            logger.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
                          datetime.datetime.now().isoformat()))
         rnn_output_buffer.task_done()
 
@@ -231,9 +233,15 @@ LOG_FILE = "logs/" + LOG_FILE
 LOG_FORMAT = '%(message)s'
 
 if args.logging:
-    logging.basicConfig(filename=LOG_FILE,
-                        level=logging.INFO,
-                        format=LOG_FORMAT)
+    formatter = logging.Formatter(LOG_FORMAT)
+    handler = logging.FileHandler(LOG_FILE)        
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("impslogger")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    # logging.basicConfig(filename=LOG_FILE,
+    #                     level=logging.INFO,
+    #                     format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 # Details for OSC output
 INPUT_MESSAGE_ADDRESS = "/interface"
