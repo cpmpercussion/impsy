@@ -28,7 +28,7 @@ parser.add_argument("--serverip", default="localhost", help="The address of this
 parser.add_argument("--serverport", type=int, default=5001, help="The port this server should listen on.")
 # MDRNN arguments.
 parser.add_argument('-d', '--dimension', type=int, dest='dimension', default=2, help='The dimension of the data to model, must be >= 2.')
-parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl")
+parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
 parser.add_argument("--sigmatemp", type=float, default=0.01, help="The sigma temperature for sampling.")
 parser.add_argument("--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
@@ -42,23 +42,23 @@ from keras import backend as K
 print("Done. That took", time.time() - start_import, "seconds.")
 
 # Choose model parameters.
-if args.modelsize is 'xs':
+if args.modelsize == 'xs':
     mdrnn_units = 32
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 's':
+elif args.modelsize == 's':
     mdrnn_units = 64
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'm':
+elif args.modelsize == 'm':
     mdrnn_units = 128
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'l':
+elif args.modelsize == 'l':
     mdrnn_units = 256
     mdrnn_mixes = 5
     mdrnn_layers = 2
-elif args.modelsize is 'xl':
+elif args.modelsize == 'xl':
     mdrnn_units = 512
     mdrnn_mixes = 5
     mdrnn_layers = 3
