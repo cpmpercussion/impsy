@@ -6,7 +6,7 @@
 #X obj 46 149 vline~;
 #X obj 297 114 f;
 #X obj 393 112 f;
-#X obj 297 67 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+#X obj 302 66 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
 -1;
 #X msg 299 160 1 \$1 \, 0 \$2 \$1;
 #X obj 298 137 list prepend;
@@ -14,10 +14,10 @@
 #X obj 151 31 inlet;
 #X obj 565 77 t f f;
 #X obj 686 50 vsl 15 128 0 1 0 0 empty empty empty 0 -9 0 10 -262144
--1 -1 1300 1;
+-1 -1 0 1;
 #X obj 564 57 inlet;
 #X obj 299 182 print;
-#X obj 152 54 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 1
+#X obj 152 54 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
 1;
 #X obj 297 44 spigot;
 #X msg 151 93 1 1000;
@@ -57,7 +57,7 @@
 #X connect 14 0 12 0;
 #X connect 16 0 33 0;
 #X connect 16 0 34 0;
-#X connect 17 0 10 0;
+#X connect 17 0 7 0;
 #X connect 18 0 4 0;
 #X connect 19 0 4 0;
 #X connect 24 0 6 1;
