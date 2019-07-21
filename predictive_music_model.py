@@ -42,7 +42,11 @@ from keras import backend as K
 print("Done. That took", time.time() - start_import, "seconds.")
 
 # Choose model parameters.
-if args.modelsize == 'xs':
+if args.modelsize == 'xxs':
+    mdrnn_units = 16
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize == 'xs':
     mdrnn_units = 32
     mdrnn_mixes = 5
     mdrnn_layers = 2
