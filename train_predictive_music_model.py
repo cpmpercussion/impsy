@@ -21,7 +21,7 @@ parser.add_argument('-s', '--source', dest='sourcedir', default='logs',
                     help='The source directory to obtain .log files')
 parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
 parser.add_argument('-e', "--earlystopping", dest='earlystopping', action="store_true", help="Use early stopping")
-parser.add_argument('-p', "--patience", default=10, help="The number of epochs patience for early stopping.")
+parser.add_argument('-p', "--patience", type=int, dest='patience', default=10, help="The number of epochs patience for early stopping.")
 args = parser.parse_args()
 
 
@@ -39,7 +39,11 @@ sess = tf.Session(config=config)
 K.set_session(sess)
 
 # Choose model parameters.
-if args.modelsize == 'xs':
+if args.modelsize == 'xxs':
+    mdrnn_units = 16
+    mdrnn_mixes = 5
+    mdrnn_layers = 2
+elif args.modelsize == 'xs':
     mdrnn_units = 32
     mdrnn_mixes = 5
     mdrnn_layers = 2
@@ -149,7 +153,7 @@ if args.earlystopping:
 history = model.fit(X, y, batch_size=BATCH_SIZE,
                     epochs=EPOCHS,
                     validation_split=VAL_SPLIT,
-                    callbacks=[checkpoint, terminateOnNaN, tboard])
+                    callbacks=callbacks)
 
 # Save final Model
 model.save_weights(model_dir + model_name + ".h5")
