@@ -1,6 +1,6 @@
-#N canvas 285 113 907 267 10;
+#N canvas 516 48 907 267 10;
 #X obj 7 29 x-touch-bank 1;
-#N canvas 792 63 888 381 osc_sending 0;
+#N canvas 552 63 888 381 osc_sending 0;
 #X obj 58 23 inlet;
 #X obj 61 149 f;
 #X obj 58 46 t b f;
@@ -119,7 +119,7 @@
 #X restore 186 213 pd osc_sending;
 #X obj 485 31 bng 150 250 50 0 empty empty empty 17 7 0 10 -258113
 -1 -1;
-#N canvas 97 137 1283 779 synth-module 0;
+#N canvas 97 28 1283 779 synth-module 0;
 #X obj 29 106 r emg;
 #X obj 84 298 abs;
 #X obj 66 343 *~;
@@ -1251,13 +1251,13 @@
 #X connect 61 0 7 0;
 #X restore 335 214 pd blinkenlights;
 #X obj 646 43 vsl 40 200 0 1 0 0 envlev empty envlev 0 -9 0 10 -204800
--1 -1 7700 1;
+-1 -1 0 1;
 #X obj 705 43 vu 30 200 master_snd_l empty -1 -8 0 10 -66577 -1 1 0
 ;
 #X obj 773 43 vu 30 200 master_snd_r empty -1 -8 0 10 -66577 -1 1 0
 ;
 #X obj 844 44 vsl 40 200 0 127 0 0 master_fader empty master 0 -9 0
-10 -260097 -1 -1 1410 1;
+10 -260097 -1 -1 0 1;
 #X obj 844 12 ctlin 9;
 #X connect 0 0 1 0;
 #X connect 0 1 1 1;
