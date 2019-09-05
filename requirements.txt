@@ -3,5 +3,5 @@ pandas
 keras
 tensorflow
 tensorflow-probability
+keras-mdn-layer
 python-osc
--e git://github.com/cpmpercussion/keras-mdn-layer.git#egg=keras-mdn-layer
