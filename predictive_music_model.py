@@ -33,12 +33,11 @@ parser.add_argument("--sigmatemp", type=float, default=0.01, help="The sigma tem
 parser.add_argument("--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
 
-# Import Keras and tensorflow, doing this later to make CLI more responsive.
-print("Importing Keras and MDRNN.")
+# import tensorflow, doing this later to make CLI more responsive.
+print("Importing MDRNN.")
 start_import = time.time()
 import empi_mdrnn
-import tensorflow as tf
-from keras import backend as K
+import tensorflow.compat.v1 as tf
 print("Done. That took", time.time() - start_import, "seconds.")
 
 # Choose model parameters.
@@ -104,7 +103,7 @@ elif args.useronly:
 def build_network(sess):
     """Build the MDRNN."""
     empi_mdrnn.MODEL_DIR = "./models/"
-    K.set_session(sess)
+    tf.keras.backend.set_session(sess)
     with compute_graph.as_default():
         net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
                                               dimension=args.dimension,
@@ -148,7 +147,7 @@ def make_prediction(sess, compute_graph):
     # First deal with user --> MDRNN prediction
     if user_to_rnn and not interface_input_queue.empty():
         item = interface_input_queue.get(block=True, timeout=None)
-        K.set_session(sess)
+        tf.keras.backend.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
         if args.verbose:
@@ -160,7 +159,7 @@ def make_prediction(sess, compute_graph):
     # Now deal with MDRNN --> MDRNN prediction.
     if rnn_to_rnn and rnn_output_buffer.empty() and not rnn_prediction_queue.empty():
         item = rnn_prediction_queue.get(block=True, timeout=None)
-        K.set_session(sess)
+        tf.keras.backend.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
         if args.verbose:
@@ -243,9 +242,6 @@ if args.logging:
     logger = logging.getLogger("impslogger")
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
-    # logging.basicConfig(filename=LOG_FILE,
-    #                     level=logging.INFO,
-    #                     format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 # Details for OSC output
 INPUT_MESSAGE_ADDRESS = "/interface"
@@ -276,7 +272,7 @@ thread_running = True  # todo is this line needed?
 
 # Set up run loop.
 print("Preparing MDRNN.")
-K.set_session(sess)
+tf.keras.backend.set_session(sess)
 with compute_graph.as_default():
     net.load_model()  # try loading from default file location.
 print("Preparting MDRNN thread.")
