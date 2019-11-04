@@ -8,13 +8,45 @@ import tensorflow.compat.v1 as tf
 import mdn
 import time
 
-
 tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
 NET_MODE_TRAIN = 'train'
 NET_MODE_RUN = 'run'
 MODEL_DIR = "./models/"
 LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
+
+
+# Functions for slicing up data
+def slice_sequence_examples(sequence, num_steps, step_size=1):
+    """ Slices a sequence into examples of length
+        num_steps with step size step_size."""
+    xs = []
+    for i in range((len(sequence) - num_steps) // step_size + 1):
+        example = sequence[(i * step_size): (i * step_size) + num_steps]
+        xs.append(example)
+    return xs
+
+
+def seq_to_overlapping_format(examples):
+    """Takes sequences of seq_len+1 and returns overlapping
+    sequences of seq_len."""
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[1:])
+    return (xs, ys)
+
+
+def seq_to_singleton_format(examples):
+    """Return the examples in seq to singleton format.
+    """
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[-1])
+    return (xs, ys)
 
 
 def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
