@@ -1,7 +1,8 @@
-numpy
-pandas
-keras
-tensorflow
-tensorflow-probability
-keras-mdn-layer
-python-osc
+numpy==1.17.3
+pandas==0.25.3
+tensorflow==2.0.0
+tensorflow-probability==0.8.0
+keras-mdn-layer==0.3.0
+python-osc==1.7.0
+
+
