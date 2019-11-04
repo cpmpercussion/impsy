@@ -10,8 +10,7 @@ from pythonosc import udp_client
 import argparse
 from threading import Thread
 
-# Input and output to serial are bytes (0-255)
-# Output to Pd is a float (0-1)
+
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-v', '--verbose', dest='verbose', action="store_true", help='Verbose mode, print prediction results.')
@@ -33,12 +32,11 @@ parser.add_argument("--sigmatemp", type=float, default=0.01, help="The sigma tem
 parser.add_argument("--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 args = parser.parse_args()
 
-# Import Keras and tensorflow, doing this later to make CLI more responsive.
-print("Importing Keras and MDRNN.")
+# import tensorflow, doing this later to make CLI more responsive.
+print("Importing MDRNN.")
 start_import = time.time()
-import empi_mdrnn
-import tensorflow as tf
-from keras import backend as K
+import imps_mdrnn
+import tensorflow.compat.v1 as tf
 print("Done. That took", time.time() - start_import, "seconds.")
 
 # Choose model parameters.
@@ -103,10 +101,10 @@ elif args.useronly:
 
 def build_network(sess):
     """Build the MDRNN."""
-    empi_mdrnn.MODEL_DIR = "./models/"
-    K.set_session(sess)
+    imps_mdrnn.MODEL_DIR = "./models/"
+    tf.keras.backend.set_session(sess)
     with compute_graph.as_default():
-        net = empi_mdrnn.PredictiveMusicMDRNN(mode=empi_mdrnn.NET_MODE_RUN,
+        net = imps_mdrnn.PredictiveMusicMDRNN(mode=imps_mdrnn.NET_MODE_RUN,
                                               dimension=args.dimension,
                                               n_hidden_units=mdrnn_units,
                                               n_mixtures=mdrnn_mixes,
@@ -148,7 +146,7 @@ def make_prediction(sess, compute_graph):
     # First deal with user --> MDRNN prediction
     if user_to_rnn and not interface_input_queue.empty():
         item = interface_input_queue.get(block=True, timeout=None)
-        K.set_session(sess)
+        tf.keras.backend.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
         if args.verbose:
@@ -160,7 +158,7 @@ def make_prediction(sess, compute_graph):
     # Now deal with MDRNN --> MDRNN prediction.
     if rnn_to_rnn and rnn_output_buffer.empty() and not rnn_prediction_queue.empty():
         item = rnn_prediction_queue.get(block=True, timeout=None)
-        K.set_session(sess)
+        tf.keras.backend.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
         if args.verbose:
@@ -221,7 +219,7 @@ def monitor_user_action():
         user_to_rnn = True
         rnn_to_rnn = False
         rnn_to_sound = False
-        if call_response_mode is 'response':
+        if call_response_mode=='response':
             print("switching to call.")
             call_response_mode = 'call'
             # Empty the RNN queues.
@@ -243,9 +241,6 @@ if args.logging:
     logger = logging.getLogger("impslogger")
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
-    # logging.basicConfig(filename=LOG_FILE,
-    #                     level=logging.INFO,
-    #                     format=LOG_FORMAT)
     print("Logging enabled:", LOG_FILE)
 # Details for OSC output
 INPUT_MESSAGE_ADDRESS = "/interface"
@@ -262,8 +257,8 @@ rnn_prediction_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 last_user_interaction_time = time.time()
-last_user_interaction_data = empi_mdrnn.random_sample(out_dim=args.dimension)
-rnn_prediction_queue.put_nowait(empi_mdrnn.random_sample(out_dim=args.dimension))
+last_user_interaction_data = imps_mdrnn.random_sample(out_dim=args.dimension)
+rnn_prediction_queue.put_nowait(imps_mdrnn.random_sample(out_dim=args.dimension))
 call_response_mode = 'call'
 
 # Set up OSC client and server
@@ -276,7 +271,7 @@ thread_running = True  # todo is this line needed?
 
 # Set up run loop.
 print("Preparing MDRNN.")
-K.set_session(sess)
+tf.keras.backend.set_session(sess)
 with compute_graph.as_default():
     net.load_model()  # try loading from default file location.
 print("Preparting MDRNN thread.")

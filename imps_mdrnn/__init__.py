@@ -4,14 +4,9 @@ Charles P. Martin, 2018
 University of Oslo, Norway.
 """
 import numpy as np
-# import pandas as pd
+import tensorflow.compat.v1 as tf
 import mdn
-import keras
-# from keras import backend as K
-import tensorflow as tf
 import time
-from .sample_data import *
-
 
 tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
 NET_MODE_TRAIN = 'train'
@@ -19,6 +14,39 @@ NET_MODE_RUN = 'run'
 MODEL_DIR = "./models/"
 LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
+
+
+# Functions for slicing up data
+def slice_sequence_examples(sequence, num_steps, step_size=1):
+    """ Slices a sequence into examples of length
+        num_steps with step size step_size."""
+    xs = []
+    for i in range((len(sequence) - num_steps) // step_size + 1):
+        example = sequence[(i * step_size): (i * step_size) + num_steps]
+        xs.append(example)
+    return xs
+
+
+def seq_to_overlapping_format(examples):
+    """Takes sequences of seq_len+1 and returns overlapping
+    sequences of seq_len."""
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[1:])
+    return (xs, ys)
+
+
+def seq_to_singleton_format(examples):
+    """Return the examples in seq to singleton format.
+    """
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[-1])
+    return (xs, ys)
 
 
 def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
@@ -40,34 +68,36 @@ def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
     print("Building EMPI Model...")
     # Set up training mode
     stateful = False
-    batch_shape = None
+    # batch_shape = None
+    batch_size = None
     # Set up inference mode.
     if inference:
         stateful = True
-        batch_shape = (1, 1, out_dim)
-    inputs = keras.layers.Input(shape=(seq_len, out_dim), name='inputs',
-                                batch_shape=batch_shape)
+        batch_size = 1
+        #batch_shape = (1, 1, out_dim)
+    inputs = tf.keras.layers.Input(shape=(seq_len, out_dim), name='inputs',
+                                   batch_size=batch_size)
+                                # batch_shape=batch_shape)
     lstm_in = inputs  # starter input for lstm
     for layer_i in range(layers):
         ret_seq = True
         if (layer_i == layers - 1) and not time_dist:
             # return sequences false if last layer, and not time distributed.
             ret_seq = False
-        lstm_out = keras.layers.LSTM(hidden_units, name='lstm'+str(layer_i),
+        lstm_out = tf.keras.layers.LSTM(hidden_units, name='lstm'+str(layer_i),
                                      return_sequences=ret_seq,
                                      stateful=stateful)(lstm_in)
         lstm_in = lstm_out
 
     mdn_layer = mdn.MDN(out_dim, num_mixtures, name='mdn_outputs')
     if time_dist:
-        mdn_layer = keras.layers.TimeDistributed(mdn_layer, name='td_mdn')
+        mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name='td_mdn')
     mdn_out = mdn_layer(lstm_out)  # apply mdn
-    model = keras.models.Model(inputs=inputs, outputs=mdn_out)
+    model = tf.keras.models.Model(inputs=inputs, outputs=mdn_out)
 
     if compile_model:
         loss_func = mdn.get_mixture_loss_func(out_dim, num_mixtures)
-        optimizer = keras.optimizers.Adam()
-        # keras.optimizers.Adam(lr=0.0001))
+        optimizer = tf.keras.optimizers.Adam()
         model.compile(loss=loss_func, optimizer=optimizer)
 
     model.summary()
@@ -75,9 +105,8 @@ def build_model(seq_len=30, hidden_units=256, num_mixtures=5, layers=2,
 
 
 def load_inference_model(model_file="", layers=2, units=512, mixtures=5, predict_moving=False):
-    """Returns a Keras RoboJam model loaded from a file"""
+    """Returns an IMPS model loaded from a file"""
     # TODO: make this parse the name to get the hyperparameters.
-    # Decoding Model
     decoder = decoder = build_model(seq_len=1, hidden_units=units, num_mixtures=mixtures, layers=layers, time_dist=False, inference=True, compile_model=False, print_summary=True, predict_moving=predict_moving)
     decoder.load_weights(model_file)
     return decoder
@@ -183,7 +212,8 @@ class PredictiveMusicMDRNN(object):
             model_file = MODEL_DIR + self.model_name() + ".h5"
         try:
             self.model.load_weights(model_file)
-        except OSError:
+        except OSError as err:
+            print("OS error: {0}".format(err))
             print("MDRNN could not be loaded from file:", model_file)
             print("MDRNN is untrained.")
 
@@ -196,9 +226,9 @@ class PredictiveMusicMDRNN(object):
         """Train the network for the a number of epochs."""
         # Setup callbacks
         filepath = MODEL_DIR + self.model_name() + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
-        checkpoint = keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-        terminateOnNaN = keras.callbacks.TerminateOnNaN()
-        tboard = keras.callbacks.TensorBoard(log_dir=LOG_PATH+self.run_name, histogram_freq=2, batch_size=32, write_graph=True, update_freq='epoch')
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+        terminateOnNaN = tf.keras.callbacks.TerminateOnNaN()
+        tboard = tf.keras.callbacks.TensorBoard(log_dir=LOG_PATH+self.run_name, histogram_freq=2, batch_size=32, write_graph=True, update_freq='epoch')
         callbacks = [terminateOnNaN, tboard]
         if saving:
             callbacks.append(checkpoint)
