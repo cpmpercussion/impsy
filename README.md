@@ -13,7 +13,7 @@ Here's a [demonstration video showing how IMPS can be used with different musica
 
 ## Installation
 
-IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required. 
+IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required. IMPS currently relies on TensorFlow 2.0.0, TensorFlow Probability 0.8.0, and keras-mdn-layer 0.3.0.
 
 First you should clone this repository or download it to your computer:
 
@@ -23,10 +23,6 @@ First you should clone this repository or download it to your computer:
 The python requirements can be installed as follows:
 
     pip install -r requirements.txt
-
-The Raspberry Pi requires some care to install matching version of TensorFlow and TensorFlow Probability, so we have provided a special requirements file:
-
-    pip install -r pi_requirements.txt
 
 Some people like to keep Python packages separate in virtual environments, if that's you, here's some terminal commands to install:
 
