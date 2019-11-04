@@ -25,10 +25,9 @@ parser.add_argument('-p', "--patience", type=int, dest='patience', default=10, h
 args = parser.parse_args()
 
 
-# Import Keras
-import empi_mdrnn
+# Import IMPS MDRNN
+import imps_mdrnn
 from tensorflow.compat.v1 import keras
-import tensorflow.compat.v1.keras.backend as K
 import tensorflow.compat.v1 as tf
 # Set up environment.
 # Only for GPU use:
@@ -36,7 +35,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
-K.set_session(sess)
+tf.keras.backend.set_session(sess)
 
 # Choose model parameters.
 if args.modelsize == 'xxs':
@@ -105,19 +104,19 @@ print("Corpus Examples:", len(corpus))
 # Prepare training data as X and Y.
 slices = []
 for seq in corpus:
-    slices += empi_mdrnn.slice_sequence_examples(seq,
+    slices += imps_mdrnn.slice_sequence_examples(seq,
                                                  SEQ_LEN+1,
                                                  step_size=SEQ_STEP)
-X, y = empi_mdrnn.seq_to_overlapping_format(slices)
-X = np.array(X) * empi_mdrnn.SCALE_FACTOR
-y = np.array(y) * empi_mdrnn.SCALE_FACTOR
+X, y = imps_mdrnn.seq_to_overlapping_format(slices)
+X = np.array(X) * imps_mdrnn.SCALE_FACTOR
+y = np.array(y) * imps_mdrnn.SCALE_FACTOR
 
 print("Number of training examples:")
 print("X:", X.shape)
 print("y:", y.shape)
 
 # Setup Training Model
-model = empi_mdrnn.build_model(seq_len=SEQ_LEN,
+model = imps_mdrnn.build_model(seq_len=SEQ_LEN,
                                hidden_units=mdrnn_units,
                                num_mixtures=mdrnn_mixes,
                                layers=mdrnn_layers,
@@ -128,7 +127,7 @@ model = empi_mdrnn.build_model(seq_len=SEQ_LEN,
                                print_summary=True)
 
 model_dir = "models/"
-model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(empi_mdrnn.SCALE_FACTOR)
+model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(imps_mdrnn.SCALE_FACTOR)
 date_string = datetime.datetime.today().strftime('%Y%m%d-%H_%M_%S')
 
 filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
@@ -140,7 +139,7 @@ checkpoint = keras.callbacks.ModelCheckpoint(filepath,
 terminateOnNaN = keras.callbacks.TerminateOnNaN()
 early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=args.patience)
 tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + date_string + model_name,
-                                     histogram_freq=2,
+                                     histogram_freq=0,
                                      batch_size=32,
                                      write_graph=True,
                                      update_freq='epoch')
@@ -158,4 +157,4 @@ history = model.fit(X, y, batch_size=BATCH_SIZE,
 # Save final Model
 model.save_weights(model_dir + model_name + ".h5")
 
-print("Done, bye.")
+print("Training done, bye.")
