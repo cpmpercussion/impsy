@@ -10,8 +10,7 @@ from pythonosc import udp_client
 import argparse
 from threading import Thread
 
-# Input and output to serial are bytes (0-255)
-# Output to Pd is a float (0-1)
+
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
 parser.add_argument('-l', '--log', dest='logging', action="store_true", help='Save input and RNN data to a log file.')
 parser.add_argument('-v', '--verbose', dest='verbose', action="store_true", help='Verbose mode, print prediction results.')

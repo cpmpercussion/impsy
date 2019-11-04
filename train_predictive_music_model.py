@@ -27,9 +27,9 @@ args = parser.parse_args()
 
 # Import Keras
 import empi_mdrnn
-import keras
-import keras.backend as K
-import tensorflow as tf
+from tensorflow.compat.v1 import keras
+import tensorflow.compat.v1.keras.backend as K
+import tensorflow.compat.v1 as tf
 # Set up environment.
 # Only for GPU use:
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
