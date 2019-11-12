@@ -22,6 +22,9 @@ parser.add_argument('-s', '--source', dest='sourcedir', default='logs',
 parser.add_argument("--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
 parser.add_argument('-e', "--earlystopping", dest='earlystopping', action="store_true", help="Use early stopping")
 parser.add_argument('-p', "--patience", type=int, dest='patience', default=10, help="The number of epochs patience for early stopping.")
+parser.add_argument('-n', "--numepochs", type=int, dest='epochs', default=100, help="The maximum number of epochs.")
+parser.add_argument('-f', "--file", dest='startingfile', type=str, help="A starting model file to work from.")
+parser.add_argument('-b', "--batchsize", dest="batchsize", type=int, default=64, help="Batch size for training, default=64.")
 args = parser.parse_args()
 
 
@@ -78,8 +81,8 @@ SEQ_STEP = 1
 TIME_DIST = True
 
 # Training Hyperparameters:
-BATCH_SIZE = 64
-EPOCHS = 100
+BATCH_SIZE = args.batchsize
+EPOCHS = args.epochs
 VAL_SPLIT = 0.10
 
 # Set random seed for reproducibility
