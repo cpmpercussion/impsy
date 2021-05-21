@@ -1,6 +1,6 @@
 numpy==1.17.3
 pandas==0.25.3
-tensorflow==2.0.1
+tensorflow==2.5.0
 tensorflow-probability==0.8.0
 keras-mdn-layer==0.3.0
 python-osc==1.7.0
