@@ -9,6 +9,7 @@ from pythonosc import osc_server
 from pythonosc import udp_client
 import argparse
 from threading import Thread
+np.set_printoptions(precision=2)
 
 
 parser = argparse.ArgumentParser(description='Predictive Musical Interaction MDRNN Interface.')
@@ -120,7 +121,8 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     global last_user_interaction_time
     global last_user_interaction_data
     if args.verbose:
-        print("User:", time.time(), ','.join(map(str, osc_arguments)))
+        # print out OSC message.
+        print("User:", ', '.join(["{0:0.2f}".format(abs(i)) for i in osc_arguments]))
     int_input = osc_arguments
     logger = logging.getLogger("impslogger")
     logger.info("{1},interface,{0}".format(','.join(map(str, int_input)),
@@ -131,6 +133,24 @@ def handle_interface_message(address: str, *osc_arguments) -> None:
     assert len(last_user_interaction_data) == args.dimension, "Input is incorrect dimension, set dimension to %r" % len(last_user_interaction_data)
     # These values are accessed by the RNN in the interaction loop function.
     interface_input_queue.put_nowait(last_user_interaction_data)
+
+
+def handle_temperature_message(address: str, *osc_arguments) -> None:
+    """Handler for temperature messages from the interface: format is ff [sigma temp, pi temp]"""
+    new_sigma_temp = osc_arguments[0]
+    new_pi_temp = osc_arguments[1]
+    if args.verbose:
+        print("Temperature -- Sigma:", new_sigma_temp, "Pi:", new_pi_temp)
+    net.sigma_temp = new_sigma_temp
+    net.pi_temp = new_pi_temp
+
+
+def handle_timescale_message(address: str, *osc_arguments) -> None:
+    """Handler for timescale messages: format is f [timescale]"""
+    new_timescale = osc_arguments[0]
+    if args.verbose:
+        print("Timescale:", new_timescale)
+    # TODO: implement this on the prediction end.
 
 
 def request_rnn_prediction(input_value):
@@ -149,8 +169,8 @@ def make_prediction(sess, compute_graph):
         tf.keras.backend.set_session(sess)
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
-        if args.verbose:
-            print("User->RNN prediction:", rnn_output)
+        # if args.verbose:
+        #     print("User->RNN:", ",".join(["{0:0.2f}".format(float(i)) for i in rnn_output]))
         if rnn_to_sound:
             rnn_output_buffer.put_nowait(rnn_output)
         interface_input_queue.task_done()
@@ -162,7 +182,7 @@ def make_prediction(sess, compute_graph):
         with compute_graph.as_default():
             rnn_output = request_rnn_prediction(item)
         if args.verbose:
-            print("RNN->RNN prediction out:", rnn_output)
+            print("RNN: ", ', '.join(["{0:0.2f}".format(abs(i)) for i in rnn_output[1:]]), 'dt:', "{0:0.2f}".format(abs(rnn_output[0])))
         rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
         rnn_prediction_queue.task_done()
 
@@ -245,6 +265,8 @@ if args.logging:
 # Details for OSC output
 INPUT_MESSAGE_ADDRESS = "/interface"
 OUTPUT_MESSAGE_ADDRESS = "/prediction"
+TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
+TIMESCALE_MESSAGE_ADDRESS = "/timescale"
 
 # Set up runtime variables.
 # ## Load the Model
@@ -265,6 +287,8 @@ call_response_mode = 'call'
 osc_client = udp_client.SimpleUDPClient(args.clientip, args.clientport)
 disp = dispatcher.Dispatcher()
 disp.map(INPUT_MESSAGE_ADDRESS, handle_interface_message)
+disp.map(TEMPERATURE_MESSAGE_ADDRESS, handle_temperature_message)
+disp.map(TIMESCALE_MESSAGE_ADDRESS, handle_timescale_message)
 server = osc_server.ThreadingOSCUDPServer((args.serverip, args.serverport), disp)
 
 thread_running = True  # todo is this line needed?
