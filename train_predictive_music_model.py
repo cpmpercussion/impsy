@@ -143,7 +143,6 @@ terminateOnNaN = keras.callbacks.TerminateOnNaN()
 early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=args.patience)
 tboard = keras.callbacks.TensorBoard(log_dir='./logs/' + date_string + model_name,
                                      histogram_freq=0,
-                                     batch_size=32,
                                      write_graph=True,
                                      update_freq='epoch')
 
@@ -159,5 +158,13 @@ history = model.fit(X, y, batch_size=BATCH_SIZE,
 
 # Save final Model
 model.save_weights(model_dir + model_name + ".h5")
+
+# ## Converting for tensorflow lite.
+# # Convert the model.
+# converter = tf.lite.TFLiteConverter.from_keras_model(model)
+# tflite_model = converter.convert()
+# tflite_model_name = f`{model_dir}{model_name}-lite.h5`
+# with open(tflite_model_name, 'wb') as f:
+#   f.write(tflite_model)
 
 print("Training done, bye.")

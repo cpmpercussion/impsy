@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import logging
 import time
 import datetime
@@ -206,7 +206,7 @@ def monitor_user_action():
         user_to_rnn = False
         rnn_to_rnn = True
         rnn_to_sound = True
-        if call_response_mode is 'call':
+        if call_response_mode == 'call':
             print("switching to response.")
             call_response_mode = 'response'
             while not rnn_prediction_queue.empty():
