@@ -6,6 +6,7 @@ __version__ = "0.5.0"
 
 import click
 from .dataset import dataset
+from .train import train
 # import interaction
 # import train
 
@@ -16,6 +17,7 @@ def cli():
 
 def main():
     cli.add_command(dataset)
+    cli.add_command(train)
     # TODO: the interaction and train commands
     # runs the command line interface
     cli()
