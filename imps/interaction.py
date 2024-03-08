@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+"""imps.interaction: Functions for using imps as an interactive music system."""
+
 import logging
 import time
 import datetime
@@ -36,7 +37,7 @@ args = parser.parse_args()
 # import tensorflow, doing this later to make CLI more responsive.
 print("Importing MDRNN.")
 start_import = time.time()
-import imps_mdrnn
+import mdrnn
 import tensorflow.compat.v1 as tf
 print("Done. That took", time.time() - start_import, "seconds.")
 
@@ -102,10 +103,10 @@ elif args.useronly:
 
 def build_network(sess):
     """Build the MDRNN."""
-    imps_mdrnn.MODEL_DIR = "./models/"
+    mdrnn.MODEL_DIR = "./models/"
     tf.keras.backend.set_session(sess)
     with compute_graph.as_default():
-        net = imps_mdrnn.PredictiveMusicMDRNN(mode=imps_mdrnn.NET_MODE_RUN,
+        net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN,
                                               dimension=args.dimension,
                                               n_hidden_units=mdrnn_units,
                                               n_mixtures=mdrnn_mixes,
@@ -279,8 +280,8 @@ rnn_prediction_queue = queue.Queue()
 rnn_output_buffer = queue.Queue()
 writing_queue = queue.Queue()
 last_user_interaction_time = time.time()
-last_user_interaction_data = imps_mdrnn.random_sample(out_dim=args.dimension)
-rnn_prediction_queue.put_nowait(imps_mdrnn.random_sample(out_dim=args.dimension))
+last_user_interaction_data = mdrnn.random_sample(out_dim=args.dimension)
+rnn_prediction_queue.put_nowait(mdrnn.random_sample(out_dim=args.dimension))
 call_response_mode = 'call'
 
 # Set up OSC client and server

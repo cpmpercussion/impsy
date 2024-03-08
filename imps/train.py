@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+"""imps.train: Functions for training an imps mdrnn model."""
+
+
 import random
 import numpy as np
 import os
@@ -29,7 +31,7 @@ args = parser.parse_args()
 
 
 # Import IMPS MDRNN
-import imps_mdrnn
+import mdrnn
 from tensorflow.compat.v1 import keras
 import tensorflow.compat.v1 as tf
 # Set up environment.
@@ -107,19 +109,19 @@ print("Corpus Examples:", len(corpus))
 # Prepare training data as X and Y.
 slices = []
 for seq in corpus:
-    slices += imps_mdrnn.slice_sequence_examples(seq,
+    slices += mdrnn.slice_sequence_examples(seq,
                                                  SEQ_LEN+1,
                                                  step_size=SEQ_STEP)
-X, y = imps_mdrnn.seq_to_overlapping_format(slices)
-X = np.array(X) * imps_mdrnn.SCALE_FACTOR
-y = np.array(y) * imps_mdrnn.SCALE_FACTOR
+X, y = mdrnn.seq_to_overlapping_format(slices)
+X = np.array(X) * mdrnn.SCALE_FACTOR
+y = np.array(y) * mdrnn.SCALE_FACTOR
 
 print("Number of training examples:")
 print("X:", X.shape)
 print("y:", y.shape)
 
 # Setup Training Model
-model = imps_mdrnn.build_model(seq_len=SEQ_LEN,
+model = mdrnn.build_model(seq_len=SEQ_LEN,
                                hidden_units=mdrnn_units,
                                num_mixtures=mdrnn_mixes,
                                layers=mdrnn_layers,
@@ -130,7 +132,7 @@ model = imps_mdrnn.build_model(seq_len=SEQ_LEN,
                                print_summary=True)
 
 model_dir = "models/"
-model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(imps_mdrnn.SCALE_FACTOR)
+model_name = "musicMDRNN" + "-dim" + str(args.dimension) + "-layers" + str(mdrnn_layers) + "-units" + str(mdrnn_units) + "-mixtures" + str(mdrnn_mixes) + "-scale" + str(mdrnn.SCALE_FACTOR)
 date_string = datetime.datetime.today().strftime('%Y%m%d-%H_%M_%S')
 
 filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
