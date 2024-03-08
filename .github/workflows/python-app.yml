@@ -37,3 +37,7 @@ jobs:
     - name: Run the main file just to prove it works.
       run: |
         poetry run ./start_imps.py --help
+    - name: Run the test-mdrnn command to see that it works.
+      run: |
+        poetry run ./start_imps.py test-mdrnn
+
