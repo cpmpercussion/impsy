@@ -1,4 +1,4 @@
-"""imps.interaction: Functions for using imps as an interactive music system."""
+"""imps.interaction: Functions for using imps as an interactive music system. This server has OSC input and output."""
 
 import logging
 import time
@@ -15,12 +15,17 @@ from .utils import mdrnn_config
 
 np.set_printoptions(precision=2)
 
+# Interaction Modes:
 
-# @click.option("-o", "--only", dest="useronly", action="store_true", help="User control only mode, no RNN.")
-# @click.option("-c", "--call", dest="callresponse", action="store_true", help="Call and response mode.")
-# @click.option("-p", "--polyphony", dest="polyphony", action="store_true", help="Harmony mode.")
-# @click.option("-b", "--battle", dest="battle", action="store_true", help="Battle royale mode.")
+# user, callresponse, filter, battle. 
+# user: no AI generation, but user interaction is passed on and logged.
+# callresponse: AI responds after 'threshold' seconds, typical turn-based arrangement.
+# filter: AI responds directly to every input, could be providing second part etc.
+# battle: AI disconnected from human input, both running simultaneously.
 
+
+# Global variables
+# TODO: get rid of these, use a Class instead for data storage.
 call_response_mode = False
 user_to_rnn = False
 rnn_to_rnn = False
@@ -41,12 +46,12 @@ last_user_interaction_data = None
 @click.option("-S", "--sigmatemp", type=float, default=0.01, help="The sigma temperature for sampling.")
 @click.option("-P", "--pitemp", type=float, default=1, help="The pi temperature for sampling.")
 # OSC addresses
-@click.option("--clientip", type=str, default="localhost", help="The address of output device.")
-@click.option("--clientport", type=int, default=5000, help="The port the output device is listening on.")
-@click.option("--serverip", type=str, default="localhost", help="The address of this server.")
-@click.option("--serverport", type=int, default=5001, help="The port this server should listen on.")
+@click.option("--clientip", type=str, default="localhost", help="The address of output device, default is 'localhost'.")
+@click.option("--clientport", type=int, default=5000, help="The port the output device is listening on, default is 5000.")
+@click.option("--serverip", type=str, default="localhost", help="The address of this server, default is 'localhost'.")
+@click.option("--serverport", type=int, default=5001, help="The port this server should listen on, default is 5001.")
 def run(log: bool, verbose: bool, mode: str, threshold: float, dimension: int, modelsize: str, sigmatemp: float, pitemp: float, clientip: str, clientport: int, serverip:str, serverport: int):
-    """Run IMPS predictive musical interaction system."""
+    """Run IMPS predictive musical interaction system as a server with OSC input and output."""
     global call_response_mode
     global user_to_rnn
     global rnn_to_rnn
