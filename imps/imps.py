@@ -1,9 +1,6 @@
 """imps.imps: provides entry point main() to imps.""" 
 
 
-__version__ = "0.5.0"
-
-
 import click
 from .dataset import dataset
 from .train import train
