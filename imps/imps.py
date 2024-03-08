@@ -16,9 +16,9 @@ def cli():
 
 
 def main():
+    """The entry point function for IMPS, this just passes through the interfaces for each command"""
     cli.add_command(dataset)
     cli.add_command(train)
     cli.add_command(run)
-    # TODO: the interaction and train commands
     # runs the command line interface
     cli()
