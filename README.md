@@ -65,9 +65,9 @@ So what happens if IMPS and the performer play at the same time? In this example
 
 ### 2. Log some training data
 
-You use the `predictive_music_model` command to log training data. If your interface has N inputs the dimension is N+1:
+You use the `run` command to log training data. If your interface has N inputs the dimension is N+1:
 
-    python predictive_music_model.py --dimension=(N+1) --log
+    poetry run ./start_imps run --dimension (N+1) --log
 
 This command creates files in the `logs` directory with data like this:
 
@@ -77,38 +77,38 @@ This command creates files in the `logs` directory with data like this:
 
 These CSV files have the format: timestamp, source of message (interface or rnn), x_1, x_2, ...,  x_N.
 
-You can log training data without using the RNN with the `o` switch (user only) if you like, or use a partially trained RNN and then collect more data.
+You can log training data without using the RNN with the `mode` option to select "user" if you like, or use a partially trained RNN and then collect more data.
 
-    python predictive_music_model.py --dimension=(N+1) --log -o
+    poetry run ./start_imps run --dimension (N+1) --log -mode user
 
-Every time you run the `predictive_music_model`, a new log file is created so that you can build up a significant dataset!
+Every time you use IMPS' "run" command, a new log file is created so that you can build up a significant dataset!
 
 ### 3. Train an MDRNN
 
 There's two steps for training: Generate a dataset file, and train the predictive model.
 
-Use the `generate_dataset.py` command:
+Use the `dataset` command:
 
-    python generate_dataset.py --dimension=(N+1)
+    poetry run ./start_imps dataset --dimension (N+1)
 
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
-To train the model, use the `train_predictive_music_model.py` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
+To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
 It's a good idea to start with an `xs` or `s` model, and the larger models are more relevant for quite large datasets (e.g., >1M individual interactions).
 
-    python train_predictive_music_model.py --dimension=(N+1) --modelsize=xs --earlystopping
+    poetry run ./start_imps train --dimension (N+1) --modelsize s
 
-It's a good idea to use the "earlystopping" parameter to stop training after the model stops improving for 10 epochs.
+It's a good idea to use the `earlystopping` option to stop training after the model stops improving for 10 epochs.
 
 ### 4. Perform with your predictive model
 
 Now that you have a trained model, you can run this command to start making predictions:
 
-    python predictive_music_model.py -d=(N+1) --modelsize=xs --log
+    poetry run ./start_imps run --dimension (N+1) --modelsize xs --log
 
 The `--log` switch logs all of your interactions as well as predictions for later re-training. (The dataset generator filters out RNN records so that you only train on human sourced data).
 
-PS: the three scripts respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know or get in touch on Twitter at [@cpmpercussion](https://twitter.com/cpmpercussion).
+PS: all the IMPS commands respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know.
 
 ## More about Mixture Density Recurrent Neural Networks
 
