@@ -14,6 +14,7 @@ keras-mdn-layer = "^0.3.0"
 pandas = "^2.0.3"
 tensorflow-macos = {version = "2.15.0", platform = "darwin"}
 tensorflow = {version = "2.15.0", platform = "linux"}
+click = "^8.1.7"
 
 [build-system]
 requires = ["poetry-core"]
