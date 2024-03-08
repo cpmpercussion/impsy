@@ -1,3 +1,3 @@
 #!/bin/bash
-/Applications/Pd-0.50-0.app/Contents/Resources/bin/pd midi_controllers/xtouch-mini.pd &
-python3 predictive_music_model.py -d=9 --modelsize=xs --log -v -c
+/Applications/Pd-0.53-2.app/Contents/Resources/bin/pd midi_controllers/xtouch-mini.pd &
+poetry run ./start_imps.py run -D 9 -M s --log --verbose -O callresponse
