@@ -31,13 +31,13 @@ SEED = 2345
 @click.option("-P", "--patience", type=int, default=10, help="The number of epochs patience for early stopping.")
 @click.option("-N", "--numepochs", type=int, default=100, help="The maximum number of epochs.")
 @click.option("-B", "--batchsize", type=int, default=64, help="Batch size for training, default=64.")
-def train(dimenstion: int, source: str, modelsize: str, earlystopping: bool, patience: int, numepochs: int, batchsize: int):
+def train(dimension: int, source: str, modelsize: str, earlystopping: bool, patience: int, numepochs: int, batchsize: int):
     """Trains a predictive music interaction model."""
 
     # Hack to get openMP working annoyingly.
     os.environ['KMP_DUPLICATE_LIB_OK']='True' # TODO: is this necessary?
     # Import IMPS MDRNN at this point so CLI is fast.
-    import mdrnn
+    import imps.mdrnn as mdrnn
     from tensorflow.compat.v1 import keras
     import tensorflow.compat.v1 as tf
     # Set up environment.
@@ -49,7 +49,6 @@ def train(dimenstion: int, source: str, modelsize: str, earlystopping: bool, pat
     tf.keras.backend.set_session(sess)
 
     model_config = mdrnn_config(modelsize)
-
     mdrnn_units = model_config["units"]
     mdrnn_layers = model_config["layers"]
     mdrnn_mixes = model_config["mixes"]
