@@ -13,22 +13,24 @@ Here's a [demonstration video showing how IMPS can be used with different musica
 
 ## Installation
 
-IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required. IMPS currently relies on TensorFlow 2.0.0, TensorFlow Probability 0.8.0, and keras-mdn-layer 0.3.0.
+IMPS is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPS currently relies on Python 3.11, TensorFlow 2.15.0, TensorFlow Probability 0.23.0, and keras-mdn-layer 0.3.0. You can see the dependencies in `pyproject.toml`.
 
-First you should clone this repository or download it to your computer:
+To install IMPS, first **ensure that you have a Python 3.11** installation available, then install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
+
+    curl -sSL https://install.python-poetry.org | python3 -
+
+Then you should clone this repository or download it to your computer:
 
     git clone https://github.com/cpmpercussion/imps.git
     cd imps
 
-The python requirements can be installed as follows:
+Then you can install the dependencies using Poetry:
 
-    pip install -r requirements.txt
+    poetry install
 
-Some people like to keep Python packages separate in virtual environments, if that's you, here's some terminal commands to install:
+Finally, you can test that IMPS works:
 
-    virtualenv --system-site-packages -p python3 venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    poetry run ./start_imps.py --help
 
 ## How to use
 
