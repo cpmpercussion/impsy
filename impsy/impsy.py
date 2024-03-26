@@ -1,4 +1,4 @@
-"""imps.imps: provides entry point main() to imps.""" 
+"""impsy.impsy: provides entry point main() to impsy.""" 
 
 
 import click
@@ -13,7 +13,7 @@ def cli():
 
 
 def main():
-    """The entry point function for IMPS, this just passes through the interfaces for each command"""
+    """The entry point function for IMPSY, this just passes through the interfaces for each command"""
     cli.add_command(dataset)
     cli.add_command(train)
     cli.add_command(run)

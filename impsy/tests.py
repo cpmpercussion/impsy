@@ -9,7 +9,7 @@ def test_mdrnn():
   # import tensorflow, do this now to make CLI more responsive.
   print("Importing MDRNN.")
   start_import = time.time()
-  import imps.mdrnn as mdrnn
+  import impsy.mdrnn as mdrnn
   import tensorflow.compat.v1 as tf
   print("Done. That took", time.time() - start_import, "seconds.")
 

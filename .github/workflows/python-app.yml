@@ -36,8 +36,8 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run the main file just to prove it works.
       run: |
-        poetry run ./start_imps.py --help
+        poetry run ./start_impsy.py --help
     - name: Run the test-mdrnn command to see that it works.
       run: |
-        poetry run ./start_imps.py test-mdrnn
+        poetry run ./start_impsy.py test-mdrnn
 

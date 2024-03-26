@@ -1,4 +1,4 @@
-"""imps.train: Functions for training an imps mdrnn model."""
+"""impsy.train: Functions for training an impsy mdrnn model."""
 
 
 import random
@@ -37,7 +37,7 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
     # Hack to get openMP working annoyingly.
     os.environ['KMP_DUPLICATE_LIB_OK']='True' # TODO: is this necessary?
     # Import IMPS MDRNN at this point so CLI is fast.
-    import imps.mdrnn as mdrnn
+    import impsy.mdrnn as mdrnn
     from tensorflow.compat.v1 import keras
     import tensorflow.compat.v1 as tf
     # Set up environment.

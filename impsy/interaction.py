@@ -1,4 +1,4 @@
-"""imps.interaction: Functions for using imps as an interactive music system. This server has OSC input and output."""
+"""impsy.interaction: Functions for using imps as an interactive music system. This server has OSC input and output."""
 
 import logging
 import time
@@ -62,7 +62,7 @@ def run(log: bool, verbose: bool, mode: str, threshold: float, dimension: int, m
     # import tensorflow, do this now to make CLI more responsive.
     print("Importing MDRNN.")
     start_import = time.time()
-    import imps.mdrnn as mdrnn
+    import impsy.mdrnn as mdrnn
     import tensorflow.compat.v1 as tf
     print("Done. That took", time.time() - start_import, "seconds.")
 

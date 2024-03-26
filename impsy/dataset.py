@@ -1,4 +1,4 @@
-"""imps.dataset: functions for generating a dataset from .log files in the log directory."""
+"""impsy.dataset: functions for generating a dataset from .log files in the log directory."""
 
 
 import numpy as np
