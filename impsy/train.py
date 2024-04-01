@@ -129,6 +129,14 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
     # Save final Model
     model.save_weights(model_dir + model_name + ".h5")
 
+    # TF Lite saving example
+    model_lite_name = model_dir + model_name + "-lite.tflite"
+    tf_converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = tf_converter.convert()
+    # Save the model.
+    with open(model_lite_name, 'wb') as f:
+        f.write(tflite_model)
+
     # ## Converting for tensorflow lite.
     # # Convert the model.
     # converter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -137,7 +145,5 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
     # with open(tflite_model_name, 'wb') as f:
     #   f.write(tflite_model)
 
-    # Testings git permissions 2
-    # testing git permissions 3
 
     print("Training done, bye.")
