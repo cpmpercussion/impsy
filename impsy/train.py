@@ -137,4 +137,6 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
     # with open(tflite_model_name, 'wb') as f:
     #   f.write(tflite_model)
 
+    # Testings git permissions 2
+
     print("Training done, bye.")
