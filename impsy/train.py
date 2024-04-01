@@ -138,5 +138,6 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
     #   f.write(tflite_model)
 
     # Testings git permissions 2
+    # testing git permissions 3
 
     print("Training done, bye.")
