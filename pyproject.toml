@@ -10,7 +10,7 @@ readme = "README.md"
 python = ">=3.11,<3.12"
 tensorflow-probability = "0.23.0"
 python-osc = "^1.8.3"
-keras-mdn-layer = "^0.3.0"
+keras-mdn-layer = "^0.4.0"
 pandas = "^2.0.3"
 tensorflow-macos = {version = "2.15.0", platform = "darwin"}
 tensorflow = {version = "2.15.0", platform = "linux"}

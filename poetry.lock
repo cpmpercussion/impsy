@@ -435,13 +435,20 @@ files = [
 
 [[package]]
 name = "keras-mdn-layer"
-version = "0.3.0"
-description = "An MDN Layer for Keras using TensorFlow Probability."
+version = "0.4.0"
+description = "An MDN Layer for Keras using TensorFlow's distributions module"
 optional = false
-python-versions = "*"
+python-versions = "<3.12,>=3.11"
 files = [
-    {file = "keras-mdn-layer-0.3.0.tar.gz", hash = "sha256:a4b5a015df8f47e558ff4b5cc7304e810207c3194b7a04cb5f4800a6ad01a204"},
+    {file = "keras_mdn_layer-0.4.0-py3-none-any.whl", hash = "sha256:983a553bb7ef600a6df076f97727a4fdaa861653ff44ada76259525a5483b9bd"},
+    {file = "keras_mdn_layer-0.4.0.tar.gz", hash = "sha256:03009d7631ee9d596087627b67a8aab68c5914934c6ab3652f01bbc18abfd8fb"},
 ]
+
+[package.dependencies]
+numpy = ">=1.26.4,<2.0.0"
+tensorflow = {version = "2.15.0", markers = "sys_platform == \"linux\""}
+tensorflow-macos = {version = "2.15.0", markers = "sys_platform == \"darwin\""}
+tensorflow-probability = "0.23.0"
 
 [[package]]
 name = "libclang"
@@ -1258,4 +1265,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "7af540c199323bdbcf50b7b3068cb5c9b373824ba0da7a19df9b45ec74735c4b"
+content-hash = "ed6d44e60138b9f383dfb670110a13435f824ac5f4cba5456b65b7a79038baf5"

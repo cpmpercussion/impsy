@@ -5,7 +5,7 @@ University of Oslo, Norway.
 """
 import numpy as np
 import tensorflow.compat.v1 as tf
-import mdn
+import keras_mdn_layer as mdn
 import time
 
 tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
