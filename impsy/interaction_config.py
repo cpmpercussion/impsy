@@ -279,7 +279,6 @@ class InteractionServer(object):
 
         self.output_sender = ImpsySender(self.config)
 
-
         # Serial port opening
         self.serial = open_raspberry_serial()
 
