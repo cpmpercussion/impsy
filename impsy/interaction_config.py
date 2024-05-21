@@ -12,6 +12,7 @@ import mido
 import click
 from websockets.sync.server import serve
 from .utils import mdrnn_config
+import impsy.impsio as impsio
 
 
 np.set_printoptions(precision=2)
