@@ -40,6 +40,7 @@ class WebSocketServer(IOServer):
     def __init__(self, config, callback) -> None:
         super().__init__(config, callback)
         self.ws_clients = set() # storage for potential ws clients.
+        self.ws_thread = None
 
     def send(self, output_values) -> None:
         return super().send(output_values)
@@ -50,7 +51,10 @@ class WebSocketServer(IOServer):
         self.ws_thread.start() # send it!
 
     def disconnect(self) -> None:
-        self.ws_thread.join(timeout=0.1)
+        try:
+          self.ws_thread.join(timeout=0.1)
+        except:
+          pass
 
     def websocket_send_midi(self, message):
         """Sends a mido MIDI message via websockets if available."""
@@ -111,8 +115,22 @@ class WebSocketServer(IOServer):
         with serve(self.websocket_handler, hostname, port) as server:
             server.serve_forever()
 
+class OSCServer(IOServer):
+    """Handles OSC IO for IMPSY."""
 
-# class OSCServer(IOServer):
+    def __init__(self, config, callback) -> None:
+        super().__init__(config, callback)
+
+    def connect(self) -> None:
+        return super().connect()
+    
+    def disconnect(self) -> None:
+        return super().disconnect()
+    
+    def send(self, output_values) -> None:
+        return super().send(output_values)
+    
+
 
 class MIDIServer(IOServer):
     """Handles MIDI IO for IMPSY."""

@@ -205,8 +205,9 @@ class InteractionServer(object):
                     # Make sure there's no actions waiting to be synthesised.
                     self.rnn_output_buffer.get()
                     self.rnn_output_buffer.task_done()
-                # close sound control over MIDI
-                self.midi_sender.disconnect()
+                # send MIDI noteoff messages to stop previous sounds
+                # TODO: this could be framed as "control switching"
+                self.midi_sender.send_midi_note_offs()
 
 
     def playback_rnn_loop(self):
@@ -259,7 +260,7 @@ class InteractionServer(object):
         # Threads
         click.secho("Preparing MDRNN thread.", fg='yellow')
         rnn_thread = Thread(target=self.playback_rnn_loop, name="rnn_player_thread", daemon=True)
-        # self.websocket_sender.connect() # TODO verify websockets again.
+        self.websocket_sender.connect() # TODO verify websockets again.
 
         # Logging
         if self.config["log"]:
