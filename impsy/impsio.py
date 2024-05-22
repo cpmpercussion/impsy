@@ -23,15 +23,23 @@ class IOServer(abc.ABC):
   
   @abc.abstractmethod
   def send(self, output_values) -> None:
+    """Sends output values to relevant outputs."""
+    pass
+
+  @abc.abstractmethod
+  def handle(self) -> None:
+    """Handles input values (synchronously) if needed."""
     pass
 
   @abc.abstractmethod
   def connect(self) -> None:
+    """Connect to inputs and outputs."""
     pass
 
   @abc.abstractmethod
   def disconnect(self) -> None:
-      pass
+    """Disconnect from inputs and outputs."""
+    pass
   
 
 class WebSocketServer(IOServer):
@@ -44,7 +52,12 @@ class WebSocketServer(IOServer):
 
     def send(self, output_values) -> None:
         return super().send(output_values)
+        # TODO implement this to do something useful.
     
+    def handle(self) -> None:
+        return super().handle()
+        # Don't need to handle anything as it works in a thread.
+
     def connect(self) -> None:
         click.secho("Preparing websocket thread.", fg='yellow')
         self.ws_thread = Thread(target=self.websocket_serve_loop, name="ws_receiver_thread", daemon=True)
@@ -130,6 +143,9 @@ class OSCServer(IOServer):
     def send(self, output_values) -> None:
         return super().send(output_values)
     
+    def handle(self) -> None:
+        return super().handle()
+
 
 
 class MIDIServer(IOServer):
@@ -254,7 +270,7 @@ class MIDIServer(IOServer):
                 click.secho("Something wrong with all MIDI Note off!", fg="red")
                 pass
 
-    def send(self, output_values):
+    def send(self, output_values) -> None:
         """Sends sound commands via MIDI"""
         assert len(output_values)+1 == self.dimension, "Dimension not same as prediction size." # Todo more useful error.
         start_time = datetime.datetime.now()
@@ -272,7 +288,7 @@ class MIDIServer(IOServer):
             click.secho(f"Sound command sending took a long time: {(duration_time):.3f}s", fg="red")
         # TODO: is it a good idea to have all this indexing? easy to screw up.
 
-    def handle_midi_input(self):
+    def handle(self) -> None:
         """Handle MIDI input messages that might come from mido"""
         if self.midi_in_port is None:
             return # fail early if MIDI not open.
