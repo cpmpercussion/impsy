@@ -53,3 +53,9 @@ output = [ # Volca FM
 [websocket]
 server_ip = "0.0.0.0" # The address of this server
 server_port = 5001 # The port this server should listen on.
+
+[osc]
+server_ip = ""
+server_port = ""
+client_ip = ""
+client_port = ""
