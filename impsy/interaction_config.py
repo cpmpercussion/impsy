@@ -67,9 +67,12 @@ class InteractionServer(object):
         self.mode = self.config["interaction"]["mode"]
 
         ## Set up IO.
+        self.senders = []
         self.midi_sender = impsio.MIDIServer(self.config, self.construct_input_list)
         self.midi_sender.connect()
+        self.senders.append(self.midi_sender)
         self.websocket_sender = impsio.WebSocketServer(self.config, self.construct_input_list)
+        self.senders.append(self.websocket_sender)
 
         # Import Keras and tensorflow
         ## TODO may be better to do this only when needed.
@@ -207,7 +210,7 @@ class InteractionServer(object):
                     self.rnn_output_buffer.task_done()
                 # send MIDI noteoff messages to stop previous sounds
                 # TODO: this could be framed as "control switching"
-                self.midi_sender.send_midi_note_offs()
+                # self.midi_sender.send_midi_note_offs()
 
 
     def playback_rnn_loop(self):
@@ -236,11 +239,9 @@ class InteractionServer(object):
     def serve_forever(self):
         """Run the interaction server opening required IO."""
         # Import Keras and tensorflow, doing this later to make CLI more responsive.
-        click.secho("Importing MDRNN.", fg='yellow')
-        start_import = time.time()
         import impsy.mdrnn as mdrnn
         import tensorflow.compat.v1 as tf
-        click.secho(f"Done. That took {time.time() - start_import} seconds.", fg='yellow')
+        click.secho("Importing MDRNN.", fg='yellow')
 
         # Build model
         compute_graph = tf.Graph()
@@ -273,15 +274,14 @@ class InteractionServer(object):
             while True:
                 self.make_prediction(sess, compute_graph, net)
                 if self.config["interaction"]["mode"] == "callresponse":
-                    self.midi_sender.handle_midi_input() # handles incoming midi queue
-                    # TODO: handle other kinds of input here?
+                    for sender in self.senders:
+                        sender.handle() # handle incoming inputs
                     self.monitor_user_action()
         except KeyboardInterrupt:
             click.secho("\nCtrl-C received... exiting.", fg='red')
             rnn_thread.join(timeout=0.1)
-            
-            self.midi_sender.disconnect() # send note offs and disconnect
-            self.websocket_sender.disconnect()
+            for sender in self.senders:
+                sender.disconnect()
         finally:
             click.secho("\nDone, shutting down.", fg='red')
 
