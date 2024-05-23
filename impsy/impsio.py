@@ -49,8 +49,8 @@ class IOServer(abc.ABC):
 class SerialMIDIServer(IOServer):
     """Handles MIDI over serial."""
 
-    def __init__(self, config: dict, callback: Callable[[int, float], None]) -> None:
-        super().__init__(config, callback)
+    def __init__(self, config: dict, callback: Callable[[int, float], None], dense_callback: Callable[[List[int]], None]) -> None:
+        super().__init__(config, callback, dense_callback)
         self.parser = mido.parser.Parser()
 
     def send_midi_note_on(self, channel, pitch, velocity):
@@ -155,8 +155,8 @@ class SerialMIDIServer(IOServer):
 class WebSocketServer(IOServer):
     """Handles Websocket Serving for IMPSY"""
 
-    def __init__(self, config, callback) -> None:
-        super().__init__(config, callback)
+    def __init__(self, config, callback, dense_callback) -> None:
+        super().__init__(config, callback, dense_callback)
         self.ws_clients = set() # storage for potential ws clients.
         self.ws_thread = None
 
@@ -254,8 +254,10 @@ class OSCServer(IOServer):
     TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
     TIMESCALE_MESSAGE_ADDRESS = "/timescale"
 
-    def __init__(self, config, callback) -> None:
-        super().__init__(config, callback)
+    
+
+    def __init__(self, config, callback, dense_callback) -> None:
+        super().__init__(config, callback, dense_callback)
         # Set up OSC client and server
         self.dimension = config["model"]["dimension"] # retrieve dimension from the config file.
         self.verbose = config["verbose"]
@@ -330,8 +332,8 @@ class MIDIServer(IOServer):
             click.secho("Could not open serial port, might be in development mode.", fg='red')
         return ser
     
-    def __init__(self, config, callback) -> None:
-        super().__init__(config, callback)
+    def __init__(self, config, callback, dense_callback) -> None:
+        super().__init__(config, callback, dense_callback)
         self.dimension = self.config["model"]["dimension"] # retrieve dimension from the config file.
         self.verbose = self.config["verbose"]
         self.last_midi_notes = {} # dict to store last played notes via midi
