@@ -20,10 +20,11 @@ class IOServer(abc.ABC):
   config: dict
   callback: Callable[[int, float], None]
 
-  def __init__(self, config: dict, callback: Callable[[int, float], None]) -> None:
+  def __init__(self, config: dict, callback: Callable[[int, float], None], dense_callback: Callable[[List[int]], None]) -> None:
     self.config = config # the IMPSY config
-    self.callback = callback # a callback method to report incoming data.
-  
+    self.callback = callback # a callback method to report incoming sparse data.(e.g., MIDI notes)
+    self.dense_callback = dense_callback # a callback for dense input data (e.g., lists of OSC arguments)
+
   @abc.abstractmethod
   def send(self, output_values) -> None:
     """Sends output values to relevant outputs."""
@@ -266,9 +267,7 @@ class OSCServer(IOServer):
         self.server = osc_server.ThreadingOSCUDPServer((config["osc"]["server_ip"], config["osc"]["server_port"]), self.dispatcher)
 
     def handle_interface_message(self, address: str, *osc_arguments) -> None:
-        last_user_interaction_data = np.array([*osc_arguments])
-        self.callback()
-        pass
+        self.dense_callback([*osc_arguments])
     
     def handle_temperature_message(self, address: str, *osc_arguments) -> None:
         """Handler for temperature messages from the interface: format is ff [sigma temp, pi temp]"""
