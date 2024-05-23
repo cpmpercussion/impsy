@@ -8,6 +8,9 @@ import numpy as np
 import serial
 import mido
 from websockets.sync.server import serve
+from pythonosc import dispatcher
+from pythonosc import osc_server
+from pythonosc import udp_client
 from threading import Thread
 
 
@@ -17,7 +20,7 @@ class IOServer(abc.ABC):
   config: dict
   callback: Callable[[int, float], None]
 
-  def __init__(self, config, callback) -> None:
+  def __init__(self, config: dict, callback: Callable[[int, float], None]) -> None:
     self.config = config # the IMPSY config
     self.callback = callback # a callback method to report incoming data.
   
@@ -131,18 +134,66 @@ class WebSocketServer(IOServer):
 class OSCServer(IOServer):
     """Handles OSC IO for IMPSY."""
 
+    # [osc]
+    # server_ip = "localhost" # Address of IMPSY
+    # server_port = "5000" # Port IMPSY listens on
+    # client_ip = "localhost" # Address of the output device
+    # client_port = "5002" # Port of the output device
+
+    # Details for OSC output
+    INPUT_MESSAGE_ADDRESS = "/interface"
+    OUTPUT_MESSAGE_ADDRESS = "/prediction"
+    TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
+    TIMESCALE_MESSAGE_ADDRESS = "/timescale"
+
     def __init__(self, config, callback) -> None:
         super().__init__(config, callback)
+        # Set up OSC client and server
+        self.dimension = config["model"]["dimension"] # retrieve dimension from the config file.
+        self.verbose = config["verbose"]
+        self.osc_client = udp_client.SimpleUDPClient(config["osc"]["client_ip"], config["osc"]["client_port"])
+        self.dispatcher = dispatcher.Dispatcher()
+        self.dispatcher.map(OSCServer.INPUT_MESSAGE_ADDRESS, self.handle_interface_message)
+        self.dispatcher.map(OSCServer.TEMPERATURE_MESSAGE_ADDRESS, self.handle_temperature_message)
+        self.dispatcher.map(OSCServer.TIMESCALE_MESSAGE_ADDRESS, self.handle_timescale_message)
+        self.server = osc_server.ThreadingOSCUDPServer((config["osc"]["server_ip"], config["osc"]["server_port"]), self.dispatcher)
+
+    def handle_interface_message(self, address: str, *osc_arguments) -> None:
+        last_user_interaction_data = np.array([*osc_arguments])
+        self.callback()
+        pass
+    
+    def handle_temperature_message(self, address: str, *osc_arguments) -> None:
+        """Handler for temperature messages from the interface: format is ff [sigma temp, pi temp]"""
+        new_sigma_temp = osc_arguments[0]
+        new_pi_temp = osc_arguments[1]
+        if self.verbose:
+            click.secho(f"Temperature -- Sigma: {new_sigma_temp}, Pi: {new_pi_temp}", fg="blue")
+        # TODO, set the network temperature somehow.
+        # net.sigma_temp = new_sigma_temp
+        # net.pi_temp = new_pi_temp
+
+    def handle_timescale_message(self, address: str, *osc_arguments) -> None:
+        """Handler for timescale messages: format is f [timescale]"""
+        new_timescale = osc_arguments[0]
+        if self.verbose:
+            click.secho(f"Timescale: {new_timescale}", fg="blue")
+        # TODO: do something with this information...
 
     def connect(self) -> None:
-        return super().connect()
+        print("Preparing Server thread.")
+        self.server_thread = Thread(target=self.server.serve_forever, name="server_thread", daemon=True)
+        self.server_thread.start()
     
     def disconnect(self) -> None:
-        return super().disconnect()
+        try:
+            self.server_thread.join(timeout=0.1)
+        except:
+            pass
     
     def send(self, output_values) -> None:
-        return super().send(output_values)
-    
+        self.osc_client.send_message(OSCServer.OUTPUT_MESSAGE_ADDRESS, output_values)
+
     def handle(self) -> None:
         return super().handle()
 
