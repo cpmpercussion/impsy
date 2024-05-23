@@ -68,10 +68,10 @@ class InteractionServer(object):
 
         ## Set up IO.
         self.senders = []
-        self.midi_sender = impsio.MIDIServer(self.config, self.construct_input_list)
+        self.midi_sender = impsio.MIDIServer(self.config, self.construct_input_list, self.dense_callback)
         self.midi_sender.connect()
         self.senders.append(self.midi_sender)
-        self.websocket_sender = impsio.WebSocketServer(self.config, self.construct_input_list)
+        self.websocket_sender = impsio.WebSocketServer(self.config, self.construct_input_list, self.dense_callback)
         self.senders.append(self.websocket_sender)
 
         # Import Keras and tensorflow
@@ -128,6 +128,20 @@ class InteractionServer(object):
         self.midi_sender.send(output)
         self.websocket_sender.send(output)
 
+    def dense_callback(self, values) -> None:
+        """insert a dense input list into the interaction stream (e.g., when receiving OSC)."""
+        int_input = np.array(values)
+        if self.verbose:
+            click.secho(f"in: {int_input}", fg='yellow')
+        logger = logging.getLogger("impslogger")
+        logger.info("{1},interface,{0}".format(','.join(map(str, int_input)),
+                    datetime.datetime.now().isoformat()))
+        dt = time.time() - self.last_user_interaction_time
+        self.last_user_interaction_time = time.time()
+        self.last_user_interaction_data = np.array([dt, *int_input])
+        assert len(self.last_user_interaction_data) == self.dimension, "Input is incorrect dimension, set dimension to %r" % len(self.last_user_interaction_data)
+        # These values are accessed by the RNN in the interaction loop function.
+        self.interface_input_queue.put_nowait(self.last_user_interaction_data)
 
     # Todo this is the "callback" for our IO functions.
     def construct_input_list(self, index: int, value: float) -> None:
