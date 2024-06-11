@@ -1,0 +1,54 @@
+# The configuration file for the GenAI-MIDI-module
+
+title = "MiniLab and Analogue V configuration"
+name = "Charles Martin"
+
+# General Settings
+log = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends input signals directly to output
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.h5"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+[midi]
+in_device = "Minilab3 MIDI"
+out_device = "IAC Driver Bus 1"
+input = [
+  ["note_on", 1],
+  ["control_change", 1, 74], # bright
+  ["control_change", 1, 71], # drive
+  ["control_change", 1, 76], # time
+  ["control_change", 1, 77], # vibrato
+  ["control_change", 1, 93], # chorus
+  ["control_change", 1, 18], # general
+  ["control_change", 1, 19], # general
+  ]
+output = [
+  ["note_on", 1],
+  ["control_change", 1, 74], # bright
+  ["control_change", 1, 71], # drive
+  ["control_change", 1, 76], # time
+  ["control_change", 1, 77], # vibrato
+  ["control_change", 1, 93], # chorus
+  ["control_change", 1, 18], # general
+  ["control_change", 1, 19], # general
+]
+
+# Websocket section enables websocket sending, remove to disable websocket sending
+[websocket]
+server_ip = "192.168.0.81" # The address of this server
+server_port = 5001 # The port this server should listen on.
