@@ -1,0 +1,61 @@
+# The configuration file for IMPSY: Interactive Musical Prediction System
+
+# Metadata about this configuration
+title = "Alec Hunter AiC Ableton Config"
+owner = "Charles and Alec"
+description = "Input and Output via a MIDI controller to Ableton"
+
+# Basic config
+log = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.h5"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+[midi]
+in_device = "Studio 24c"
+out_device = "Studio 24c"
+input = [ # XTOUCH-MINI knobs
+  ["note_on", 1], # note
+  ["note_on", 2], #  
+  ["note_on", 3], # 
+  ["note_on", 4], # 
+  ["control_change", 1, 0], # Carrier Decay
+  ["control_change", 1, 1], # LFO rate
+  ["control_change", 1, 2], # LFO depth
+  ["control_change", 1, 3], # Algorithm
+]
+output = [ # Alec Ableton Setup
+  ["note_on", 1], # note
+  ["note_on", 2], #  
+  ["note_on", 3], # 
+  ["note_on", 4], # 
+  ["control_change", 1, 0], # Carrier Decay
+  ["control_change", 1, 1], # LFO rate
+  ["control_change", 1, 2], # LFO depth
+  ["control_change", 1, 3], # Algorithm
+]
+
+[websocket]
+server_ip = "0.0.0.0" # The address of this server
+server_port = 5001 # The port this server should listen on.
+
+[osc]
+server_ip = "localhost" # Address of IMPSY
+server_port = "5000" # Port IMPSY listens on
+client_ip = "localhost" # Address of the output device
+client_port = "5002" # Port of the output device

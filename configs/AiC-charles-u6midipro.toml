@@ -1,0 +1,55 @@
+# The configuration file for the GenAI-MIDI-module
+
+# Metadata about this configuration
+title = "RPi U6MIDI Pro: nanoKontrol Studio to notes and CCs"
+owner = "Charles Martin"
+description = "Uses x-touch over it's own USB connector and Volca FM over the Studio 1824c"
+
+# Basic config
+log = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = true # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.h5"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+[midi]
+in_device = "U6MIDI Pro MIDI 1"
+out_device = "U6MIDI Pro MIDI 1"
+input = [ # nanoKONTROL Studio knobs
+  ["control_change", 1, 13], # nanoKONTROL Studio knob controller 1
+  ["control_change", 1, 14], # nanoKONTROL Studio knob controller 2
+  ["control_change", 1, 15], # nanoKONTROL Studio knob controller 3
+  ["control_change", 1, 16], # nanoKONTROL Studio knob controller 4
+  ["control_change", 1, 17], # nanoKONTROL Studio knob controller 5
+  ["control_change", 1, 18], # nanoKONTROL Studio knob controller 6
+  ["control_change", 1, 19], # nanoKONTROL Studio knob controller 7
+  ["control_change", 1, 20], # nanoKONTROL Studio knob controller 8
+]
+output = [ # Collection of Useful Mappings
+  ["note_on", 1], # note
+  ["control_change", 11, 1], # 
+  ["note_on", 2], # note
+  ["control_change", 11, 2], # 
+  ["note_on", 3], # note
+  ["control_change", 11, 3], # 
+  ["note_on", 4], # note
+  ["control_change", 11, 4], # 
+]
+
+[websocket]
+server_ip = "0.0.0.0" # The address of this server
+server_port = 5001 # The port this server should listen on.

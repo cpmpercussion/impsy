@@ -1,323 +1,308 @@
-"""impsy.interaction: Functions for using imps as an interactive music system. This server has OSC input and output."""
+"""impsy.interaction_config: Functions for using imps as an interactive music system. This version uses a config file instead of a CLI."""
 
 import logging
 import time
 import datetime
 import numpy as np
 import queue
-import click
-from pythonosc import dispatcher
-from pythonosc import osc_server
-from pythonosc import udp_client
+import tomllib
 from threading import Thread
+import click
 from .utils import mdrnn_config
-
+import impsy.impsio as impsio
 
 np.set_printoptions(precision=2)
 
-# Interaction Modes:
 
-# user, callresponse, filter, battle. 
-# user: no AI generation, but user interaction is passed on and logged.
-# callresponse: AI responds after 'threshold' seconds, typical turn-based arrangement.
-# filter: AI responds directly to every input, could be providing second part etc.
-# battle: AI disconnected from human input, both running simultaneously.
-
-
-# Global variables
-# TODO: get rid of these, use a Class instead for data storage.
-call_response_mode = False
-user_to_rnn = False
-rnn_to_rnn = False
-rnn_to_sound = False
-last_user_interaction_time = None
-last_user_interaction_data = None
+def setup_logging(dimension, location = "logs/"):
+    """Setup a log file and logging, requires a dimension parameter"""
+    log_file = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-" + str(dimension) + "d" +  "-mdrnn.log"  # Log file name.
+    log_file = location + log_file
+    log_format = '%(message)s'
+    logging.basicConfig(filename=log_file,
+                        level=logging.INFO,
+                        format=log_format)
+    click.secho(f'Logging enabled: {log_file}', fg='green')
 
 
-@click.command(name="run")
-@click.option("--log/--no-log", default=True, help="Save input and output data to a log file.")
-@click.option("--verbose/--no-verbose", default=True, help="Verbose mode, print prediction results.")
-# Performance modes
-@click.option("-O", "--mode", type=str, default="callresponse", help="Select interaction mode, one of: user, callresponse, filter, battle. user: no AI generation, callresponse: AI responds after 'threshold' seconds, filter: AI responds directly to every input, battle: AI disconnected from human input")
-@click.option("-T", "--threshold", type=float, default=2.0, help="Seconds to wait before switching to response")
-# MDRNN arguments.
-@click.option("-D", "--dimension", type=int, default=2, help="The dimension of the data to model, must be >= 2.")
-@click.option("-M", "--modelsize", default="s", help="The model size: xs, s, m, l, xl", type=str)
-@click.option("-S", "--sigmatemp", type=float, default=0.01, help="The sigma temperature for sampling.")
-@click.option("-P", "--pitemp", type=float, default=1, help="The pi temperature for sampling.")
-# OSC addresses
-@click.option("--clientip", type=str, default="localhost", help="The address of output device, default is 'localhost'.")
-@click.option("--clientport", type=int, default=5000, help="The port the output device is listening on, default is 5000.")
-@click.option("--serverip", type=str, default="localhost", help="The address of this server, default is 'localhost'.")
-@click.option("--serverport", type=int, default=5001, help="The port this server should listen on, default is 5001.")
-def run(log: bool, verbose: bool, mode: str, threshold: float, dimension: int, modelsize: str, sigmatemp: float, pitemp: float, clientip: str, clientport: int, serverip:str, serverport: int):
-    """Run IMPS predictive musical interaction system as a server with OSC input and output."""
-    global call_response_mode
-    global user_to_rnn
-    global rnn_to_rnn
-    global rnn_to_sound
-    global last_user_interaction_time
-    global last_user_interaction_data
-
-    # import tensorflow, do this now to make CLI more responsive.
-    print("Importing MDRNN.")
-    start_import = time.time()
+def build_network(sess, compute_graph, config):
+    """Build the MDRNN, uses a high-level size parameter and dimension."""
     import impsy.mdrnn as mdrnn
     import tensorflow.compat.v1 as tf
-    print("Done. That took", time.time() - start_import, "seconds.")
-
-    model_config = mdrnn_config(modelsize)
+    dimension = config["model"]["dimension"]
+    size = config["model"]["size"]
+    click.secho(f"MDRNN: Using {size} model.", fg="green")
+    model_config = mdrnn_config(size)
     mdrnn_units = model_config["units"]
     mdrnn_layers = model_config["layers"]
     mdrnn_mixes = model_config["mixes"]
-
-    # Interaction Loop Parameters
-    # All set to false before setting is chosen.
-    user_to_rnn = False
-    rnn_to_rnn = False
-    rnn_to_sound = False
-
-    # Interactive Mapping
-    if mode == "callresponse":
-        print("Entering call and response mode.")
-        # set initial conditions.
-        user_to_rnn = True
-        rnn_to_rnn = False
-        rnn_to_sound = False
-    elif mode == "filter":
-        print("Entering filter mode.")
-        user_to_rnn = True
-        rnn_to_rnn = False
-        rnn_to_sound = True
-    elif mode == "battle":
-        print("Entering battle royale mode.")
-        user_to_rnn = False
-        rnn_to_rnn = True
-        rnn_to_sound = True
-    elif mode == "user":
-        print("Entering user only mode.")
-        user_to_rnn = False
-        rnn_to_rnn = False
-        rnn_to_sound = False
+    # construct the model
+    mdrnn.MODEL_DIR = "./models/"
+    tf.keras.backend.set_session(sess)
+    with compute_graph.as_default():
+        net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN,
+                                              dimension=dimension,
+                                              n_hidden_units=mdrnn_units,
+                                              n_mixtures=mdrnn_mixes,
+                                              layers=mdrnn_layers)
+        net.pi_temp = config["model"]["pitemp"]
+        net.sigma_temp = config["model"]["sigmatemp"]
+    click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
+    return net
 
 
-    def build_network(sess):
-        """Build the MDRNN."""
-        mdrnn.MODEL_DIR = "./models/"
-        tf.keras.backend.set_session(sess)
-        with compute_graph.as_default():
-            net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN,
-                                                dimension=dimension,
-                                                n_hidden_units=mdrnn_units,
-                                                n_mixtures=mdrnn_mixes,
-                                                layers=mdrnn_layers)
-            net.pi_temp = pitemp
-            net.sigma_temp = sigmatemp
-        print("MDRNN Loaded.")
-        return net
+class InteractionServer(object):
+    """Interaction server class. Contains state and functions for the interaction loop."""
+
+    def __init__(self):
+        """Initialises the interaction server including loading the config from a config.toml file."""
+        click.secho("Preparing IMPSY interaction server...", fg="yellow")
+        click.secho("Opening configuration.", fg="yellow")
+        with open("config.toml", "rb") as f:
+            self.config = tomllib.load(f)
+
+        ## Load global variables from the config file.
+        self.verbose = self.config["verbose"]
+        self.dimension = self.config["model"]["dimension"] # retrieve dimension from the config file.
+        self.mode = self.config["interaction"]["mode"]
+
+        ## Set up IO.
+        self.senders = []
+        self.midi_sender = impsio.MIDIServer(self.config, self.construct_input_list, self.dense_callback)
+        self.midi_sender.connect()
+        self.senders.append(self.midi_sender)
+        self.websocket_sender = impsio.WebSocketServer(self.config, self.construct_input_list, self.dense_callback)
+        self.senders.append(self.websocket_sender)
+
+        # Import Keras and tensorflow
+        ## TODO may be better to do this only when needed.
+        click.secho("Importing MDRNN.", fg='yellow')
+        start_import = time.time()
+        import impsy.mdrnn as mdrnn
+        import tensorflow.compat.v1 as tf
+        click.secho(f"Done. That took {time.time() - start_import} seconds.", fg='yellow')
+
+        # Interaction Loop Parameters
+        # All set to false before setting is chosen.
+
+        # Interactive Mapping
+        if self.mode == "callresponse":
+            click.secho("Config: call and response mode.", fg='blue')
+            self.user_to_rnn = True
+            self.rnn_to_rnn = False
+            self.rnn_to_sound = False
+        elif self.mode == "polyphony":
+            click.secho("Config: polyphony mode.", fg='blue')
+            self.user_to_rnn = True
+            self.rnn_to_rnn = False
+            self.rnn_to_sound = True
+        elif self.mode == "battle":
+            click.secho("Config: battle royale mode.", fg='blue')
+            self.user_to_rnn = False
+            self.rnn_to_rnn = True
+            self.rnn_to_sound = True
+        elif self.mode == "useronly":
+            click.secho("Config: user only mode.", fg='blue')
+            self.user_to_rnn = False
+            self.rnn_to_rnn = False
+            self.rnn_to_sound = False
+        else: 
+            click.secho("Config: no mode set, setting to user only")
+            self.user_to_rnn = False
+            self.rnn_to_rnn = False
+            self.rnn_to_sound = False
+
+        # Set up runtime variables.
+        self.interface_input_queue = queue.Queue()
+        self.rnn_prediction_queue = queue.Queue()
+        self.rnn_output_buffer = queue.Queue()
+        self.last_user_interaction_time = time.time()
+        self.last_user_interaction_data = mdrnn.random_sample(out_dim=self.dimension)
+        self.rnn_prediction_queue.put_nowait(mdrnn.random_sample(out_dim=self.dimension))
+        self.call_response_mode = 'call'
 
 
-    def handle_interface_message(address: str, *osc_arguments) -> None:
-        """Handler for OSC messages from the interface"""
-        global last_user_interaction_time
-        global last_user_interaction_data
-        if verbose:
-            # print out OSC message.
-            print("User:", ', '.join(["{0:0.2f}".format(abs(i)) for i in osc_arguments]))
-        int_input = osc_arguments
+    def send_back_values(self, output_values):
+        """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
+        output = np.minimum(np.maximum(output_values, 0), 1)
+        self.midi_sender.send(output)
+        self.websocket_sender.send(output)
+
+    def dense_callback(self, values) -> None:
+        """insert a dense input list into the interaction stream (e.g., when receiving OSC)."""
+        int_input = np.array(values)
+        if self.verbose:
+            click.secho(f"in: {int_input}", fg='yellow')
         logger = logging.getLogger("impslogger")
         logger.info("{1},interface,{0}".format(','.join(map(str, int_input)),
                     datetime.datetime.now().isoformat()))
-        dt = time.time() - last_user_interaction_time
-        last_user_interaction_time = time.time()
-        last_user_interaction_data = np.array([dt, *int_input])
-        assert len(last_user_interaction_data) == dimension, "Input is incorrect dimension, set dimension to %r" % len(last_user_interaction_data)
+        dt = time.time() - self.last_user_interaction_time
+        self.last_user_interaction_time = time.time()
+        self.last_user_interaction_data = np.array([dt, *int_input])
+        assert len(self.last_user_interaction_data) == self.dimension, "Input is incorrect dimension, set dimension to %r" % len(self.last_user_interaction_data)
         # These values are accessed by the RNN in the interaction loop function.
-        interface_input_queue.put_nowait(last_user_interaction_data)
+        self.interface_input_queue.put_nowait(self.last_user_interaction_data)
 
+    # Todo this is the "callback" for our IO functions.
+    def construct_input_list(self, index: int, value: float) -> None:
+        """constructs a dense input list from a sparse format (e.g., when receiving MIDI)
+        """
+        # set up dense interaction list
+        int_input = self.last_user_interaction_data[1:]
+        int_input[index] = value
+        # log
+        values = list(map(int, (np.ceil(int_input * 127))))
+        if self.verbose:
+            click.secho(f"in: {values}", fg='yellow')
+        logging.info("{1},interface,{0}".format(','.join(map(str, int_input)),
+                    datetime.datetime.now().isoformat()))
+        # put it in the queue
+        dt = time.time() - self.last_user_interaction_time
+        self.last_user_interaction_time = time.time()
+        self.last_user_interaction_data = np.array([dt, *int_input])
+        assert len(self.last_user_interaction_data) == self.dimension, "Input is incorrect dimension, set dimension to %r" % len(self.last_user_interaction_data)
+        # These values are accessed by the RNN in the interaction loop function.
+        self.interface_input_queue.put_nowait(self.last_user_interaction_data)
+        # Send values to output if in config
+        if self.config["interaction"]["input_thru"]:
+                # This is where outputs are sent via impsio objects.
+                output_values = np.minimum(np.maximum(self.last_user_interaction_data[1:], 0), 1)
+                self.send_back_values(output_values)
 
-    def handle_temperature_message(address: str, *osc_arguments) -> None:
-        """Handler for temperature messages from the interface: format is ff [sigma temp, pi temp]"""
-        new_sigma_temp = osc_arguments[0]
-        new_pi_temp = osc_arguments[1]
-        if verbose:
-            print(f"Temperature -- Sigma: {new_sigma_temp}, Pi: {new_pi_temp}")
-        net.sigma_temp = new_sigma_temp
-        net.pi_temp = new_pi_temp
-
-
-    def handle_timescale_message(address: str, *osc_arguments) -> None:
-        """Handler for timescale messages: format is f [timescale]"""
-        new_timescale = osc_arguments[0]
-        if verbose:
-            print(f"Timescale: {new_timescale}")
-        # TODO: implement this on the prediction end.
-
-
-    def request_rnn_prediction(input_value):
-        """ Accesses a single prediction from the RNN. """
-        output_value = net.generate_touch(input_value)
-        return output_value
-
-
-    def make_prediction(sess, compute_graph):
-        """Interaction loop: reads input, makes predictions, outputs results."""
-        # Make predictions.
-
+    def make_prediction(self, sess, compute_graph, neural_net):
+        """Part of the interaction loop: reads input, makes predictions, outputs results"""
+        import tensorflow.compat.v1 as tf
         # First deal with user --> MDRNN prediction
-        if user_to_rnn and not interface_input_queue.empty():
-            item = interface_input_queue.get(block=True, timeout=None)
+        if self.user_to_rnn and not self.interface_input_queue.empty():
+            item = self.interface_input_queue.get(block=True, timeout=None)
             tf.keras.backend.set_session(sess)
             with compute_graph.as_default():
-                rnn_output = request_rnn_prediction(item)
-            # if verbose:
-            #     print("User->RNN:", ",".join(["{0:0.2f}".format(float(i)) for i in rnn_output]))
-            if rnn_to_sound:
-                rnn_output_buffer.put_nowait(rnn_output)
-            interface_input_queue.task_done()
+                rnn_output = neural_net.generate_touch(item)
+            if self.rnn_to_sound:
+                self.rnn_output_buffer.put_nowait(rnn_output)
+            self.interface_input_queue.task_done()
 
         # Now deal with MDRNN --> MDRNN prediction.
-        if rnn_to_rnn and rnn_output_buffer.empty() and not rnn_prediction_queue.empty():
-            item = rnn_prediction_queue.get(block=True, timeout=None)
+        if self.rnn_to_rnn and self.rnn_output_buffer.empty() and not self.rnn_prediction_queue.empty():
+            item = self.rnn_prediction_queue.get(block=True, timeout=None)
             tf.keras.backend.set_session(sess)
             with compute_graph.as_default():
-                rnn_output = request_rnn_prediction(item)
-            if verbose:
-                print("RNN: ", ', '.join(["{0:0.2f}".format(abs(i)) for i in rnn_output[1:]]), 'dt:', "{0:0.2f}".format(abs(rnn_output[0])))
-            rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
-            rnn_prediction_queue.task_done()
+                rnn_output = neural_net.generate_touch(item)
+            self.rnn_output_buffer.put_nowait(rnn_output)  # put it in the playback queue.
+            self.rnn_prediction_queue.task_done()
 
 
-    def send_sound_command(command_args):
-        """Send a sound command back to the interface/synth"""
-        assert len(command_args)+1 == dimension, "Dimension not same as prediction size." # Todo more useful error.
-        osc_client.send_message(OUTPUT_MESSAGE_ADDRESS, command_args)
-
-
-    def playback_rnn_loop():
-        """Plays back RNN notes from its buffer queue."""
-        while True:
-            item = rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
-            # print("processing an rnn command", time.time())
-            dt = item[0]
-            x_pred = np.minimum(np.maximum(item[1:], 0), 1)
-            dt = max(dt, 0.001)  # stop accidental minus and zero dt.
-            time.sleep(dt)  # wait until time to play the sound
-            # put last played in queue for prediction.
-            rnn_prediction_queue.put_nowait(np.concatenate([np.array([dt]), x_pred]))
-            if rnn_to_sound:
-                send_sound_command(x_pred)
-                # print("RNN Played:", x_pred, "at", dt)
-                logger = logging.getLogger("impslogger")
-                logger.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
-                            datetime.datetime.now().isoformat()))
-            rnn_output_buffer.task_done()
-
-
-    def monitor_user_action():
-        """Handles changing action responsibility in Call-Response mode."""
-        global call_response_mode
-        global user_to_rnn
-        global rnn_to_rnn
-        global rnn_to_sound
+    def monitor_user_action(self):
+        """Handles changing responsibility in Call-Response mode."""
         # Check when the last user interaction was
-        dt = time.time() - last_user_interaction_time
-        if dt > threshold:
+        dt = time.time() - self.last_user_interaction_time
+        if dt > self.config["interaction"]["threshold"]:
             # switch to response modes.
-            user_to_rnn = False
-            rnn_to_rnn = True
-            rnn_to_sound = True
-            if call_response_mode == 'call':
-                print("switching to response.")
-                call_response_mode = 'response'
-                while not rnn_prediction_queue.empty():
+            self.user_to_rnn = False
+            self.rnn_to_rnn = True
+            self.rnn_to_sound = True
+            if self.call_response_mode == 'call':
+                click.secho("switching to response.", bg='red', fg='black')
+                self.call_response_mode = 'response'
+                while not self.rnn_prediction_queue.empty():
                     # Make sure there's no inputs waiting to be predicted.
-                    rnn_prediction_queue.get()
-                    rnn_prediction_queue.task_done()
-                rnn_prediction_queue.put_nowait(last_user_interaction_data)  # prime the RNN queue
+                    self.rnn_prediction_queue.get()
+                    self.rnn_prediction_queue.task_done()
+                self.rnn_prediction_queue.put_nowait(self.last_user_interaction_data)  # prime the RNN queue
         else:
             # switch to call mode.
-            user_to_rnn = True
-            rnn_to_rnn = False
-            rnn_to_sound = False
-            if call_response_mode == 'response':
-                print("switching to call.")
-                call_response_mode = 'call'
+            self.user_to_rnn = True
+            self.rnn_to_rnn = False
+            self.rnn_to_sound = False
+            if self.call_response_mode == 'response':
+                click.secho("switching to call.", bg='blue', fg='black')
+                self.call_response_mode = 'call'
                 # Empty the RNN queues.
-                while not rnn_output_buffer.empty():
+                while not self.rnn_output_buffer.empty():
                     # Make sure there's no actions waiting to be synthesised.
-                    rnn_output_buffer.get()
-                    rnn_output_buffer.task_done()
+                    self.rnn_output_buffer.get()
+                    self.rnn_output_buffer.task_done()
+                # send MIDI noteoff messages to stop previous sounds
+                # TODO: this could be framed as "control switching"
+                # self.midi_sender.send_midi_note_offs()
 
 
-    # Logging
-    LOG_FILE = datetime.datetime.now().isoformat().replace(":", "-")[:19] + "-" + str(dimension) + "d" +  "-mdrnn.log"  # Log file name.
-    LOG_FILE = "logs/" + LOG_FILE
-    LOG_FORMAT = '%(message)s'
-
-    if log:
-        formatter = logging.Formatter(LOG_FORMAT)
-        handler = logging.FileHandler(LOG_FILE)        
-        handler.setFormatter(formatter)
-        logger = logging.getLogger("impslogger")
-        logger.setLevel(logging.INFO)
-        logger.addHandler(handler)
-        print("Logging enabled:", LOG_FILE)
-    # Details for OSC output
-    INPUT_MESSAGE_ADDRESS = "/interface"
-    OUTPUT_MESSAGE_ADDRESS = "/prediction"
-    TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
-    TIMESCALE_MESSAGE_ADDRESS = "/timescale"
-
-    # Set up runtime variables.
-    # ## Load the Model
-    compute_graph = tf.Graph()
-    with compute_graph.as_default():
-        sess = tf.Session()
-    net = build_network(sess)
-    interface_input_queue = queue.Queue()
-    rnn_prediction_queue = queue.Queue()
-    rnn_output_buffer = queue.Queue()
-    writing_queue = queue.Queue()
-    last_user_interaction_time = time.time()
-    last_user_interaction_data = mdrnn.random_sample(out_dim=dimension)
-    rnn_prediction_queue.put_nowait(mdrnn.random_sample(out_dim=dimension))
-    call_response_mode = 'call'
-
-    # Set up OSC client and server
-    osc_client = udp_client.SimpleUDPClient(clientip, clientport)
-    disp = dispatcher.Dispatcher()
-    disp.map(INPUT_MESSAGE_ADDRESS, handle_interface_message)
-    disp.map(TEMPERATURE_MESSAGE_ADDRESS, handle_temperature_message)
-    disp.map(TIMESCALE_MESSAGE_ADDRESS, handle_timescale_message)
-    server = osc_server.ThreadingOSCUDPServer((serverip, serverport), disp)
-
-    thread_running = True  # TODO: is this line needed?
-
-    # Set up run loop.
-    print("Preparing MDRNN.")
-    tf.keras.backend.set_session(sess)
-    with compute_graph.as_default():
-        net.load_model()  # try loading from default file location.
-    print("Preparting MDRNN thread.")
-    rnn_thread = Thread(target=playback_rnn_loop, name="rnn_player_thread", daemon=True)
-    print("Preparing Server thread.")
-    server_thread = Thread(target=server.serve_forever, name="server_thread", daemon=True)
-
-    try:
-        rnn_thread.start()
-        server_thread.start()
-        print("Prediction server started.")
-        print("Serving on {}".format(server.server_address))
+    def playback_rnn_loop(self):
+        """Plays back RNN notes from its buffer queue. This loop blocks and should run in a separate thread."""
         while True:
-            make_prediction(sess, compute_graph)
-            if mode == "callresponse":
-                monitor_user_action()
-    except KeyboardInterrupt:
-        print("\nCtrl-C received... exiting.")
-        thread_running = False
-        rnn_thread.join(timeout=0.1)
-        server_thread.join(timeout=0.1)
-        pass
-    finally:
-        print("\nDone, shutting down.")
+            item = self.rnn_output_buffer.get(block=True, timeout=None)  # Blocks until next item is available.
+            dt = item[0]
+            # click.secho(f"Raw dt: {dt}", fg="blue")
+            x_pred = np.minimum(np.maximum(item[1:], 0), 1)
+            dt = max(dt, 0.001)  # stop accidental minus and zero dt.
+            dt = dt * self.config["model"]["timescale"] # timescale modification!
+            # click.secho(f"Sleeping for dt: {dt}", fg="blue")
+
+            time.sleep(dt)  # wait until time to play the sound
+            # put last played in queue for prediction.
+            self.rnn_prediction_queue.put_nowait(np.concatenate([np.array([dt]), x_pred]))
+            if self.rnn_to_sound:
+                # Send predictions to outputs via impsio objects
+                self.send_back_values(x_pred)
+                if self.config["log_predictions"]:
+                    logging.info("{1},rnn,{0}".format(','.join(map(str, x_pred)),
+                                datetime.datetime.now().isoformat()))
+            self.rnn_output_buffer.task_done()
+
+
+    def serve_forever(self):
+        """Run the interaction server opening required IO."""
+        # Import Keras and tensorflow, doing this later to make CLI more responsive.
+        import impsy.mdrnn as mdrnn
+        import tensorflow.compat.v1 as tf
+        click.secho("Importing MDRNN.", fg='yellow')
+
+        # Build model
+        compute_graph = tf.Graph()
+        with compute_graph.as_default():
+            sess = tf.Session()
+        net = build_network(sess, compute_graph, self.config)
+
+        # Load model weights
+        click.secho("Preparing MDRNN.", fg='yellow')
+        tf.keras.backend.set_session(sess)
+        with compute_graph.as_default():
+            if self.config["model"]["file"] != "":
+                net.load_model(model_file=self.config["model"]["file"]) # load custom model.
+            else:
+                net.load_model()  # try loading from default file location.
+
+        # Threads
+        click.secho("Preparing MDRNN thread.", fg='yellow')
+        rnn_thread = Thread(target=self.playback_rnn_loop, name="rnn_player_thread", daemon=True)
+        self.websocket_sender.connect() # TODO verify websockets again.
+
+        # Logging
+        if self.config["log"]:
+            setup_logging(self.dimension)
+
+        # Start threads and run IO loop
+        try:
+            rnn_thread.start()
+            click.secho("RNN Thread Started", fg="green")
+            while True:
+                self.make_prediction(sess, compute_graph, net)
+                if self.config["interaction"]["mode"] == "callresponse":
+                    for sender in self.senders:
+                        sender.handle() # handle incoming inputs
+                    self.monitor_user_action()
+        except KeyboardInterrupt:
+            click.secho("\nCtrl-C received... exiting.", fg='red')
+            rnn_thread.join(timeout=0.1)
+            for sender in self.senders:
+                sender.disconnect()
+        finally:
+            click.secho("\nDone, shutting down.", fg='red')
+
+
+@click.command(name="run")
+def run():
+    """Run IMPSY interaction system with MIDI, WebSockets, and OSC."""
+    click.secho("GenAI: Running startup and main loop.", fg="blue")
+    interaction_server = InteractionServer()
+    interaction_server.serve_forever()
