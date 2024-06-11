@@ -168,3 +168,4 @@ datasets
 *.hdf5
 *.no
 *.npz
+*.csv

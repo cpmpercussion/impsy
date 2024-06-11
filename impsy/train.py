@@ -121,7 +121,7 @@ def train(dimension: int, source: str, modelsize: str, earlystopping: bool, pati
         print("Enabling Early Stopping.")
         callbacks.append(early_stopping)
     # Train
-    history = model.fit(X, y, batch_size=batchsize,
+    model.fit(X, y, batch_size=batchsize,
                         epochs=numepochs,
                         validation_split=VAL_SPLIT,
                         callbacks=callbacks)
