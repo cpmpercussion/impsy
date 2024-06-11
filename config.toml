@@ -1,9 +1,9 @@
 # The configuration file for IMPSY: Interactive Musical Prediction System
 
 # Metadata about this configuration
-title = "X-TOUCH in Volca FM out"
+title = "X-TOUCH in Volca Keys out"
 owner = "Charles Martin"
-description = "Uses x-touch over it's own USB connector and Volca FM over the Studio 1824c"
+description = "Uses x-touch over it's own USB connector and Volca Keys over the Studio 1824c"
 
 # Basic config
 log = true
@@ -39,15 +39,15 @@ input = [ # XTOUCH-MINI knobs
   ["control_change", 11, 7], # XTOUCH-MINI knob controller 7
   ["control_change", 11, 8], # XTOUCH-MINI knob controller 8
 ]
-output = [ # Volca FM
+output = [ # Volca Keys: http://i.korg.com/uploads/Support/USA_volcakeys_MIDI_Chart_E.pdf
   ["note_on", 1], # note
-  ["control_change", 1, 42], # Modulator Attack
-  ["control_change", 1, 43], # Modulator Decay
-  ["control_change", 1, 44], # Carrier Attack
-  ["control_change", 1, 45], # Carrier Decay
-  ["control_change", 1, 46], # LFO rate
-  ["control_change", 1, 47], # LFO depth
-  ["control_change", 1, 48], # Algorithm
+  ["control_change", 1, 5], # Portamento
+  ["control_change", 1, 40], # Voice
+  ["control_change", 1, 41], # Octave
+  ["control_change", 1, 42], # Detune
+  ["control_change", 1, 44], # Cutoff
+  ["control_change", 1, 52], # Delay Time
+  ["control_change", 1, 53], # Delay Feedback
 ]
 
 [websocket]
