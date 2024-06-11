@@ -41,7 +41,7 @@ input = [ # XTOUCH-MINI knobs
 ]
 output = [ # Volca Keys: http://i.korg.com/uploads/Support/USA_volcakeys_MIDI_Chart_E.pdf
   ["note_on", 1], # note
-  ["control_change", 1, 5], # Portamento
+  ["control_change", 1, 43], # Portamento
   ["control_change", 1, 40], # Voice
   ["control_change", 1, 41], # Octave
   ["control_change", 1, 42], # Detune
