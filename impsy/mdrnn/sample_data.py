@@ -21,9 +21,9 @@ def batch_generator(seq_len, batch_size, dim, corpus):
         yield batch_X, batch_y
 
 
-def generate_data():
+def generate_data(samples=50000):
     """Generating some Slightly fuzzy sine wave data."""
-    NSAMPLE = 50000
+    NSAMPLE = samples
     print("Generating", str(NSAMPLE), "toy data samples.")
     t_data = np.float32(np.array(range(NSAMPLE)) / 10.0)
     t_interval = t_data[1] - t_data[0]

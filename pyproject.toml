@@ -26,6 +26,10 @@ python-rtmidi = "^1.5.8"
 click = "^8.1.7"
 pandas = "^2.2.2"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+flake8 = "^7.0.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
