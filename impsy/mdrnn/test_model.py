@@ -1,4 +1,5 @@
-from . import *
+from . import PredictiveMusicMDRNN, NET_MODE_RUN, NET_MODE_TRAIN
+from . import slice_sequence_examples, seq_to_overlapping_format, random_sample
 from . import sample_data
 import tensorflow.compat.v1 as tf
 import numpy as np
@@ -13,10 +14,12 @@ def test_model():
 def test_inference():
     """Test inference from a PredictiveMusicMDRNN model"""
     dimension = 8
+    num_test_steps = 5
     net = PredictiveMusicMDRNN(mode=NET_MODE_RUN, dimension=dimension)
-    input_value = random_sample(out_dim=dimension)
-    output_value = net.generate_touch(input_value)
-    assert len(output_value) == dimension
+    value = random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = net.generate_touch(value)
+    assert len(value) == dimension
 
 
 def test_training():
@@ -35,4 +38,4 @@ def test_training():
     Xs, ys = seq_to_overlapping_format(slices)
     history = net.train(Xs, ys, num_epochs=num_epochs, saving=False)
     assert isinstance(history, tf.keras.callbacks.History)
-    
+
