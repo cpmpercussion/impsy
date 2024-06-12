@@ -26,16 +26,17 @@ def test_training():
     """Test training on a PredictiveMusicMDRNN model"""
     num_epochs = 1
     sequence_length = 100
-    net = PredictiveMusicMDRNN(mode=NET_MODE_TRAIN, 
-                               dimension=2, 
-                               n_hidden_units=128, 
-                               n_mixtures=5, 
-                               batch_size=100, 
-                               sequence_length=sequence_length, 
-                               layers=2)
-    x_t_log = sample_data.generate_data(samples=((sequence_length+1)*10))
-    slices = slice_sequence_examples(x_t_log, sequence_length+1, step_size=1)
+    net = PredictiveMusicMDRNN(
+        mode=NET_MODE_TRAIN,
+        dimension=2,
+        n_hidden_units=128,
+        n_mixtures=5,
+        batch_size=100,
+        sequence_length=sequence_length,
+        layers=2,
+    )
+    x_t_log = sample_data.generate_data(samples=((sequence_length + 1) * 10))
+    slices = slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
     Xs, ys = seq_to_overlapping_format(slices)
     history = net.train(Xs, ys, num_epochs=num_epochs, saving=False)
     assert isinstance(history, tf.keras.callbacks.History)
-

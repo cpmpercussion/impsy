@@ -1,6 +1,5 @@
 """impsy.dataset: functions for generating a dataset from .log files in the log directory."""
 
-
 import numpy as np
 import pandas as pd
 import os
@@ -8,24 +7,36 @@ import click
 
 
 def transform_log_to_sequence_example(logfile, dimension):
-    data_names = ['x'+str(i) for i in range(dimension-1)]
-    column_names = ['date', 'source'] + data_names
-    perf_df = pd.read_csv(logfile,
-                          header=None, parse_dates=True,
-                          index_col=0, names=column_names)
+    data_names = ["x" + str(i) for i in range(dimension - 1)]
+    column_names = ["date", "source"] + data_names
+    perf_df = pd.read_csv(
+        logfile, header=None, parse_dates=True, index_col=0, names=column_names
+    )
     #  Filter out RNN lines, just keep 'interface'
-    perf_df = perf_df[perf_df.source == 'interface']
+    perf_df = perf_df[perf_df.source == "interface"]
     #  Process times.
-    perf_df['t'] = perf_df.index
+    perf_df["t"] = perf_df.index
     perf_df.t = perf_df.t.diff()
     perf_df.t = perf_df.t.dt.total_seconds()
     perf_df = perf_df.dropna()
-    return np.array(perf_df[['t']+data_names])
+    return np.array(perf_df[["t"] + data_names])
 
 
 @click.command(name="dataset")
-@click.option("-D", "--dimension", type=int, default=2, help="The dimension of the data to model, must be >= 2.")
-@click.option("-S", "--source", type=str, default="logs", help="The source directory to obtain .log files.")
+@click.option(
+    "-D",
+    "--dimension",
+    type=int,
+    default=2,
+    help="The dimension of the data to model, must be >= 2.",
+)
+@click.option(
+    "-S",
+    "--source",
+    type=str,
+    default="logs",
+    help="The source directory to obtain .log files.",
+)
 def dataset(dimension: int, source: str):
     """Generate a dataset from .log files in the log directory."""
     # Load up the performances
@@ -37,15 +48,16 @@ def dataset(dimension: int, source: str):
         if local_file.endswith(log_file_ending):
             print("Processing:", local_file)
             try:
-                log = transform_log_to_sequence_example(log_location + local_file,
-                                                    dimension)
+                log = transform_log_to_sequence_example(
+                    log_location + local_file, dimension
+                )
                 log_arrays.append(log)
             except Exception:
-                print("Processing failed for", local_file)        
+                print("Processing failed for", local_file)
 
     # Save Performance Data in a compressed numpy file.
-    dataset_location = 'datasets/'
-    dataset_filename = 'training-dataset-' + str(dimension) + 'd.npz'
+    dataset_location = "datasets/"
+    dataset_filename = "training-dataset-" + str(dimension) + "d.npz"
 
     # Input format is:
     # 0. 1. 2. ... n.
@@ -60,7 +72,7 @@ def dataset(dimension: int, source: str):
         acc += l.shape[0] * l.shape[1]
         interactions += l.shape[0]
         time += l.T[0].sum()
-        raw = l.astype('float32')  # dt, x_1, ... , x_n
+        raw = l.astype("float32")  # dt, x_1, ... , x_n
         raw_perfs.append(raw)
 
     print("total number of values:", acc)

@@ -1,11 +1,11 @@
-"""impsy.impsy: provides entry point main() to impsy.""" 
-
+"""impsy.impsy: provides entry point main() to impsy."""
 
 import click
 from .dataset import dataset
 from .train import train
 from .interaction import run
 from .tests import test_mdrnn, prediction_speed_test
+
 
 @click.group()
 def cli():

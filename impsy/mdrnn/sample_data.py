@@ -1,4 +1,5 @@
 """Manages Training Data for the Musical MDN and can generate fake datsets for testing."""
+
 import numpy as np
 import pandas as pd
 import random
@@ -16,8 +17,10 @@ def batch_generator(seq_len, batch_size, dim, corpus):
             l = random.choice(corpus)
             last_index = len(l) - seq_len - 1
             start_index = np.random.randint(0, high=last_index)
-            batch_X[i] = l[start_index:start_index+seq_len]
-            batch_y[i] = l[start_index+1:start_index+seq_len+1]  # .reshape(1,dim)
+            batch_X[i] = l[start_index : start_index + seq_len]
+            batch_y[i] = l[
+                start_index + 1 : start_index + seq_len + 1
+            ]  # .reshape(1,dim)
         yield batch_X, batch_y
 
 
@@ -31,7 +34,7 @@ def generate_data(samples=50000):
     t_data = t_data + t_r_data
     r_data = np.random.normal(size=NSAMPLE)
     x_data = np.sin(t_data) * 1.0 + (r_data * 0.05)
-    df = pd.DataFrame({'t': t_data, 'x': x_data})
+    df = pd.DataFrame({"t": t_data, "x": x_data})
     df.t = df.t.diff()
     df.t = df.t.fillna(1e-4)
     print(df.describe())
@@ -52,7 +55,7 @@ def generate_synthetic_3D_data():
     r_data = np.random.normal(size=NSAMPLE)
     x_data = (np.sin(t_data) + (r_data / 10.0) + 1) / 2.0
     y_data = (np.sin(t_data * 3.0) + (r_data / 10.0) + 1) / 2.0
-    df = pd.DataFrame({'a': x_data, 'b': y_data, 't': t_data})
+    df = pd.DataFrame({"a": x_data, "b": y_data, "t": t_data})
     df.t = df.t.diff()
     df.t = df.t.fillna(1e-4)
     print(df.describe())
