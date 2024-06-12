@@ -29,6 +29,7 @@ pandas = "^2.2.2"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
 flake8 = "^7.0.0"
+black = "^24.4.2"
 
 [build-system]
 requires = ["poetry-core"]
