@@ -84,7 +84,7 @@ class InteractionServer(object):
         import impsy.mdrnn as mdrnn
 
         click.secho(
-            f"Done. That took {round(time.time() - start_import, 2)} seconds.",
+            f"Done in {round(time.time() - start_import, 2)}s.",
             fg="yellow",
         )
 
