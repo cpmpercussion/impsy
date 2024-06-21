@@ -14,7 +14,7 @@ def test_model():
 def test_inference():
     """Test inference from a PredictiveMusicMDRNN model"""
     dimension = 8
-    num_test_steps = 5
+    num_test_steps = 20
     net = PredictiveMusicMDRNN(mode=NET_MODE_RUN, dimension=dimension)
     value = random_sample(out_dim=dimension)
     for i in range(num_test_steps):
@@ -24,7 +24,7 @@ def test_inference():
 
 def test_training():
     """Test training on a PredictiveMusicMDRNN model"""
-    num_epochs = 1
+    num_epochs = 2
     sequence_length = 100
     net = PredictiveMusicMDRNN(
         mode=NET_MODE_TRAIN,

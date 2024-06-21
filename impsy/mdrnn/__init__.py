@@ -154,10 +154,11 @@ def generate_sample(
 ):
     """Generate one forward prediction from a previous sample in format
     (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
-    params = model.predict(prev_sample.reshape(1, 1, out_dim) * SCALE_FACTOR)
+    model_output = model(prev_sample.reshape(1, 1, out_dim) * SCALE_FACTOR)
+    mdn_params = model_output[0].numpy()
     new_sample = (
         mdn.sample_from_output(
-            params[0], out_dim, n_mixtures, temp=pi_temp, sigma_temp=sigma_temp
+            mdn_params, out_dim, n_mixtures, temp=pi_temp, sigma_temp=sigma_temp
         )
         / SCALE_FACTOR
     )
