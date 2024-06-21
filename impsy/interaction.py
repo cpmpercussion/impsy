@@ -29,31 +29,22 @@ def setup_logging(dimension, location="logs/"):
     click.secho(f"Logging enabled: {log_file}", fg="green")
 
 
-def build_network(sess, compute_graph, config):
+def build_network(config):
     """Build the MDRNN, uses a high-level size parameter and dimension."""
     import impsy.mdrnn as mdrnn
-    import tensorflow.compat.v1 as tf
 
-    dimension = config["model"]["dimension"]
-    size = config["model"]["size"]
-    click.secho(f"MDRNN: Using {size} model.", fg="green")
-    model_config = mdrnn_config(size)
-    mdrnn_units = model_config["units"]
-    mdrnn_layers = model_config["layers"]
-    mdrnn_mixes = model_config["mixes"]
-    # construct the model
+    click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
+    model_config = mdrnn_config(config["model"]["size"])
     mdrnn.MODEL_DIR = "./models/"
-    tf.keras.backend.set_session(sess)
-    with compute_graph.as_default():
-        net = mdrnn.PredictiveMusicMDRNN(
-            mode=mdrnn.NET_MODE_RUN,
-            dimension=dimension,
-            n_hidden_units=mdrnn_units,
-            n_mixtures=mdrnn_mixes,
-            layers=mdrnn_layers,
-        )
-        net.pi_temp = config["model"]["pitemp"]
-        net.sigma_temp = config["model"]["sigmatemp"]
+    net = mdrnn.PredictiveMusicMDRNN(
+        mode=mdrnn.NET_MODE_RUN,
+        dimension=config["model"]["dimension"],
+        n_hidden_units=model_config["units"],
+        n_mixtures=model_config["mixes"],
+        layers=model_config["layers"],
+    )
+    net.pi_temp = config["model"]["pitemp"]
+    net.sigma_temp = config["model"]["sigmatemp"]
     click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
     return net
 
@@ -88,14 +79,13 @@ class InteractionServer(object):
         self.senders.append(self.websocket_sender)
 
         # Import Keras and tensorflow
-        ## TODO may be better to do this only when needed.
         click.secho("Importing MDRNN.", fg="yellow")
         start_import = time.time()
         import impsy.mdrnn as mdrnn
-        import tensorflow.compat.v1 as tf
 
         click.secho(
-            f"Done. That took {time.time() - start_import} seconds.", fg="yellow"
+            f"Done in {round(time.time() - start_import, 2)}s.",
+            fg="yellow",
         )
 
         # Interaction Loop Parameters
@@ -201,16 +191,12 @@ class InteractionServer(object):
             )
             self.send_back_values(output_values)
 
-    def make_prediction(self, sess, compute_graph, neural_net):
+    def make_prediction(self, neural_net):
         """Part of the interaction loop: reads input, makes predictions, outputs results"""
-        import tensorflow.compat.v1 as tf
-
         # First deal with user --> MDRNN prediction
         if self.user_to_rnn and not self.interface_input_queue.empty():
             item = self.interface_input_queue.get(block=True, timeout=None)
-            tf.keras.backend.set_session(sess)
-            with compute_graph.as_default():
-                rnn_output = neural_net.generate_touch(item)
+            rnn_output = neural_net.generate_touch(item)
             if self.rnn_to_sound:
                 self.rnn_output_buffer.put_nowait(rnn_output)
             self.interface_input_queue.task_done()
@@ -222,9 +208,7 @@ class InteractionServer(object):
             and not self.rnn_prediction_queue.empty()
         ):
             item = self.rnn_prediction_queue.get(block=True, timeout=None)
-            tf.keras.backend.set_session(sess)
-            with compute_graph.as_default():
-                rnn_output = neural_net.generate_touch(item)
+            rnn_output = neural_net.generate_touch(item)
             self.rnn_output_buffer.put_nowait(
                 rnn_output
             )  # put it in the playback queue.
@@ -298,28 +282,15 @@ class InteractionServer(object):
 
     def serve_forever(self):
         """Run the interaction server opening required IO."""
-        # Import Keras and tensorflow, doing this later to make CLI more responsive.
-        import impsy.mdrnn as mdrnn
-        import tensorflow.compat.v1 as tf
-
-        click.secho("Importing MDRNN.", fg="yellow")
-
-        # Build model
-        compute_graph = tf.Graph()
-        with compute_graph.as_default():
-            sess = tf.Session()
-        net = build_network(sess, compute_graph, self.config)
-
-        # Load model weights
+        click.secho("Building MDRNN.", fg="yellow")
+        net = build_network(self.config)
         click.secho("Preparing MDRNN.", fg="yellow")
-        tf.keras.backend.set_session(sess)
-        with compute_graph.as_default():
-            if self.config["model"]["file"] != "":
-                net.load_model(
-                    model_file=self.config["model"]["file"]
-                )  # load custom model.
-            else:
-                net.load_model()  # try loading from default file location.
+        if self.config["model"]["file"] != "":
+            net.load_model(
+                model_file=self.config["model"]["file"]
+            )  # load custom model.
+        else:
+            net.load_model()  # try loading from default file location.
 
         # Threads
         click.secho("Preparing MDRNN thread.", fg="yellow")
@@ -337,7 +308,7 @@ class InteractionServer(object):
             rnn_thread.start()
             click.secho("RNN Thread Started", fg="green")
             while True:
-                self.make_prediction(sess, compute_graph, net)
+                self.make_prediction(net)
                 if self.config["interaction"]["mode"] == "callresponse":
                     for sender in self.senders:
                         sender.handle()  # handle incoming inputs

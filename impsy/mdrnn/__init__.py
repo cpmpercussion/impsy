@@ -5,11 +5,10 @@ University of Oslo, Norway.
 """
 
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import keras_mdn_layer as mdn
 import time
 
-tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
 NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
 MODEL_DIR = "./models/"
@@ -57,7 +56,6 @@ def build_model(
     out_dim=2,
     time_dist=True,
     inference=False,
-    compile_model=True,
     print_summary=True,
 ):
     """Builds a EMPI MDRNN model for training or inference.
@@ -70,44 +68,58 @@ def build_model(
     out_dim : number of dimensions for the model = number of degrees of freedom + 1 (time)
     time_dist : time distributed or not (default True)
     inference : inference network or training (default False)
-    compile_model : compiles the model (default True)
-    print_summary : print summary after creating mdoe (default True)
+    print_summary : print summary after creating mode (default True)
     """
     print("Building EMPI Model...")
-    # Set up training mode
-    stateful = False
-    # batch_shape = None
-    batch_size = None
-    # Set up inference mode.
     if inference:
-        stateful = True
-        batch_size = 1
-        # batch_shape = (1, 1, out_dim)
-    inputs = tf.keras.layers.Input(
-        shape=(seq_len, out_dim), name="inputs", batch_size=batch_size
-    )
-    # batch_shape=batch_shape)
-    lstm_in = inputs  # starter input for lstm
+        state_input_output = True
+    else:
+        state_input_output = False
+    data_input = tf.keras.layers.Input(shape=(seq_len, out_dim), name="inputs")
+    lstm_in = data_input  # starter input for lstm
+    state_inputs = []  # storage for LSTM state inputs
+    state_outputs = []  # storage for LSTM state outputs
+
     for layer_i in range(layers):
-        ret_seq = True
+        return_sequences = True
         if (layer_i == layers - 1) and not time_dist:
             # return sequences false if last layer, and not time distributed.
-            ret_seq = False
-        lstm_out = tf.keras.layers.LSTM(
+            return_sequences = False
+        state_input = None
+        if state_input_output:
+            state_h_input = tf.keras.layers.Input(
+                shape=(hidden_units,), name=f"state_h_{layer_i}"
+            )
+            state_c_input = tf.keras.layers.Input(
+                shape=(hidden_units,), name=f"state_c_{layer_i}"
+            )
+            state_input = [state_h_input, state_c_input]
+            state_inputs += state_input
+        lstm_out, state_h_output, state_c_output = tf.keras.layers.LSTM(
             hidden_units,
-            name="lstm" + str(layer_i),
-            return_sequences=ret_seq,
-            stateful=stateful,
-        )(lstm_in)
+            name=f"lstm_{layer_i}",
+            return_sequences=return_sequences,
+            return_state=True,  # state_input_output # better to keep these outputs and just not use.
+        )(lstm_in, initial_state=state_input)
         lstm_in = lstm_out
+        state_outputs += [state_h_output, state_c_output]
 
     mdn_layer = mdn.MDN(out_dim, num_mixtures, name="mdn_outputs")
     if time_dist:
         mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name="td_mdn")
     mdn_out = mdn_layer(lstm_out)  # apply mdn
-    model = tf.keras.models.Model(inputs=inputs, outputs=mdn_out)
+    if inference:
+        # for inference, need to track state of the model
+        inputs = [data_input] + state_inputs
+        outputs = [mdn_out] + state_outputs
+    else:
+        # for training we don't need to keep track of state in the model
+        inputs = data_input
+        outputs = mdn_out
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
 
-    if compile_model:
+    if not inference:
+        # only need loss function and compile when training
         loss_func = mdn.get_mixture_loss_func(out_dim, num_mixtures)
         optimizer = tf.keras.optimizers.Adam()
         model.compile(loss=loss_func, optimizer=optimizer)
@@ -128,7 +140,6 @@ def load_inference_model(
         layers=layers,
         time_dist=False,
         inference=True,
-        compile_model=False,
         print_summary=True,
         predict_moving=predict_moving,
     )
@@ -151,61 +162,9 @@ def proc_generated_touch(x_input, out_dim=2):
     such that dt > 0, and 0 <= x <= 1"""
     dt = np.maximum(
         x_input[0], 0.000454
-    )  # TODO: see if the min value of dt shoud change.
+    )  # TODO: see if the min value of dt should change.
     x_output = np.minimum(np.maximum(x_input[1:], 0), 1)
     return np.concatenate([np.array([dt]), x_output])
-
-
-def generate_sample(
-    model, n_mixtures, prev_sample, pi_temp=1.0, sigma_temp=0.0, out_dim=2
-):
-    """Generate one forward prediction from a previous sample in format
-    (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
-    params = model.predict(prev_sample.reshape(1, 1, out_dim) * SCALE_FACTOR)
-    new_sample = (
-        mdn.sample_from_output(
-            params[0], out_dim, n_mixtures, temp=pi_temp, sigma_temp=sigma_temp
-        )
-        / SCALE_FACTOR
-    )
-    new_sample = new_sample.reshape(
-        out_dim,
-    )
-    return new_sample
-
-
-def generate_performance(
-    model,
-    n_mixtures,
-    first_sample,
-    time_limit=None,
-    steps_limit=1000,
-    pi_temp=1.0,
-    sigma_temp=0.0,
-    out_dim=2,
-):
-    """Generates a performance of (dt, x) pairs, up to a step_limit.
-    Time limit is not presently implemented.
-    """
-    time = 0
-    steps = 0
-    prev_sample = first_sample
-    print(prev_sample)
-    performance = [prev_sample.reshape((out_dim,))]
-    while steps < steps_limit:  # and time < time_limit
-        params = model.predict(prev_sample.reshape(1, 1, out_dim) * SCALE_FACTOR)
-        prev_sample = mdn.sample_from_output(
-            params[0], out_dim, n_mixtures, temp=pi_temp, sigma_temp=sigma_temp
-        )
-        prev_sample = prev_sample / SCALE_FACTOR
-        output_touch = prev_sample.reshape(
-            out_dim,
-        )
-        output_touch = proc_generated_touch(output_touch)
-        performance.append(output_touch.reshape((out_dim,)))
-        steps += 1
-        time += output_touch[0]
-    return np.array(performance)
 
 
 class PredictiveMusicMDRNN(object):
@@ -236,6 +195,7 @@ class PredictiveMusicMDRNN(object):
         # Sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
+        # self.name="impsy-mdrnn"
 
         if self.mode is NET_MODE_TRAIN:
             self.model = build_model(
@@ -246,7 +206,6 @@ class PredictiveMusicMDRNN(object):
                 out_dim=self.dimension,
                 time_dist=True,
                 inference=False,
-                compile_model=True,
                 print_summary=True,
             )
         else:
@@ -258,11 +217,23 @@ class PredictiveMusicMDRNN(object):
                 out_dim=self.dimension,
                 time_dist=False,
                 inference=True,
-                compile_model=False,
                 print_summary=True,
             )
 
         self.run_name = self.get_run_name()
+        self.reset_lstm_states()
+
+    def reset_lstm_states(self):
+        states = []
+        for i in range(self.n_rnn_layers):
+            states += [
+                np.zeros((1, self.n_hidden_units), dtype=np.float32),
+                np.zeros((1, self.n_hidden_units), dtype=np.float32),
+            ]
+        assert (
+            len(states) == self.n_rnn_layers * 2
+        ), "length of states list needs to be RNN layers times 2 (h and c for each)"
+        self.lstm_states = states
 
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
@@ -334,28 +305,34 @@ class PredictiveMusicMDRNN(object):
 
     def prepare_model_for_running(self):
         """Reset RNN state."""
-        self.model.reset_states()  # reset LSTM state.
+        self.reset_lstm_states()  # reset LSTM state.
 
     def generate_touch(self, prev_sample):
-        # TODO - do something with the session.
-        output = generate_sample(
-            self.model,
-            self.n_mixtures,
-            prev_sample,
-            pi_temp=self.pi_temp,
-            sigma_temp=self.sigma_temp,
-            out_dim=self.dimension,
-        )
-        return output
+        """Generate one forward prediction from a previous sample in format
+        (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
+        assert (
+            len(prev_sample) == self.dimension
+        ), "Only works with samples of the same dimension as the network"
+        # print("Input sample", prev_sample)
+        input_list = [
+            prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
+        ] + self.lstm_states
+        model_output = self.model(input_list)
+        mdn_params = model_output[0][0].numpy()
+        self.lstm_states = model_output[1:]  # update storage of LSTM state
 
-    def generate_performance(self, first_sample, number):
-        return generate_performance(
-            self.model,
-            self.n_mixtures,
-            first_sample,
-            time_limit=None,
-            steps_limit=number,
-            pi_temp=self.pi_temp,
-            sigma_temp=self.sigma_temp,
-            out_dim=self.dimension,
+        # sample from the MDN:
+        new_sample = (
+            mdn.sample_from_output(
+                mdn_params,
+                self.dimension,
+                self.n_mixtures,
+                temp=self.pi_temp,
+                sigma_temp=self.sigma_temp,
+            )
+            / SCALE_FACTOR
         )
+        new_sample = new_sample.reshape(
+            self.dimension,
+        )
+        return new_sample
