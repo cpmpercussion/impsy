@@ -2,23 +2,16 @@
 
 import random
 import numpy as np
-import os
 import datetime
 import click
 from .utils import mdrnn_config
 
 
-# Input and output to serial are bytes (0-255)
-# Output to Pd is a float (0-1)
-
-
-# Model Hyperparameters
+# Model training hyperparameters
 SEQ_LEN = 50
 SEQ_STEP = 1
 TIME_DIST = True
-# Training Hyperparameters:
 VAL_SPLIT = 0.10
-# Set random seed for reproducibility
 SEED = 2345
 
 
@@ -74,21 +67,8 @@ def train(
     batchsize: int,
 ):
     """Trains a predictive music interaction model."""
-
-    # Hack to get openMP working annoyingly.
-    os.environ["KMP_DUPLICATE_LIB_OK"] = "True"  # TODO: is this necessary?
-    # Import IMPS MDRNN at this point so CLI is fast.
     import impsy.mdrnn as mdrnn
-    from tensorflow.compat.v1 import keras
-    import tensorflow.compat.v1 as tf
-
-    # Set up environment.
-    # Only for GPU use:
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
-    tf.keras.backend.set_session(sess)
+    from tensorflow import keras
 
     model_config = mdrnn_config(modelsize)
     mdrnn_units = model_config["units"]
@@ -106,13 +86,11 @@ def train(
     # Load dataset
     dataset_location = f"{source}/"
     dataset_filename = f"training-dataset-{str(dimension)}d.npz"
-
     with np.load(dataset_location + dataset_filename, allow_pickle=True) as loaded:
-        perfs = loaded["perfs"]
+        corpus = loaded["perfs"]
 
-    print("Loaded perfs:", len(perfs))
-    print("Num touches:", np.sum([len(l) for l in perfs]))
-    corpus = perfs  # might need to do some processing here...processing
+    print("Loaded perfs:", len(corpus))
+    print("Num touches:", np.sum([len(l) for l in corpus]))
     # Restrict corpus to sequences longer than the corpus.
     corpus = [l for l in corpus if len(l) > SEQ_LEN + 1]
     print("Corpus Examples:", len(corpus))
