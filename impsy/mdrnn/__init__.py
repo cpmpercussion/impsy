@@ -5,11 +5,10 @@ University of Oslo, Norway.
 """
 
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import keras_mdn_layer as mdn
 import time
 
-tf.logging.set_verbosity(tf.logging.INFO)  # set logging.
 NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
 MODEL_DIR = "./models/"
@@ -57,7 +56,6 @@ def build_model(
     out_dim=2,
     time_dist=True,
     inference=False,
-    compile_model=True,
     print_summary=True,
 ):
     """Builds a EMPI MDRNN model for training or inference.
@@ -70,19 +68,15 @@ def build_model(
     out_dim : number of dimensions for the model = number of degrees of freedom + 1 (time)
     time_dist : time distributed or not (default True)
     inference : inference network or training (default False)
-    compile_model : compiles the model (default True)
-    print_summary : print summary after creating mdoe (default True)
+    print_summary : print summary after creating mode (default True)
     """
     print("Building EMPI Model...")
-    # Set up training mode
-    stateful = False
-    # batch_shape = None
-    batch_size = None
-    # Set up inference mode.
     if inference:
         stateful = True
         batch_size = 1
-        # batch_shape = (1, 1, out_dim)
+    else:
+        stateful = False
+        batch_size = None
     inputs = tf.keras.layers.Input(
         shape=(seq_len, out_dim), name="inputs", batch_size=batch_size
     )
@@ -107,7 +101,7 @@ def build_model(
     mdn_out = mdn_layer(lstm_out)  # apply mdn
     model = tf.keras.models.Model(inputs=inputs, outputs=mdn_out)
 
-    if compile_model:
+    if not inference:
         loss_func = mdn.get_mixture_loss_func(out_dim, num_mixtures)
         optimizer = tf.keras.optimizers.Adam()
         model.compile(loss=loss_func, optimizer=optimizer)
@@ -128,7 +122,6 @@ def load_inference_model(
         layers=layers,
         time_dist=False,
         inference=True,
-        compile_model=False,
         print_summary=True,
         predict_moving=predict_moving,
     )
@@ -236,6 +229,8 @@ class PredictiveMusicMDRNN(object):
         # Sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
+        # self.name="impsy-mdrnn"
+
 
         if self.mode is NET_MODE_TRAIN:
             self.model = build_model(
@@ -246,7 +241,6 @@ class PredictiveMusicMDRNN(object):
                 out_dim=self.dimension,
                 time_dist=True,
                 inference=False,
-                compile_model=True,
                 print_summary=True,
             )
         else:
@@ -258,7 +252,6 @@ class PredictiveMusicMDRNN(object):
                 out_dim=self.dimension,
                 time_dist=False,
                 inference=True,
-                compile_model=False,
                 print_summary=True,
             )
 

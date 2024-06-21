@@ -137,7 +137,6 @@ def train(
         out_dim=dimension,
         time_dist=TIME_DIST,
         inference=False,
-        compile_model=True,
         print_summary=True,
     )
 

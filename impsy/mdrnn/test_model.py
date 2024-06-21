@@ -1,7 +1,7 @@
 from . import PredictiveMusicMDRNN, NET_MODE_RUN, NET_MODE_TRAIN
 from . import slice_sequence_examples, seq_to_overlapping_format, random_sample
 from . import sample_data
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import numpy as np
 
 
