@@ -27,6 +27,7 @@ click = "^8.1.7"
 pandas = "^2.2.2"
 
 [tool.poetry.group.dev.dependencies]
+keras-mdn-layer = { git = "https://github.com/cpmpercussion/keras-mdn-layer.git", branch = "master" }
 pytest = "^8.2.2"
 flake8 = "^7.0.0"
 black = "^24.4.2"
