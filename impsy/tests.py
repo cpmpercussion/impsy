@@ -24,8 +24,7 @@ def build_network(dimension=4, units=64, mixes=5, layers=2):
 @click.command(name="test-mdrnn")
 def test_mdrnn():
     """This command simply loads the MDRNN to test that it works and how long it takes."""
-    # import tensorflow, do this now to make CLI more responsive.
-    print("Building MDRNN.")
+    click.secho("Building MDRNN.")
     start_build = time.time()
     model_config = mdrnn_config("s")
     build_network(
@@ -34,20 +33,13 @@ def test_mdrnn():
         model_config["mixes"],
         model_config["layers"],
     )
-    print("Done. That took", round(time.time() - start_build, 2), "seconds.")
+    click.secho(f"Done in {round(time.time() - start_build, 2)}s.")
 
 
 @click.command(name="test-speed")
 def prediction_speed_test():
     """This command runs a speed test experiment with different sized MDRNN models. The output is written to a CSV file."""
-    start_import = time.time()
     import impsy.mdrnn as mdrnn
-
-    print(
-        "Importing MDRNN packages took",
-        round(time.time() - start_import, 2),
-        "seconds.",
-    )
 
     def request_rnn_prediction(input_value, net):
         """Accesses a single prediction from the RNN."""
@@ -88,4 +80,4 @@ def prediction_speed_test():
             experiments.extend(times)
     total_experiment = pd.DataFrame.from_records(experiments)
     total_experiment.to_csv("total_exp.csv")
-    print(total_experiment.describe())
+    click.secho(total_experiment.describe())
