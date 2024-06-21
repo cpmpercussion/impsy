@@ -89,9 +89,9 @@ def train(
     with np.load(dataset_location + dataset_filename, allow_pickle=True) as loaded:
         corpus = loaded["perfs"]
 
-    print("Loaded perfs:", len(corpus))
+    print("Loaded performances:", len(corpus))
     print("Num touches:", np.sum([len(l) for l in corpus]))
-    # Restrict corpus to sequences longer than the corpus.
+    # Restrict corpus to performances longer than the training sequence length.
     corpus = [l for l in corpus if len(l) > SEQ_LEN + 1]
     print("Corpus Examples:", len(corpus))
     # Prepare training data as X and Y.
@@ -134,7 +134,8 @@ def train(
     )
     date_string = datetime.datetime.today().strftime("%Y%m%d-%H_%M_%S")
 
-    filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.hdf5"
+    # filepath = model_dir + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.keras"
+    filepath = model_dir + model_name + "-ckpt.keras"
     checkpoint = keras.callbacks.ModelCheckpoint(
         filepath, monitor="val_loss", verbose=1, save_best_only=True, mode="min"
     )
