@@ -75,12 +75,10 @@ def build_model(
         state_input_output = True
     else:
         state_input_output = False
-    data_input = tf.keras.layers.Input(
-        shape=(seq_len, out_dim), name="inputs"
-    )
+    data_input = tf.keras.layers.Input(shape=(seq_len, out_dim), name="inputs")
     lstm_in = data_input  # starter input for lstm
-    state_inputs = [] # storage for LSTM state inputs
-    state_outputs = [] # storage for LSTM state outputs
+    state_inputs = []  # storage for LSTM state inputs
+    state_outputs = []  # storage for LSTM state outputs
 
     for layer_i in range(layers):
         return_sequences = True
@@ -89,15 +87,19 @@ def build_model(
             return_sequences = False
         state_input = None
         if state_input_output:
-            state_h_input = tf.keras.layers.Input(shape=(hidden_units,), name=f"state_h_{layer_i}")
-            state_c_input = tf.keras.layers.Input(shape=(hidden_units,), name=f"state_c_{layer_i}")
+            state_h_input = tf.keras.layers.Input(
+                shape=(hidden_units,), name=f"state_h_{layer_i}"
+            )
+            state_c_input = tf.keras.layers.Input(
+                shape=(hidden_units,), name=f"state_c_{layer_i}"
+            )
             state_input = [state_h_input, state_c_input]
             state_inputs += state_input
         lstm_out, state_h_output, state_c_output = tf.keras.layers.LSTM(
             hidden_units,
             name=f"lstm_{layer_i}",
             return_sequences=return_sequences,
-            return_state= True # state_input_output # better to keep these outputs and just not use.
+            return_state=True,  # state_input_output # better to keep these outputs and just not use.
         )(lstm_in, initial_state=state_input)
         lstm_in = lstm_out
         state_outputs += [state_h_output, state_c_output]
@@ -195,7 +197,6 @@ class PredictiveMusicMDRNN(object):
         self.sigma_temp = 0.01
         # self.name="impsy-mdrnn"
 
-
         if self.mode is NET_MODE_TRAIN:
             self.model = build_model(
                 seq_len=self.sequence_length,
@@ -222,12 +223,16 @@ class PredictiveMusicMDRNN(object):
         self.run_name = self.get_run_name()
         self.reset_lstm_states()
 
-
     def reset_lstm_states(self):
         states = []
         for i in range(self.n_rnn_layers):
-            states += [np.zeros((1,self.n_hidden_units), dtype=np.float32), np.zeros((1,self.n_hidden_units), dtype=np.float32)]
-        assert len(states) == self.n_rnn_layers * 2, "length of states list needs to be RNN layers times 2 (h and c for each)"
+            states += [
+                np.zeros((1, self.n_hidden_units), dtype=np.float32),
+                np.zeros((1, self.n_hidden_units), dtype=np.float32),
+            ]
+        assert (
+            len(states) == self.n_rnn_layers * 2
+        ), "length of states list needs to be RNN layers times 2 (h and c for each)"
         self.lstm_states = states
 
     def model_name(self):
@@ -305,17 +310,25 @@ class PredictiveMusicMDRNN(object):
     def generate_touch(self, prev_sample):
         """Generate one forward prediction from a previous sample in format
         (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
-        assert len(prev_sample) == self.dimension, "Only works with samples of the same dimension as the network"
+        assert (
+            len(prev_sample) == self.dimension
+        ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_sample)
-        input_list = [prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR] + self.lstm_states
+        input_list = [
+            prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
+        ] + self.lstm_states
         model_output = self.model(input_list)
         mdn_params = model_output[0][0].numpy()
-        self.lstm_states = model_output[1:] # update storage of LSTM state
+        self.lstm_states = model_output[1:]  # update storage of LSTM state
 
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(
-                mdn_params, self.dimension, self.n_mixtures, temp=self.pi_temp, sigma_temp=self.sigma_temp
+                mdn_params,
+                self.dimension,
+                self.n_mixtures,
+                temp=self.pi_temp,
+                sigma_temp=self.sigma_temp,
             )
             / SCALE_FACTOR
         )

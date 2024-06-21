@@ -9,6 +9,7 @@ pd.set_option("display.float_format", lambda x: "%.2f" % x)
 def build_network(dimension=4, units=64, mixes=5, layers=2):
     """Build an MDRNN model."""
     import impsy.mdrnn as mdrnn
+
     mdrnn.MODEL_DIR = "./models/"
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
@@ -41,7 +42,12 @@ def prediction_speed_test():
     """This command runs a speed test experiment with different sized MDRNN models. The output is written to a CSV file."""
     start_import = time.time()
     import impsy.mdrnn as mdrnn
-    print("Importing MDRNN packages took", round(time.time() - start_import, 2), "seconds.")
+
+    print(
+        "Importing MDRNN packages took",
+        round(time.time() - start_import, 2),
+        "seconds.",
+    )
 
     def request_rnn_prediction(input_value, net):
         """Accesses a single prediction from the RNN."""
