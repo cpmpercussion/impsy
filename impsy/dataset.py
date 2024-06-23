@@ -75,10 +75,14 @@ def dataset(dimension: int, source: str):
         raw = l.astype("float32")  # dt, x_1, ... , x_n
         raw_perfs.append(raw)
 
-    print("total number of values:", acc)
-    print("total number of interactions:", interactions)
-    print("total time represented:", time)
-    print("total number of perfs in raw array:", len(raw_perfs))
+    if acc == 0:
+        click.secho("Zero values to add to dataset! aborting.", fg='red')
+        return
+
+    click.secho(f"total number of values: {acc}", fg="blue")
+    click.secho(f"total number of interactions: {interactions}", fg="blue")
+    click.secho(f"total time represented: {time}", fg="blue")
+    click.secho(f"total number of perfs in raw array: {len(raw_perfs)}", fg="blue")
     raw_perfs = np.array(raw_perfs)
     np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)
-    print("done saving:", dataset_location + dataset_filename)
+    click.secho("done saving: {dataset_location + dataset_filename}", fg="green")
