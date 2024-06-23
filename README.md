@@ -3,6 +3,7 @@
 ![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580176.svg)](https://doi.org/10.5281/zenodo.2580176)
 [![Install and run IMPSY](https://github.com/cpmpercussion/imps/actions/workflows/python-app.yml/badge.svg)](https://github.com/cpmpercussion/imps/actions/workflows/python-app.yml)
+[![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/imps/badge.svg?branch=main)](https://coveralls.io/github/cpmpercussion/imps?branch=main)
 
 ![Predictive Musical Interaction](https://github.com/cpmpercussion/imps/raw/main/images/predictive_interaction.png)
 

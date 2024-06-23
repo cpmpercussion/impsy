@@ -31,6 +31,7 @@ pandas = "^2.2.2"
 pytest = "^8.2.2"
 flake8 = "^7.0.0"
 black = "^24.4.2"
+coveralls = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core"]
