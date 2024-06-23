@@ -1,5 +1,5 @@
 """
-EMPI MDRNN Model.
+IMPSY MDRNN Model.
 Charles P. Martin, 2018
 University of Oslo, Norway.
 """
@@ -133,7 +133,7 @@ def load_inference_model(
 ):
     """Returns an IMPS model loaded from a file"""
     # TODO: make this parse the name to get the hyperparameters.
-    decoder = decoder = build_model(
+    decoder = build_model(
         seq_len=1,
         hidden_units=units,
         num_mixtures=mixtures,

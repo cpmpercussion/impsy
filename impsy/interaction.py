@@ -31,7 +31,7 @@ def setup_logging(dimension, location="logs/"):
 
 def build_network(config):
     """Build the MDRNN, uses a high-level size parameter and dimension."""
-    import impsy.mdrnn as mdrnn
+    from . import mdrnn
 
     click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
     model_config = mdrnn_config(config["model"]["size"])
@@ -78,7 +78,7 @@ class InteractionServer(object):
         )
         self.senders.append(self.websocket_sender)
 
-        # Import Keras and tensorflow
+        # Import MDRNn
         click.secho("Importing MDRNN.", fg="yellow")
         start_import = time.time()
         import impsy.mdrnn as mdrnn

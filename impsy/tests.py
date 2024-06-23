@@ -3,12 +3,12 @@ import time
 from .utils import mdrnn_config
 import pandas as pd
 
-pd.set_option("display.float_format", lambda x: "%.2f" % x)
+pd.set_option("display.float_format", lambda x: "%.4f" % x)
 
 
 def build_network(dimension=4, units=64, mixes=5, layers=2):
     """Build an MDRNN model."""
-    import impsy.mdrnn as mdrnn
+    from . import mdrnn
 
     mdrnn.MODEL_DIR = "./models/"
     net = mdrnn.PredictiveMusicMDRNN(
@@ -39,7 +39,7 @@ def test_mdrnn():
 @click.command(name="test-speed")
 def prediction_speed_test():
     """This command runs a speed test experiment with different sized MDRNN models. The output is written to a CSV file."""
-    import impsy.mdrnn as mdrnn
+    from . import mdrnn
 
     def request_rnn_prediction(input_value, net):
         """Accesses a single prediction from the RNN."""

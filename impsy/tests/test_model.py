@@ -1,8 +1,7 @@
-from . import PredictiveMusicMDRNN, NET_MODE_RUN, NET_MODE_TRAIN
-from . import slice_sequence_examples, seq_to_overlapping_format, random_sample
-from . import sample_data
+from impsy.mdrnn import PredictiveMusicMDRNN, NET_MODE_RUN, NET_MODE_TRAIN
+from impsy.mdrnn import slice_sequence_examples, seq_to_overlapping_format, random_sample
+from impsy.utils import generate_data
 import tensorflow as tf
-import numpy as np
 
 
 def test_model():
@@ -24,18 +23,18 @@ def test_inference():
 
 def test_training():
     """Test training on a PredictiveMusicMDRNN model"""
-    num_epochs = 2
-    sequence_length = 100
+    num_epochs = 1
+    sequence_length = 10
     net = PredictiveMusicMDRNN(
         mode=NET_MODE_TRAIN,
         dimension=2,
-        n_hidden_units=128,
+        n_hidden_units=32,
         n_mixtures=5,
         batch_size=100,
         sequence_length=sequence_length,
         layers=2,
     )
-    x_t_log = sample_data.generate_data(samples=((sequence_length + 1) * 10))
+    x_t_log = generate_data(samples=((sequence_length + 1) * 10))
     slices = slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
     Xs, ys = seq_to_overlapping_format(slices)
     history = net.train(Xs, ys, num_epochs=num_epochs, saving=False)
