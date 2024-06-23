@@ -22,6 +22,7 @@ jobs:
     - uses: actions/setup-python@v3
       with:
         python-version: "3.11"
+        cache: "poetry"
     - uses: abatilo/actions-poetry@v2
     - name: Install dependencies
       run: |
@@ -37,7 +38,7 @@ jobs:
       run: |
         poetry run coverage run --source=impsy -m pytest 
     - name: Upload coverage.
-      run: coveralls
+      run: poetry run coveralls
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run the main file just to prove it works.
