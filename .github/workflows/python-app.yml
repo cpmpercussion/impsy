@@ -35,7 +35,11 @@ jobs:
         poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run tests.
       run: |
-        poetry run pytest
+        poetry run coverage run --source=impsy -m pytest 
+    - name: Upload coverage.
+      run: coveralls
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run the main file just to prove it works.
       run: |
         poetry run ./start_impsy.py --help
