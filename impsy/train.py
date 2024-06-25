@@ -8,11 +8,44 @@ from .utils import mdrnn_config
 
 
 # Model training hyperparameters
+
 SEQ_LEN = 50
 SEQ_STEP = 1
 TIME_DIST = True
 VAL_SPLIT = 0.10
 SEED = 2345
+
+# Functions for slicing up data
+
+def slice_sequence_examples(sequence, num_steps, step_size=1):
+    """Slices a sequence into examples of length
+    num_steps with step size step_size."""
+    xs = []
+    for i in range((len(sequence) - num_steps) // step_size + 1):
+        example = sequence[(i * step_size) : (i * step_size) + num_steps]
+        xs.append(example)
+    return xs
+
+
+def seq_to_overlapping_format(examples):
+    """Takes sequences of seq_len+1 and returns overlapping
+    sequences of seq_len."""
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[1:])
+    return (xs, ys)
+
+
+def seq_to_singleton_format(examples):
+    """Return the examples in seq to singleton format."""
+    xs = []
+    ys = []
+    for ex in examples:
+        xs.append(ex[:-1])
+        ys.append(ex[-1])
+    return (xs, ys)
 
 
 @click.command(name="train")
