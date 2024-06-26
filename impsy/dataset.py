@@ -73,6 +73,7 @@ def generate_dataset(
     raw_perfs = np.array(raw_perfs)
     np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)
     click.secho("done saving: {dataset_location + dataset_filename}", fg="green")
+    return dataset_filename
 
 
 @click.command(name="dataset")

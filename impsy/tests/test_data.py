@@ -1,7 +1,9 @@
 from impsy import dataset
+from impsy import train
 import numpy as np
 import os
 import random
+import tensorflow as tf
 
 
 def create_test_log_files(location="tests/logs", dimension=4, number=10, events=50):
@@ -50,3 +52,51 @@ def test_dataset_command():
         dimension=dimension, source="tests/logs", destination=test_dataset_area
     )
     remove_test_log_files(log_files)
+
+def test_train_command():
+    """Test the training command"""
+
+    dimension = 4
+    number_files = 20
+    model_size = 'xs'
+    batch_size = 1
+    epochs = 1
+
+    # Setup directories
+    log_area = "tests/logs"
+    dataset_area = "tests/datasets"
+    model_area = "test/models"
+    for d in [log_area, dataset_area, model_area]:
+        os.makedirs(d, exist_ok=True)
+
+    # Generate Log Files
+    log_files = create_test_log_files(
+        location=log_area, dimension=dimension, number=number_files, events=55
+    )
+
+    # Generate a dataset
+    dataset_file = dataset.generate_dataset(
+        dimension=dimension, source=log_area, destination=dataset_area
+    )
+
+    # Clean up log files
+    remove_test_log_files(log_files)
+
+
+    # Train using that dataset
+    history = train.train_mdrnn(
+        dimension=dimension, 
+        dataset_location=dataset_area, 
+        model_size=model_size, 
+        early_stopping=False,
+        patience=10,
+        num_epochs=epochs,
+        batch_size=batch_size,
+        save_location=model_area
+        )
+    
+    os.remove(dataset_area + "/" + dataset_file)
+
+    assert isinstance(history, tf.keras.callbacks.History)
+
+

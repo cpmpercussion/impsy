@@ -115,10 +115,12 @@ def train_mdrnn(
     )
 
     # Save final Model
-    model_name = mdrnn_manager.model_name
-    mdrnn_manager.model.save_weights(save_location + "/" + model_name + ".h5")
+    model_file = save_location + "/" + mdrnn_manager.model_name()
+    mdrnn_manager.model.save_weights(f"{model_file}.h5")
     # TODO transfer weights to an inference model and save that instead.
-    mdrnn_manager.model.save_model(save_location + "/" + model_name + ".keras")
+    mdrnn_manager.model.save(f"{model_file}.keras")
+    # Return the history in case.
+    return history
 
 
 @click.command(name="train")
