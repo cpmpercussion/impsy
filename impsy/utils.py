@@ -30,26 +30,7 @@ def mdrnn_config(size: str):
     return SIZE_TO_PARAMETERS[size]
 
 
-# Manages Training Data for the Musical MDN and can generate fake datsets for testing.
-
-
-def batch_generator(seq_len, batch_size, dim, corpus):
-    """Returns a generator to cut up datasets into
-    batches of features and labels."""
-    # generator = batch_generator(SEQ_LEN, BATCH_SIZE, 3, corpus)
-    batch_X = np.zeros((batch_size, seq_len, dim))
-    batch_y = np.zeros((batch_size, dim))
-    while True:
-        for i in range(batch_size):
-            # choose random example
-            l = random.choice(corpus)
-            last_index = len(l) - seq_len - 1
-            start_index = np.random.randint(0, high=last_index)
-            batch_X[i] = l[start_index : start_index + seq_len]
-            batch_y[i] = l[
-                start_index + 1 : start_index + seq_len + 1
-            ]  # .reshape(1,dim)
-        yield batch_X, batch_y
+# Fake data generator for tests.
 
 
 def fuzzy_sine_function(t, scale=1.0, fuzz_factor=0.05):
