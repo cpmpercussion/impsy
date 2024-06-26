@@ -47,4 +47,8 @@ jobs:
     - name: Run the test-mdrnn command to see that it works.
       run: |
         poetry run ./start_impsy.py test-mdrnn
-
+    - name: refresh coverage badge
+      uses: fjogeleit/http-request-action@master
+      with:
+        url: https://camo.githubusercontent.com/46e89dfeb8bfbb9f0d13e8c5ed0d3779851bf0ecde89e303a3bf2a91bd956039/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f63706d70657263757373696f6e2f696d70732f62616467652e7376673f6272616e63683d6d61696e
+        method: PURGE
