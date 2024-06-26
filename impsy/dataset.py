@@ -6,7 +6,7 @@ import os
 import click
 
 
-def transform_log_to_sequence_example(logfile, dimension):
+def transform_log_to_sequence_example(logfile: str, dimension: int):
     data_names = ["x" + str(i) for i in range(dimension - 1)]
     column_names = ["date", "source"] + data_names
     perf_df = pd.read_csv(
@@ -22,22 +22,7 @@ def transform_log_to_sequence_example(logfile, dimension):
     return np.array(perf_df[["t"] + data_names])
 
 
-@click.command(name="dataset")
-@click.option(
-    "-D",
-    "--dimension",
-    type=int,
-    default=2,
-    help="The dimension of the data to model, must be >= 2.",
-)
-@click.option(
-    "-S",
-    "--source",
-    type=str,
-    default="logs",
-    help="The source directory to obtain .log files.",
-)
-def dataset(dimension: int, source: str):
+def generate_dataset(dimension: int, source: str):
     """Generate a dataset from .log files in the log directory."""
     # Load up the performances
     log_location = f"{source}/"
@@ -86,3 +71,23 @@ def dataset(dimension: int, source: str):
     raw_perfs = np.array(raw_perfs)
     np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)
     click.secho("done saving: {dataset_location + dataset_filename}", fg="green")
+
+
+@click.command(name="dataset")
+@click.option(
+    "-D",
+    "--dimension",
+    type=int,
+    default=2,
+    help="The dimension of the data to model, must be >= 2.",
+)
+@click.option(
+    "-S",
+    "--source",
+    type=str,
+    default="logs",
+    help="The source directory to obtain .log files.",
+)
+def dataset(dimension: int, source: str):
+    """Generate a dataset from .log files in the log directory."""
+    generate_dataset(dimension, source)
