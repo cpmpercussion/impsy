@@ -18,7 +18,9 @@ def test_inference():
     value = mdrnn.random_sample(out_dim=dimension)
     for i in range(num_test_steps):
         value = net.generate_touch(value)
+        proc_touch = mdrnn.proc_generated_touch(value, dimension)
     assert len(value) == dimension
+    assert len(proc_touch == dimension)
 
 
 def test_training():
