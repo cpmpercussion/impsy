@@ -1,5 +1,5 @@
 from impsy import mdrnn
-from impsy import train 
+from impsy import train
 from impsy import utils
 import tensorflow as tf
 
@@ -34,18 +34,19 @@ def test_training():
         dimension=dimension,
         n_hidden_units=16,
         n_mixtures=5,
-        batch_size=batch_size,
         sequence_length=sequence_length,
         layers=2,
     )
-    x_t_log = utils.generate_data(samples=((sequence_length + 1) * batch_size), dimension=dimension)
+    x_t_log = utils.generate_data(
+        samples=((sequence_length + 1) * batch_size), dimension=dimension
+    )
     slices = train.slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
     Xs, ys = train.seq_to_overlapping_format(slices)
-    history = net.train(Xs, ys, num_epochs=num_epochs, saving=False)
+    history = net.train(Xs, ys, batch_size=batch_size, epochs=num_epochs, logging=False)
     assert isinstance(history, tf.keras.callbacks.History)
 
 
 def test_model_config():
     """Tests the model config function."""
-    conf = utils.mdrnn_config('s')
-    assert(conf["units"] == 64)
+    conf = utils.mdrnn_config("s")
+    assert conf["units"] == 64
