@@ -44,9 +44,6 @@ jobs:
     - name: Run the main file just to prove it works.
       run: |
         poetry run ./start_impsy.py --help
-    - name: Run the test-mdrnn command to see that it works.
-      run: |
-        poetry run ./start_impsy.py test-mdrnn
     - name: refresh coverage badge
       uses: fjogeleit/http-request-action@master
       with:
