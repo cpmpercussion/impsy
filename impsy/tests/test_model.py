@@ -41,3 +41,9 @@ def test_training():
     Xs, ys = train.seq_to_overlapping_format(slices)
     history = net.train(Xs, ys, num_epochs=num_epochs, saving=False)
     assert isinstance(history, tf.keras.callbacks.History)
+
+
+def test_model_config():
+    """Tests the model config function."""
+    conf = utils.mdrnn_config('s')
+    assert(conf["units"] == 64)
