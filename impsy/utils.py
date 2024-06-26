@@ -3,7 +3,7 @@ import pandas as pd
 import random
 
 
-# MDRNN config 
+# MDRNN config
 
 
 SIZE_TO_PARAMETERS = {
@@ -45,7 +45,9 @@ def generate_data(samples: int = 50000, dimension: int = 2):
     print("Generating", str(NSAMPLE), "toy data samples.")
     t_data = np.float32(np.array(range(NSAMPLE)) / 10.0)
     t_interval = t_data[1] - t_data[0]
-    t_r_data = np.random.normal(0, t_interval / 20.0, size=NSAMPLE) ## fuzz up the time sampling
+    t_r_data = np.random.normal(
+        0, t_interval / 20.0, size=NSAMPLE
+    )  ## fuzz up the time sampling
     t_data = t_data + t_r_data
     r_data = np.random.normal(size=NSAMPLE)
     # x_data = np.sin(t_data) * 1.0 + (r_data * 0.05)

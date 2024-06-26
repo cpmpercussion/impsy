@@ -38,7 +38,10 @@ def convert_tflite():
     # setup converter
     click.secho("Setup converter.")
     converter = tf.lite.TFLiteConverter.from_keras_model(net.model)
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS,
+        tf.lite.OpsSet.SELECT_TF_OPS,
+    ]
     converter._experimental_lower_tensor_list_ops = False
 
     click.secho("Do the conversion.")
@@ -46,5 +49,5 @@ def convert_tflite():
 
     click.secho("Saving..")
     tflite_model_name = f'{config["model"]["file"]}-lite.tflite'
-    with open(tflite_model_name, 'wb') as f:
-      f.write(tflite_model)
+    with open(tflite_model_name, "wb") as f:
+        f.write(tflite_model)

@@ -22,7 +22,9 @@ def transform_log_to_sequence_example(logfile: str, dimension: int):
     return np.array(perf_df[["t"] + data_names])
 
 
-def generate_dataset(dimension: int, source: str = "logs", destination: str = "datasets"):
+def generate_dataset(
+    dimension: int, source: str = "logs", destination: str = "datasets"
+):
     """Generate a dataset from .log files in the log directory."""
     # Load up the performances
     log_location = f"{source}/"
@@ -61,7 +63,7 @@ def generate_dataset(dimension: int, source: str = "logs", destination: str = "d
         raw_perfs.append(raw)
 
     if acc == 0:
-        click.secho("Zero values to add to dataset! aborting.", fg='red')
+        click.secho("Zero values to add to dataset! aborting.", fg="red")
         return
 
     click.secho(f"total number of values: {acc}", fg="blue")
