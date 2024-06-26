@@ -32,11 +32,9 @@ def test_log_to_examples():
   dimension = 8
   log_files = create_test_log_files(number = 1, dimension = dimension)
   log = dataset.transform_log_to_sequence_example(log_files[0], dimension)
-  print(log)
-  # assert False
+  remove_test_log_files(log_files)
   assert(isinstance(log, np.ndarray))
   assert(len(log[0]) == dimension)
-  remove_test_log_files(log_files)
 
 
 def test_dataset_command():
