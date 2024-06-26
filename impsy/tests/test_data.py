@@ -41,6 +41,7 @@ def test_dataset_command():
   """Test the dataset command runs"""
   test_log_area = "tests/logs"
   test_dataset_area = "tests/datasets"
+  os.makedirs(test_dataset_area, exist_ok=True)
   dimension = 4
   log_files = create_test_log_files(location = test_log_area, dimension = dimension, number = 10)
   dataset.generate_dataset(dimension=dimension, source="tests/logs", destination=test_dataset_area)
