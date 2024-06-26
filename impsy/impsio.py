@@ -414,26 +414,30 @@ class MIDIServer(IOServer):
         self.serial = MIDIServer.open_raspberry_serial()
         # MIDI port opening
         click.secho("Opening MIDI port for input/output.", fg="yellow")
+        potential_midi_inputs = []
+        potential_midi_outputs = []
         try:
+            potential_midi_inputs = mido.get_input_names()
             desired_input_port = MIDIServer.match_midi_port_to_list(
-                self.config["midi"]["in_device"], mido.get_input_names()
+                self.config["midi"]["in_device"], potential_midi_inputs
             )
             self.midi_in_port = mido.open_input(desired_input_port)
             click.secho(f"MIDI: in port is: {self.midi_in_port.name}", fg="green")
         except:
             self.midi_in_port = None
             click.secho("Could not open MIDI input.", fg="red")
-            click.secho(f"MIDI Inputs: {mido.get_input_names()}", fg="blue")
+            click.secho(f"MIDI Inputs: {potential_midi_inputs}", fg="blue")
         try:
+            potential_midi_outputs = mido.get_output_names()
             desired_output_port = MIDIServer.match_midi_port_to_list(
-                self.config["midi"]["out_device"], mido.get_output_names()
+                self.config["midi"]["out_device"], potential_midi_outputs
             )
             self.midi_out_port = mido.open_output(desired_output_port)
             click.secho(f"MIDI: out port is: {self.midi_out_port.name}", fg="green")
         except:
             self.midi_out_port = None
             click.secho("Could not open MIDI output.", fg="red")
-            click.secho(f"MIDI Outputs: {mido.get_output_names()}", fg="blue")
+            click.secho(f"MIDI Outputs: {potential_midi_outputs}", fg="blue")
 
     def disconnect(self) -> None:
         self.send_midi_note_offs()
