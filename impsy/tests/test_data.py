@@ -65,7 +65,7 @@ def test_train_command():
     # Setup directories
     log_area = "tests/logs"
     dataset_area = "tests/datasets"
-    model_area = "test/models"
+    model_area = "tests/models"
     for d in [log_area, dataset_area, model_area]:
         os.makedirs(d, exist_ok=True)
 

@@ -95,8 +95,8 @@ class PredictiveMusicMDRNN(object):
             self.time_dist = False
         else:
             self.sequence_length = sequence_length
-            self.time_dist = True
             self.inference = False
+            self.time_dist = True
 
         self.model = self.build()
         self.model.summary()

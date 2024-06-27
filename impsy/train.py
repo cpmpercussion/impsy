@@ -117,8 +117,19 @@ def train_mdrnn(
     # Save final Model
     model_file = save_location + "/" + mdrnn_manager.model_name()
     mdrnn_manager.model.save_weights(f"{model_file}.h5")
-    # TODO transfer weights to an inference model and save that instead.
-    mdrnn_manager.model.save(f"{model_file}.keras")
+    trained_weights = mdrnn_manager.model.get_weights()
+
+    # Setup inference model to save
+    inference_mdrnn = mdrnn.PredictiveMusicMDRNN(
+        mode=mdrnn.NET_MODE_RUN,
+        dimension=dimension,
+        n_hidden_units=mdrnn_units,
+        n_mixtures=mdrnn_mixes,
+        sequence_length=1,
+        layers=mdrnn_layers,
+    )
+    inference_mdrnn.model.set_weights(trained_weights)
+    inference_mdrnn.model.save(f"{model_file}.keras")
     # Return the history in case.
     return history
 
