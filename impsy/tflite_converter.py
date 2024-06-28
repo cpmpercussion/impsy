@@ -5,9 +5,6 @@ from .utils import mdrnn_config
 import tomllib
 
 
-
-
-
 def model_to_tflite(model, output_name: str):
     import tensorflow as tf
 
@@ -23,19 +20,21 @@ def model_to_tflite(model, output_name: str):
     tflite_model = converter.convert()
 
     click.secho("Saving..", fg="blue")
-    tflite_model_name = f'{output_name}.tflite'
+    tflite_model_name = f"{output_name}.tflite"
     click.secho(f"Saving tflite model to: {tflite_model_name}", fg="blue")
     with open(tflite_model_name, "wb") as f:
         f.write(tflite_model)
 
 
 def model_file_to_tflite(filename):
-    """Converts a given model """
+    """Converts a given model"""
     import tensorflow as tf
     import keras_mdn_layer as mdn_layer
 
     assert filename[-6:] == ".keras", "This function only works on .keras files."
-    loaded_model = tf.keras.saving.load_model(filename, custom_objects={'MDN': mdn_layer.MDN})
+    loaded_model = tf.keras.saving.load_model(
+        filename, custom_objects={"MDN": mdn_layer.MDN}
+    )
     file_stem = filename.removesuffix(".keras")
     model_to_tflite(loaded_model, file_stem)
 
@@ -50,7 +49,7 @@ def config_to_tflite(config_path):
         config = tomllib.load(f)
 
     click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
-    
+
     model_config = mdrnn_config(config["model"]["size"])
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
@@ -81,7 +80,6 @@ def weights_file_to_model_file(weights_file, model_size, dimension, location):
     inference_model.load_model(model_file=weights_file)
     model_name = inference_model.model_name()
     inference_model.model.save(f"{location}/{model_name}.keras")
-
 
 
 @click.command(name="convert-tflite")

@@ -247,7 +247,7 @@ class PredictiveMusicMDRNN(object):
             callbacks.append(checkpoint_callback)
         if early_stopping:
             callbacks.append(early_stopping_callback)
-        if logging: 
+        if logging:
             callbacks.append(tensorboard_callback)
 
         # Do the data scaling in here.

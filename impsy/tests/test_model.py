@@ -62,9 +62,9 @@ def test_data_munging():
 
     # overlapping
     Xs, ys = train.seq_to_overlapping_format(slices)
-    assert(len(Xs) == len(ys))
-    assert(len(Xs[0]) == sequence_length)
-    assert(len(ys[0]) == sequence_length)
+    assert len(Xs) == len(ys)
+    assert len(Xs[0]) == sequence_length
+    assert len(ys[0]) == sequence_length
 
     print("Xs:", len(Xs[0]))
     print("ys:", len(ys[0]))
@@ -74,9 +74,9 @@ def test_data_munging():
     print("X:", len(X[0]))
     print("y:", len(y[0]))
 
-    assert(len(X) == len(y))
-    assert(len(X[0]) == sequence_length)
-    assert(len(y[0]) == dimension)
+    assert len(X) == len(y)
+    assert len(X[0]) == sequence_length
+    assert len(y[0]) == dimension
 
 
 def test_model_config():

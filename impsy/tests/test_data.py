@@ -53,12 +53,13 @@ def test_dataset_command():
     )
     remove_test_log_files(log_files)
 
+
 def test_train_command():
     """Test the training command"""
 
     dimension = 4
     number_files = 20
-    model_size = 'xs'
+    model_size = "xs"
     batch_size = 1
     epochs = 1
 
@@ -82,21 +83,18 @@ def test_train_command():
     # Clean up log files
     remove_test_log_files(log_files)
 
-
     # Train using that dataset
     history = train.train_mdrnn(
-        dimension=dimension, 
-        dataset_location=dataset_area, 
-        model_size=model_size, 
+        dimension=dimension,
+        dataset_location=dataset_area,
+        model_size=model_size,
         early_stopping=False,
         patience=10,
         num_epochs=epochs,
         batch_size=batch_size,
-        save_location=model_area
-        )
-    
+        save_location=model_area,
+    )
+
     os.remove(dataset_area + "/" + dataset_file)
 
     assert isinstance(history, tf.keras.callbacks.History)
-
-
