@@ -5,10 +5,6 @@ from .utils import mdrnn_config
 import tomllib
 
 
-def build_network(config):
-    """Build the MDRNN, uses a high-level size parameter and dimension."""
-    return net
-
 def model_to_tflite(model, output_name):
     import tensorflow as tf
 
