@@ -5,6 +5,9 @@ from .utils import mdrnn_config
 import tomllib
 
 
+
+
+
 def model_to_tflite(model, output_name):
     import tensorflow as tf
 
@@ -45,6 +48,7 @@ def config_to_tflite(config_path):
         config = tomllib.load(f)
 
     click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
+    
     model_config = mdrnn_config(config["model"]["size"])
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
@@ -58,6 +62,24 @@ def config_to_tflite(config_path):
     output_name = config["model"]["file"].removesuffix(".h5")
     output_name = output_name.removesuffix(".keras")
     model_to_tflite(net.model, output_name)
+
+
+def weights_file_to_model_file(weights_file, model_size, dimension, location):
+    """Constructs a model from a given weights file and saves as a .keras inference model."""
+    import impsy.mdrnn as mdrnn
+
+    model_config = mdrnn_config(model_size)
+    inference_model = mdrnn.PredictiveMusicMDRNN(
+        mode=mdrnn.NET_MODE_RUN,
+        dimension=dimension,
+        n_hidden_units=model_config["units"],
+        n_mixtures=model_config["mixes"],
+        layers=model_config["layers"],
+    )
+    inference_model.load_model(model_file=weights_file)
+    model_name = inference_model.model_name()
+    inference_model.model.save(f"{location}/{model_name}.keras")
+
 
 
 @click.command(name="convert-tflite")
