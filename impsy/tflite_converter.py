@@ -35,7 +35,7 @@ def model_file_to_tflite(filename):
 
     assert filename[-6:] == ".keras", "This function only works on .keras files."
     loaded_model = tf.keras.saving.load_model(filename)
-    name = f[:6]
+    name = filename[:6]
     model_to_tflite(loaded_model, name)
 
 
