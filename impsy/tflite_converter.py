@@ -8,10 +8,10 @@ import tomllib
 
 
 
-def model_to_tflite(model, output_name):
+def model_to_tflite(model, output_name: str):
     import tensorflow as tf
 
-    click.secho("Setup converter.")
+    click.secho("Setup converter.", fg="blue")
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.target_spec.supported_ops = [
         tf.lite.OpsSet.TFLITE_BUILTINS,
@@ -19,11 +19,12 @@ def model_to_tflite(model, output_name):
     ]
     converter._experimental_lower_tensor_list_ops = False
 
-    click.secho("Do the conversion.")
+    click.secho("Do the conversion.", fg="blue")
     tflite_model = converter.convert()
 
-    click.secho("Saving..")
+    click.secho("Saving..", fg="blue")
     tflite_model_name = f'{output_name}.tflite'
+    click.secho(f"Saving tflite model to: {tflite_model_name}", fg="blue")
     with open(tflite_model_name, "wb") as f:
         f.write(tflite_model)
 
@@ -31,11 +32,12 @@ def model_to_tflite(model, output_name):
 def model_file_to_tflite(filename):
     """Converts a given model """
     import tensorflow as tf
+    import keras_mdn_layer as mdn_layer
 
     assert filename[-6:] == ".keras", "This function only works on .keras files."
-    loaded_model = tf.keras.saving.load_model(filename)
-    name = filename[:6]
-    model_to_tflite(loaded_model, name)
+    loaded_model = tf.keras.saving.load_model(filename, custom_objects={'MDN': mdn_layer.MDN})
+    file_stem = filename.removesuffix(".keras")
+    model_to_tflite(loaded_model, file_stem)
 
 
 def config_to_tflite(config_path):

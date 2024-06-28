@@ -18,6 +18,10 @@ def test_weights_to_model_file():
     size = "s"
     tflite_converter.weights_file_to_model_file(weights_file, size, dimension, location)
 
-# def test_keras_modfel_to_tflite():
-#     test_model = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.keras"
-#     expected_output_path = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+
+def test_model_file_to_tflite():
+    model_filename = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.keras"
+    expected_output_path = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+    tflite_converter.model_file_to_tflite(model_filename)
+    assert os.path.exists(expected_output_path)
+    os.remove(expected_output_path)    
