@@ -10,6 +10,7 @@ from threading import Thread
 import click
 from .utils import mdrnn_config
 import impsy.impsio as impsio
+import impsy.web_interface as web_interface
 
 np.set_printoptions(precision=2)
 
@@ -299,6 +300,10 @@ class InteractionServer(object):
         )
         self.websocket_sender.connect()  # TODO verify websockets again.
 
+        # Start Web Interface
+        web_interface_thread = Thread(target=web_interface.run_web_interface)
+        web_interface_thread.start()
+
         # Logging
         if self.config["log"]:
             setup_logging(self.dimension)
@@ -316,6 +321,7 @@ class InteractionServer(object):
         except KeyboardInterrupt:
             click.secho("\nCtrl-C received... exiting.", fg="red")
             rnn_thread.join(timeout=0.1)
+            web_interface_thread.join(timeout=0.1)
             for sender in self.senders:
                 sender.disconnect()
         finally:
