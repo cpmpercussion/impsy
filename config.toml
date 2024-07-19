@@ -1,9 +1,9 @@
 # The configuration file for IMPSY: Interactive Musical Prediction System
 
 # Metadata about this configuration
-title = "X-TOUCH in Volca Keys out"
+title = "Roland S-1 to S-1"
 owner = "Charles Martin"
-description = "Uses x-touch over it's own USB connector and Volca Keys over the Studio 1824c"
+description = "A self-contained config for the Roland S-1"
 
 # Basic config
 log = true
@@ -14,7 +14,7 @@ verbose = true
 [interaction]
 mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
 threshold = 0.1 # number of seconds before switching in call-response mode
-input_thru = true # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
 
 # Model configuration
 [model]
@@ -26,29 +26,35 @@ pitemp = 1
 timescale = 1
 
 # MIDI Mapping
+# MIDI Mapping
 [midi]
-in_device = "X-TOUCH"
-out_device = "Studio 1824c"
-input = [ # XTOUCH-MINI knobs
-  ["control_change", 11, 1], # XTOUCH-MINI knob controller 1
-  ["control_change", 11, 2], # XTOUCH-MINI knob controller 2
-  ["control_change", 11, 3], # XTOUCH-MINI knob controller 3
-  ["control_change", 11, 4], # XTOUCH-MINI knob controller 4
-  ["control_change", 11, 5], # XTOUCH-MINI knob controller 5 
-  ["control_change", 11, 6], # XTOUCH-MINI knob controller 6
-  ["control_change", 11, 7], # XTOUCH-MINI knob controller 7
-  ["control_change", 11, 8], # XTOUCH-MINI knob controller 8
+in_device = "S-1"
+out_device = "S-1"
+input = [
+  # ["note_on", 3], # notes input
+  ["control_change", 3, 3], # lfo rate
+  ["control_change", 3, 13], # osc lfo
+  ["control_change", 3, 19], # osc square level
+  # ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 21], # osc sub level
+  ["control_change", 3, 23], # osc noise level
+  ["control_change", 3, 24], # filter env knob
+  ["control_change", 3, 25], # filter lvo knob
+  ["control_change", 3, 71], # filter reso knob
 ]
-output = [ # Volca Keys: http://i.korg.com/uploads/Support/USA_volcakeys_MIDI_Chart_E.pdf
-  ["note_on", 1], # note
-  ["control_change", 1, 43], # Portamento
-  ["control_change", 1, 40], # Voice
-  ["control_change", 1, 41], # Octave
-  ["control_change", 1, 42], # Detune
-  ["control_change", 1, 44], # Cutoff
-  ["control_change", 1, 52], # Delay Time
-  ["control_change", 1, 53], # Delay Feedback
+output = [
+  ["note_on", 3], # notes input
+  ["control_change", 3, 3], # lfo rate
+  ["control_change", 3, 13], # osc lfo
+  ["control_change", 3, 19], # osc square level
+  # ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 21], # osc sub level
+  ["control_change", 3, 23], # osc noise level
+  ["control_change", 3, 24], # filter env knob
+  ["control_change", 3, 25], # filter lvo knob
+  ["control_change", 3, 71], # filter reso knob
 ]
+
 
 [websocket]
 server_ip = "0.0.0.0" # The address of this server
