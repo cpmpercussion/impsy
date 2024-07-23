@@ -1,10 +1,10 @@
 [Unit]
-Description=GenAI MIDI Module Startup Script
+Description=IMPSY RPi Module Startup Script
 After=multi-user.target
 
 [Service]
-ExecStart=/bin/bash /home/pi/genAI-MIDI-module/start.sh
-WorkingDirectory=/home/pi/genAI-MIDI-module
+ExecStart=/bin/bash /home/pi/imps/examples/rpi/start.sh
+WorkingDirectory=/home/pi/imps
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
