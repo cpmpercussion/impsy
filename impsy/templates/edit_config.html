@@ -51,15 +51,15 @@
     </style>
 </head>
 <body>
-    <h1>Edit Configuration</h1>
+    <h1>Edit IMPSY Configuration</h1>
+
+    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
     
     <form method="POST">
         <textarea name="config_content">{{ config_content }}</textarea>
         <br>
         <input type="submit" value="Save Configuration">
     </form>
-
-    <a href="{{ url_for('index') }}" class="back-link">Back to log files</a>
 
     <script>
         document.querySelector('form').addEventListener('submit', function(e) {

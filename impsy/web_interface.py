@@ -4,21 +4,39 @@ import os
 
 app = Flask(__name__)
 
-LOGS_DIR = 'logs'
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
 MODEL_DIR = 'models'
 CONFIGS_DIR = 'configs'
 CONFIG_FILE = 'config.toml'
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 4000
 
-@app.route('/files')
-def index():
-    log_files = os.listdir(LOGS_DIR)
-    return render_template('index.html', log_files=log_files)
+ROUTE_NAMES = {
+    'logs': 'Log Files',
+    'edit_config': 'Edit Configuration',
+}
+
+def get_routes():
+    page_routes = []
+    for rule in app.url_map.iter_rules():
+        if rule.endpoint != 'static' and 'GET' in rule.methods and '<' not in str(rule):
+            page_routes.append({
+                'endpoint': rule.endpoint,
+                'route': str(rule)
+            })
+    return page_routes
 
 @app.route('/')
-def hello_world():
-    return '<p>Hello, World!</p> <a href="/files">files</a> <a href="/config">edit config</a>'
+def index():
+    routes = get_routes()
+    return render_template('index.html', routes=routes, route_names=ROUTE_NAMES)
+
+@app.route('/logs')
+def logs():
+    log_files = os.listdir(LOGS_DIR)
+    return render_template('logs.html', log_files=log_files)
 
 @app.route('/download/<filename>')
 def download_file(filename):
@@ -40,6 +58,7 @@ def edit_config():
 def run_web_interface(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=True):
     """Runs the Flask web interface."""
     click.secho(f'Starting web interface at http://{host}:{port}', fg='blue')
+    click.secho(f'Log path: {LOGS_DIR}', fg='blue')
     app.run(host=host, port=port, debug=True)
 
 @click.command(name="webui")
