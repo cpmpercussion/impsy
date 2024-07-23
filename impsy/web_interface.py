@@ -4,18 +4,21 @@ import os
 
 app = Flask(__name__)
 
-# Assume your MIDI files are stored in a 'log_files' directory
 LOGS_DIR = 'logs'
 MODEL_DIR = 'models'
 CONFIGS_DIR = 'configs'
 CONFIG_FILE = 'config.toml'
 DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PORT = 6000
+DEFAULT_PORT = 4000
 
-@app.route('/')
+@app.route('/files')
 def index():
     log_files = os.listdir(LOGS_DIR)
-    return render_template('templates/index.html', log_files=log_files)
+    return render_template('index.html', log_files=log_files)
+
+@app.route('/')
+def hello_world():
+    return '<p>Hello, World!</p> <a href="/files">files</a> <a href="/config">edit config</a>'
 
 @app.route('/download/<filename>')
 def download_file(filename):
@@ -32,11 +35,7 @@ def edit_config():
         # Display the config file for editing
         with open(CONFIG_FILE, 'r') as f:
             config_content = f.read()
-        return render_template('templates/edit_config.html', config_content=config_content)
-    
-@app.route("/hello")
-def hello_world():
-    return "<p>Hello, World!</p>"
+        return render_template('edit_config.html', config_content=config_content)
 
 def run_web_interface(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=True):
     """Runs the Flask web interface."""
