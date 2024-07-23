@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "impsy"
-version = "0.5.2"
+version = "0.5.3"
 description = "IMPSY is the Interactive Musical Prediction SYstem, a tool for creative interactive intelligent musical instruments using a recurrent mixture density neural network."
 authors = ["Charles Martin <cpm@charlesmartin.au>"]
 license = "MIT"
@@ -9,7 +9,7 @@ homepage = "https://github.com/cpmpercussion/keras-mdn-layer"
 repository = "https://github.com/cpmpercussion/keras-mdn-layer"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = "~3.11"
 tensorflow-macos = {markers="sys_platform == 'darwin' and platform_machine == 'arm64'", version = "2.15.0"}
 tensorflow = [
   {markers="sys_platform == 'darwin' and platform_machine == 'x86_64'", version = "2.15.0"},
