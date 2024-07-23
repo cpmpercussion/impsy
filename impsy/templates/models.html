@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPSY - Model Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>IMPSY Model Files</h1>
+
+    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
+    
+    <h2>Upload New Model</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit" value="Upload">
+    </form>
+
+    <h2>Existing Models</h2>
+    <ul>
+    {% for file in model_files %}
+        <li>
+            {{ file }} 
+            <a href="{{ url_for('download_model', filename=file) }}">[Download]</a>
+        </li>
+    {% endfor %}
+    </ul>
+
+</body>
+</html>

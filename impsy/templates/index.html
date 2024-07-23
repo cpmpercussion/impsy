@@ -4,51 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IMPSY Web Interface</title>
-    <style>
-      body {
-          font-family: Arial, sans-serif;
-          line-height: 1.6;
-          margin: 0;
-          padding: 20px;
-          background-color: #f4f4f4;
-      }
-      h1 {
-          color: #333;
-      }
-      ul {
-          list-style-type: none;
-          padding: 0;
-      }
-      li {
-          background: #fff;
-          margin-bottom: 10px;
-          padding: 10px;
-          border-radius: 5px;
-      }
-      a {
-          color: #0066cc;
-          text-decoration: none;
-      }
-      a:hover {
-          text-decoration: underline;
-      }
-      .config-link {
-          display: inline-block;
-          margin-top: 20px;
-          padding: 10px 15px;
-          background-color: #0066cc;
-          color: #fff;
-          border-radius: 5px;
-      }
-  </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1>IMPSY Web Interface</h1>
+
+    <h2>Pages:</h2>
     <ul>
     {% for route in routes %}
         {% if route.endpoint != 'index' and route.methods != 'OPTIONS,HEAD' %}
         <li><a href="{{ route.route }}">{{ route_names.get(route.endpoint, route.endpoint) }}</a></li>
         {% endif %}
+    {% endfor %}
+    </ul>
+
+    <h2>System Information</h2>
+    <ul>
+    {% for key, value in hardware_info.items() %}
+        <li><strong>{{ key }}:</strong> {{ value }}</li>
     {% endfor %}
     </ul>
 </body>

@@ -1,5 +1,9 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, redirect, url_for
+from werkzeug.utils import secure_filename
 import click
+import psutil
+import shutil
+import platform
 import os
 
 app = Flask(__name__)
@@ -7,8 +11,9 @@ app = Flask(__name__)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
-MODEL_DIR = 'models'
-CONFIGS_DIR = 'configs'
+MODEL_DIR = os.path.join(PROJECT_ROOT, 'models')
+DATASET_DIR = os.path.join(PROJECT_ROOT, 'datasets')
+CONFIGS_DIR = os.path.join(PROJECT_ROOT, 'configs')
 CONFIG_FILE = 'config.toml'
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 4000
@@ -16,7 +21,36 @@ DEFAULT_PORT = 4000
 ROUTE_NAMES = {
     'logs': 'Log Files',
     'edit_config': 'Edit Configuration',
+    'models': 'Model Files'
 }
+
+def get_hardware_info():
+    try:
+        cpu_info = platform.machine()
+        cpu_cores = psutil.cpu_count(logical=False)
+        disk_usage = shutil.disk_usage('/')
+        memory = psutil.virtual_memory()
+        ram_total = memory.total / (1024 ** 3)
+        ram_used = (memory.total - memory.available) / (1024 ** 3)
+        disk = disk_usage.free / (1024 ** 3)
+        disk_percent = 100 * disk_usage.used / disk_usage.total
+        os_info = f"{platform.system()} {platform.release()}"
+        print(psutil.disk_usage('/'))
+        return {
+            "CPU": cpu_info,
+            "CPU Cores": cpu_cores,
+            "RAM": f"{ram_used:.2f}/{ram_total:.2f} GB ({memory.percent}% used)",
+            "Disk Space Free": f"{disk:.2f} GB ({disk_percent:.2f}% used)",
+            "OS": os_info
+        }
+    except Exception as e:
+        return {"Error": str(e)}
+
+def allowed_model_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'keras', 'h5', 'tflite'} 
+
+def allowed_log_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'log'} 
 
 def get_routes():
     page_routes = []
@@ -31,16 +65,41 @@ def get_routes():
 @app.route('/')
 def index():
     routes = get_routes()
-    return render_template('index.html', routes=routes, route_names=ROUTE_NAMES)
+    hardware_info = get_hardware_info()
+    return render_template('index.html', routes=routes, route_names=ROUTE_NAMES, hardware_info=hardware_info)
 
 @app.route('/logs')
 def logs():
-    log_files = os.listdir(LOGS_DIR)
+    log_files = [f for f in os.listdir(LOGS_DIR) if allowed_log_file(f)]
     return render_template('logs.html', log_files=log_files)
 
-@app.route('/download/<filename>')
-def download_file(filename):
+@app.route('/models', methods=['GET', 'POST'])
+def models():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            return redirect(request.url)
+        if file and allowed_model_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(MODEL_DIR, filename))
+            return redirect(url_for('models'))
+    
+    model_files = [f for f in os.listdir(MODEL_DIR) if allowed_model_file(f)]
+    return render_template('models.html', model_files=model_files)
+
+@app.route('/download_log/<filename>')
+def download_log(filename):
     return send_file(os.path.join(LOGS_DIR, filename), as_attachment=True)
+
+@app.route('/download_model/<filename>')
+def download_model(filename):
+    return send_file(os.path.join(MODEL_DIR, filename), as_attachment=True)
+
+@app.route('/download_dataset/<filename>')
+def download_dataset(filename):
+    return send_file(os.path.join(DATASET_DIR, filename), as_attachment=True)
 
 @app.route('/config', methods=['GET', 'POST'])
 def edit_config():

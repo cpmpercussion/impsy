@@ -4,43 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IMPSY - View Log Files</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            color: #333;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            background: #fff;
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        a {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .config-link {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 15px;
-            background-color: #0066cc;
-            color: #fff;
-            border-radius: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1>IMPSY Log Files</h1>
@@ -52,7 +16,7 @@
         {% for file in log_files %}
             <li>
                 {{ file }} 
-                <a href="{{ url_for('download_file', filename=file) }}">[Download]</a>
+                <a href="{{ url_for('download_log', filename=file) }}">[Download]</a>
             </li>
         {% endfor %}
         </ul>

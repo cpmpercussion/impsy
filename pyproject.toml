@@ -25,6 +25,7 @@ python-rtmidi = "^1.5.8"
 click = "^8.1.7"
 pandas = "^2.2.2"
 flask = "^3.0.3"
+psutil = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
 # keras-mdn-layer = { git = "https://github.com/cpmpercussion/keras-mdn-layer.git", branch = "master" }
