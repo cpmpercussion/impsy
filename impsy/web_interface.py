@@ -9,8 +9,8 @@ LOGS_DIR = 'logs'
 MODEL_DIR = 'models'
 CONFIGS_DIR = 'configs'
 CONFIG_FILE = 'config.toml'
-HOST = '0.0.0.0'
-PORT = 6000
+DEFAULT_HOST = '127.0.0.1'
+DEFAULT_PORT = 6000
 
 @app.route('/')
 def index():
@@ -38,8 +38,15 @@ def edit_config():
 def hello_world():
     return "<p>Hello, World!</p>"
 
-def run_web_interface():
+def run_web_interface(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=True):
     """Runs the Flask web interface."""
-    click.secho(f'Starting web interface at http://{HOST}:{PORT}', fg='blue')
-    app.run(host=HOST, port=PORT, threaded=True)
+    click.secho(f'Starting web interface at http://{host}:{port}', fg='blue')
+    app.run(host=host, port=port, debug=True)
 
+@click.command(name="webui")
+@click.option('--host', default=DEFAULT_HOST, help='The host to bind to.')
+@click.option('--port', default=DEFAULT_PORT, help='The port to bind to.')
+@click.option('--debug', is_flag=True, help='Enable debug mode.')
+def webui(host, port, debug):
+    """Run IMPSY Web UI giving access to files and other commands."""
+    run_web_interface(host, port, debug)
