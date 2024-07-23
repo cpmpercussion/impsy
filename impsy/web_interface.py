@@ -16,7 +16,7 @@ MODEL_DIR = os.path.join(PROJECT_ROOT, 'models')
 DATASET_DIR = os.path.join(PROJECT_ROOT, 'datasets')
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, 'configs')
 CONFIG_FILE = 'config.toml'
-DEFAULT_HOST = '127.0.0.1'
+DEFAULT_HOST = '0.0.0.0'
 DEFAULT_PORT = 4000
 
 ROUTE_NAMES = {
