@@ -1,4 +1,5 @@
 FROM python:3.11.5-slim-bookworm
+# FROM tensorflow/tensorflow:2.15.0
 
 ARG YOUR_ENV
 
