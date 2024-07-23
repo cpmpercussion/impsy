@@ -5,6 +5,7 @@ from .dataset import dataset
 from .train import train
 from .interaction import run
 from .tflite_converter import convert_tflite
+from .web_interface import webui
 
 from .tests import test_mdrnn, prediction_speed_test
 
@@ -22,5 +23,6 @@ def main():
     cli.add_command(test_mdrnn)
     cli.add_command(prediction_speed_test)
     cli.add_command(convert_tflite)
+    cli.add_command(webui)
     # runs the command line interface
     cli()

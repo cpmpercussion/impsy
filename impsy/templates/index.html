@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPSY Web Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>IMPSY Web Interface</h1>
+
+    <h2>Pages:</h2>
+    <ul>
+    {% for route in routes %}
+        {% if route.endpoint != 'index' and route.methods != 'OPTIONS,HEAD' %}
+        <li><a href="{{ route.route }}">{{ route_names.get(route.endpoint, route.endpoint) }}</a></li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+    <h2>System Information</h2>
+    <ul>
+    {% for key, value in hardware_info.items() %}
+        <li><strong>{{ key }}:</strong> {{ value }}</li>
+    {% endfor %}
+    </ul>
+
+    <h2>Project Information:</h2>
+    <ul>
+    {% for key, value in software_info.items() %}
+        <li>
+            <strong>{{ key }}:</strong> 
+            {% if value|lower|startswith('http://') or value|lower|startswith('https://') %}
+                <a href="{{ value }}" target="_blank">{{ value }}</a>
+            {% else %}
+                {{ value }}
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+</body>
+</html>

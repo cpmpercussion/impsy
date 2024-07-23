@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPSY - View Log Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>IMPSY Log Files</h1>
+
+    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
+    
+    {% if log_files %}
+        <ul>
+        {% for file in log_files %}
+            <li>
+                {{ file }} 
+                <a href="{{ url_for('download_log', filename=file) }}">[Download]</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No log files found.</p>
+    {% endif %}
+
+</body>
+</html>
