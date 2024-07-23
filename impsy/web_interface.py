@@ -5,6 +5,7 @@ import psutil
 import shutil
 import platform
 import os
+import tomllib
 
 app = Flask(__name__)
 
@@ -21,8 +22,13 @@ DEFAULT_PORT = 4000
 ROUTE_NAMES = {
     'logs': 'Log Files',
     'edit_config': 'Edit Configuration',
-    'models': 'Model Files'
+    'models': 'Model Files',
+    'datasets': 'Dataset Files',
 }
+
+@app.template_filter("startswith")
+def test_startswith(s, start):
+    return s.startswith(start)
 
 def get_hardware_info():
     try:
@@ -45,12 +51,29 @@ def get_hardware_info():
         }
     except Exception as e:
         return {"Error": str(e)}
+    
+def get_software_info():
+    with open("pyproject.toml", "rb") as f:
+        pyproject_data = tomllib.load(f)
+    return {
+        "Project": pyproject_data["tool"]["poetry"].get("name"),
+        "Version": pyproject_data["tool"]["poetry"].get("version"),
+        "Description": pyproject_data["tool"]["poetry"].get("description"),
+        "Authors": pyproject_data["tool"]["poetry"].get("authors"),
+        "Homepage": pyproject_data["tool"]["poetry"].get("homepage"),
+        "Repository": pyproject_data["tool"]["poetry"].get("repository"),
+    }
+
 
 def allowed_model_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'keras', 'h5', 'tflite'} 
 
 def allowed_log_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'log'} 
+
+def allowed_dataset_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'npz'} 
+
 
 def get_routes():
     page_routes = []
@@ -66,12 +89,19 @@ def get_routes():
 def index():
     routes = get_routes()
     hardware_info = get_hardware_info()
-    return render_template('index.html', routes=routes, route_names=ROUTE_NAMES, hardware_info=hardware_info)
+    software_info = get_software_info()
+    return render_template('index.html', routes=routes, route_names=ROUTE_NAMES, hardware_info=hardware_info, software_info=software_info)
 
 @app.route('/logs')
 def logs():
     log_files = [f for f in os.listdir(LOGS_DIR) if allowed_log_file(f)]
     return render_template('logs.html', log_files=log_files)
+
+@app.route('/datasets')
+def datasets():
+    dataset_files = [f for f in os.listdir(DATASET_DIR) if allowed_dataset_file(f)]
+    print(dataset_files)
+    return render_template('datasets.html', dataset_files=dataset_files)
 
 @app.route('/models', methods=['GET', 'POST'])
 def models():
