@@ -1,9 +1,9 @@
 [Unit]
-Description=IMPSY RPi Module Startup Script
+Description=IMPSY RPi Module WebUI Startup Script
 After=multi-user.target
 
 [Service]
-ExecStart=/bin/bash /home/pi/imps/examples/rpi/start.sh
+ExecStart=/bin/bash /home/pi/imps/examples/rpi/impsy-web.sh
 WorkingDirectory=/home/pi/imps
 StandardOutput=inherit
 StandardError=inherit

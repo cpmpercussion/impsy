@@ -1,0 +1,14 @@
+[Unit]
+Description=IMPSY RPi Module Interaction Startup Script
+After=multi-user.target
+
+[Service]
+ExecStart=/bin/bash /home/pi/imps/examples/rpi/impsy-run.sh
+WorkingDirectory=/home/pi/imps
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

@@ -1,10 +1,24 @@
 #!/bin/sh
 
-# This script installs a systemd service to start the genAI program on boot.
+# This script installs systemd services to start IMPSY program on boot.
+IMPSYROOT=/home/pi/imps/
+IMPSYSERVICEDIR=examples/rpi
+SYSTEMDDIR=/etc/systemd/system
+IMPSYRUN=impsy-run.service
+IMPSYWEB=impsy-web.service
 
-cd /home/pi/imps
-sudo cp /home/pi/imps/examples/rpi/impsy.service /etc/systemd/system/impsy.service
-sudo chmod 644 /etc/systemd/system/impsy.service
-# sudo systemctl start impsy.service
-# sudo systemctl stop impsy.service
-sudo systemctl enable impsy.service
+cd ${IMPSYROOT}/${IMPSYSERVICEDIR}
+
+# Enable IMPSY web UI server service
+sudo cp ${IMPSYWEB} ${SYSTEMDDIR}
+sudo chmod 644 ${SYSTEMDDIR}/${IMPSYWEB}
+sudo systemctl enable ${IMPSYWEB}
+
+# Enable IMPSY interaction server service
+sudo cp ${IMPSYRUN} ${SYSTEMDDIR}
+sudo chmod 644 ${SYSTEMDDIR}/${IMPSYRUN}
+sudo systemctl enable ${IMPSYRUN}
+
+# sudo systemctl start impsy-run.service
+# sudo systemctl stop impsy-run.service
+
