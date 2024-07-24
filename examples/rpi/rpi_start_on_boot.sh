@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script installs systemd services to start IMPSY program on boot.
-IMPSYROOT=/home/pi/imps/
+IMPSYROOT=/home/pi/imps
 IMPSYSERVICEDIR=examples/rpi
 SYSTEMDDIR=/etc/systemd/system
 IMPSYRUN=impsy-run.service

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-poetry run ./start_impsy.py run
+/home/pi/.local/bin/poetry run ./start_impsy.py run

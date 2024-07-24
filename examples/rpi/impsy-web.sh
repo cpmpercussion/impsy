@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-poetry run ./start_impsy.py webui
+/home/pi/.local/bin/poetry run ./start_impsy.py webui
