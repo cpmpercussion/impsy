@@ -16,14 +16,14 @@ Here's a [demonstration video showing how IMPSY can be used with different music
 
 IMPSY is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently relies on Python 3.11, TensorFlow 2.15.0, TensorFlow Probability 0.23.0, and keras-mdn-layer 0.3.0. You can see the dependencies in `pyproject.toml`.
 
-To install IMPSY, first **ensure that you have a Python 3.11** installation available, then install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
+To install IMPSY, first **ensure that you have a Python 3.11** installation available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
 
     curl -sSL https://install.python-poetry.org | python3 -
 
 Then you should clone this repository or download it to your computer:
 
-    git clone https://github.com/cpmpercussion/impsy.git
-    cd impsy
+    git clone https://github.com/cpmpercussion/imps.git
+    cd imps
 
 Then you can install the dependencies using Poetry:
 
