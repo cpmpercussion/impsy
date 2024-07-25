@@ -35,3 +35,5 @@ RUN poetry install --no-interaction --no-ansi \
 
 # # Creating folders, and files for a project:
 COPY . /code
+
+CMD ["bash"]
