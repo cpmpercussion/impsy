@@ -111,6 +111,34 @@ The `--log` switch logs all of your interactions as well as predictions for late
 
 PS: all the IMPSY commands respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know.
 
+### Using Docker to run IMPSy
+
+We provide the docker image [`charlepm/impsy`](https://hub.docker.com/r/charlepm/impsy) which includes IMPSY with Poetry and required libraries installed.
+
+You can use the docker image to try out impsy or even use it in production if you are using OSC communication to a sound source or musical interface. MIDI doesn't work in the docker container (not sure how this could be achieved but if someone has a good idea...). The docker container is defined at `examples/Dockerfile`.
+
+We also have a docker compose file to start IMPSY as well as the web user interface: `docker-compose.yml`
+
+#### Docker compose configuration
+
+From the IMPSY main directory run:
+
+```
+docker-compose -f docker-compose.yml up
+```
+
+Then you can navigate to `http://127.0.0.1:4000` to view the web interface. OSC communication happens through ports 5000 and 5000. The local `config.toml`, and `datasets`, `logs` and `models` directories are mapped into the docker containers.
+
+#### Using docker to create datasets or train models
+
+You can run a docker container and use different impsy commands from the command line as well:
+
+```
+docker run -d -v $(pwd)/datasets:/code/datasets -v $(pwd)/logs:/code/logs -v $(pwd)/models:/code/models -v $(pwd)/config.toml:/code/config.toml charlepm/impsy:0.5.3 poetry run ./start_impsy.py --help
+```
+This can be useful to use the `dataset` or `train` commands to generate new datasets and models.
+
+
 ## More about Mixture Density Recurrent Neural Networks
 
 IMPSY uses a mixture density recurrent neural network MDRNN to make predictions. This machine learning architecture is set up to predict the next in a sequence of multi-valued elements. The recurrent neural network uses LSTM units to remember information about past inputs and use this to help make decisions. The mixture density model at the end of the network allows continuous multi-valued elements to be sampled from a rich probability distribution. 
