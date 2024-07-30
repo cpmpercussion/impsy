@@ -2,11 +2,11 @@
 
 ![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580176.svg)](https://doi.org/10.5281/zenodo.2580176)
-[![Install and run IMPSY](https://github.com/cpmpercussion/imps/actions/workflows/python-app.yml/badge.svg)](https://github.com/cpmpercussion/imps/actions/workflows/python-app.yml)
-[![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/imps/badge.svg?branch=main)](https://coveralls.io/github/cpmpercussion/imps?branch=main)
+[![Install and run IMPSY](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml/badge.svg)](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml)
+[![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/impsy/badge.svg?branch=main)](https://coveralls.io/github/cpmpercussion/imps?branch=main)
 [![PyPI - Version](https://img.shields.io/pypi/v/IMPSY)](https://pypi.org/project/impsy/)
 
-![Predictive Musical Interaction](https://github.com/cpmpercussion/imps/raw/main/images/predictive_interaction.png)
+![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/predictive_interaction.png)
 
 IMPSY is a system for predicting musical control data in live performance. It uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. It provides an input and output interface over OSC and can work with musical interfaces with any number of real valued inputs (we've tried from 1-8). Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. Whenever you use IMPSY, your input data is logged to build up a training corpus and a script is provided to train new versions of your model.
 
@@ -22,8 +22,8 @@ To install IMPSY, first **ensure that you have a Python 3.11** installation avai
 
 Then you should clone this repository or download it to your computer:
 
-    git clone https://github.com/cpmpercussion/imps.git
-    cd imps
+    git clone https://github.com/cpmpercussion/impsy.git
+    cd impsy
 
 Then you can install the dependencies using Poetry:
 
@@ -58,7 +58,7 @@ Your synthesiser software or interface needs to listen for messages from the IMP
 
 Here's an example diagram for our 8-controller example, the [xtouch mini controller](https://www.musictribe.com/Categories/Behringer/Computer-Audio/Desktop-Controllers/X-TOUCH-MINI/p/P0B3M).
 
-![Predictive Musical Interaction](https://github.com/cpmpercussion/imps/raw/main/images/IMPS_connection_example.png)
+![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/IMPS_connection_example.png)
 
 In this example we've used Pd to connect the xtouch mini to IMPSY and to synthesis sounds. Our Pd mapping patch takes data from the xtouch and sends `/interface` OSC messages to IMPSY, it also receives `/prediction` OSC message back from IMPSY whenever they occur. Of course, whenever the user performs with the controller, the mapping patch sends commands to the synthesiser patch to make sound. Whenever `/prediction` messages are received, these also trigger changes in the synth patch, and we also send MIDI messages back to the xtouch controller to update its lights so that the performer knows what IMPSY is predicting.
 
@@ -145,6 +145,6 @@ IMPSY uses a mixture density recurrent neural network MDRNN to make predictions.
 
 The network is illustrated here---every time IMPSY receives an interaction message from your interface, it is sent to thorugh the LSTM layers to produce the parameters of a Gaussian mixture model. The predicted next interaction is sampled from this probability model.
 
-![A Musical MDRNN](https://github.com/cpmpercussion/imps/raw/main/images/mdn_diagram.png)
+![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/images/mdn_diagram.png)
 
 The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. There's more info and tutorials about MDNs on [that github repo](https://github.com/cpmpercussion/keras-mdn-layer).
