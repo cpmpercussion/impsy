@@ -2,7 +2,7 @@
 # Normal users don't need to worry about this
 DOCKERHUB_USERNAME = charlepm
 CONTAINER_NAME = impsy
-CONTAINER_VERSION = 0.5.3
+CONTAINER_VERSION = latest
 
 build: Dockerfile
 	docker build --tag $(DOCKERHUB_USERNAME)/$(CONTAINER_NAME):$(CONTAINER_VERSION) --platform linux/amd64,linux/arm64 -f Dockerfile ..

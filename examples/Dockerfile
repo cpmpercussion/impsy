@@ -26,14 +26,14 @@ RUN apt-get update \
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # Copy only requirements to cache them in docker layer
-WORKDIR /code
-COPY ./poetry.lock ./pyproject.toml /code/
+WORKDIR /impsy
+COPY ./poetry.lock ./pyproject.toml /impsy/
 
 # # Run Poetry Install
 RUN poetry install --no-interaction --no-ansi \
   && poetry cache clear --all .
 
 # # Creating folders, and files for a project:
-COPY . /code
+COPY . /impsy
 
 CMD ["bash"]
