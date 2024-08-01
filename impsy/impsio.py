@@ -294,13 +294,13 @@ class OSCServer(IOServer):
 
     # [osc]
     # server_ip = "localhost" # Address of IMPSY
-    # server_port = "5000" # Port IMPSY listens on
+    # server_port = 5000 # Port IMPSY listens on
     # client_ip = "localhost" # Address of the output device
-    # client_port = "5002" # Port of the output device
+    # client_port = 5002 # Port of the output device
 
     # Details for OSC output
     INPUT_MESSAGE_ADDRESS = "/interface"
-    OUTPUT_MESSAGE_ADDRESS = "/prediction"
+    OUTPUT_MESSAGE_ADDRESS = "/impsy"
     TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
     TIMESCALE_MESSAGE_ADDRESS = "/timescale"
 
@@ -353,7 +353,7 @@ class OSCServer(IOServer):
     def connect(self) -> None:
         print("Preparing Server thread.")
         self.server_thread = Thread(
-            target=self.server.serve_forever, name="server_thread", daemon=True
+            target=self.server.serve_forever, name="osc_server_thread", daemon=True
         )
         self.server_thread.start()
 
