@@ -68,15 +68,28 @@ class InteractionServer(object):
 
         ## Set up IO.
         self.senders = []
-        self.midi_sender = impsio.MIDIServer(
-            self.config, self.construct_input_list, self.dense_callback
-        )
-        self.midi_sender.connect()
-        self.senders.append(self.midi_sender)
-        self.websocket_sender = impsio.WebSocketServer(
-            self.config, self.construct_input_list, self.dense_callback
-        )
-        self.senders.append(self.websocket_sender)
+        if "midi" in self.config:
+            # Set up MIDI 
+            self.midi_sender = impsio.MIDIServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.midi_sender.connect()
+            self.senders.append(self.midi_sender)
+        if "websocket" in self.config:
+            # Set up websocket
+            self.websocket_sender = impsio.WebSocketServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.websocket_sender.connect()
+            self.senders.append(self.websocket_sender)
+        if "osc" in self.config:
+            # Set up OSC
+            self.osc_sender = impsio.OSCServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.osc_sender.connect()
+            self.senders.append(self.osc_sender)
+        # if "serial" in self.config: ... TODO
 
         # Import MDRNn
         click.secho("Importing MDRNN.", fg="yellow")
@@ -132,8 +145,8 @@ class InteractionServer(object):
     def send_back_values(self, output_values):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
         output = np.minimum(np.maximum(output_values, 0), 1)
-        self.midi_sender.send(output)
-        self.websocket_sender.send(output)
+        for sender in self.senders:
+            sender.send(output)
 
     def dense_callback(self, values) -> None:
         """insert a dense input list into the interaction stream (e.g., when receiving OSC)."""
