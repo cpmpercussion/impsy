@@ -3,6 +3,7 @@
 import click
 from .utils import mdrnn_config
 import tomllib
+import os
 
 
 def model_to_tflite(model, output_name: str):
@@ -79,7 +80,9 @@ def weights_file_to_model_file(weights_file, model_size, dimension, location):
     )
     inference_model.load_model(model_file=weights_file)
     model_name = inference_model.model_name()
-    inference_model.model.save(f"{location}/{model_name}.keras")
+    keras_filename = os.path.join(location, f"{model_name}.keras")
+    inference_model.model.save(keras_filename)
+    return keras_filename
 
 
 @click.command(name="convert-tflite")
