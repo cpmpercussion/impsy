@@ -1,5 +1,6 @@
 from impsy import dataset
 from impsy import train
+from impsy import tflite_converter
 import numpy as np
 import os
 import random
@@ -10,6 +11,10 @@ import pytest
 @pytest.fixture
 def dimension():
     return 8
+
+@pytest.fixture
+def mdrnn_size():
+    return "xs"
 
 @pytest.fixture
 def test_dir():
@@ -81,19 +86,17 @@ def test_dataset_command(dataset_location, dataset_file):
     print("Num touches:", np.sum([len(l) for l in corpus]))
 
 
-def test_train_command(dimension, dataset_file, dataset_location, models_location):
-    """Test the training command"""
+@pytest.fixture
+def trained_model(dimension, dataset_file, dataset_location, models_location, mdrnn_size):
     assert os.path.isfile(dataset_file)
-    
-    model_size = "xs"
     batch_size = 1
     epochs = 1
 
     # Train using that dataset
-    history = train.train_mdrnn(
+    train_output = train.train_mdrnn(
         dimension=dimension,
         dataset_location=dataset_location,
-        model_size=model_size,
+        model_size=mdrnn_size,
         early_stopping=False,
         patience=10,
         num_epochs=epochs,
@@ -101,4 +104,50 @@ def test_train_command(dimension, dataset_file, dataset_location, models_locatio
         save_location=models_location,
     )
 
-    assert isinstance(history, tf.keras.callbacks.History)
+    assert isinstance(train_output["history"], tf.keras.callbacks.History)
+    assert os.path.isfile(train_output["weights_file"])
+    assert os.path.isfile(train_output["keras_file"])
+
+    yield train_output
+
+    # clean up
+    os.remove(train_output["weights_file"])
+    os.remove(train_output["keras_file"])
+
+
+def test_train_command(trained_model):
+    """Test the training command"""
+    # just assert that the model output exists.
+
+    assert os.path.isfile(trained_model["weights_file"])
+    assert os.path.isfile(trained_model["keras_file"])
+    assert isinstance(trained_model["history"], tf.keras.callbacks.History)
+
+
+### tflite tests
+
+def test_config_to_tflite():
+    test_config = "configs/default.toml"
+    expected_output_path = (
+        "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+    )
+    tflite_converter.config_to_tflite(test_config)
+    assert os.path.exists(expected_output_path)
+    os.remove(expected_output_path)
+
+
+def test_weights_to_model_file(trained_model, dimension, test_dir, mdrnn_size):
+    weights_file = trained_model["weights_file"]
+    print(f"Weights file: {weights_file}")
+    model_file_name = tflite_converter.weights_file_to_model_file(weights_file, mdrnn_size, dimension, test_dir)
+    print(f"File returned: {model_file_name}")
+    assert os.path.exists(model_file_name)
+    os.remove(model_file_name)
+
+
+def test_model_file_to_tflite(trained_model):
+    model_filename = trained_model["keras_file"]
+    expected_output_path = model_filename.removesuffix('.keras') + '.tflite'
+    tflite_converter.model_file_to_tflite(model_filename)
+    assert os.path.exists(expected_output_path)
+    os.remove(expected_output_path)
