@@ -46,7 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run the main file just to prove it works.
       run: |
-        poetry run ./start_impsy.py --help
+        poetry run python ./start_impsy.py --help
     - name: refresh coverage badge
       uses: fjogeleit/http-request-action@v1
       with:
