@@ -72,7 +72,7 @@ def generate_dataset(
     click.secho(f"total number of perfs in raw array: {len(raw_perfs)}", fg="blue")
     raw_perfs = np.array(raw_perfs)
     np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)
-    click.secho("done saving: {dataset_location + dataset_filename}", fg="green")
+    click.secho(f"done saving: {dataset_location + dataset_filename}", fg="green")
     return dataset_filename
 
 
