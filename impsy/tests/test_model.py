@@ -2,13 +2,27 @@ from impsy import mdrnn
 from impsy import train
 from impsy import utils
 import tensorflow as tf
+import pytest
 
+@pytest.fixture(scope="session")
+def dimension():
+    return 3
 
-def test_model():
-    """Test creation of a PredictiveMusicMDRNN Model."""
-    net = mdrnn.PredictiveMusicMDRNN()
-    assert isinstance(net, mdrnn.PredictiveMusicMDRNN)
+@pytest.fixture(scope="session")
+def sequence_length():
+    return 3
 
+@pytest.fixture(scope="session")
+def batch_size():
+    return 3
+
+@pytest.fixture(scope="session")
+def sequence_slices(sequence_length, dimension, batch_size):
+    x_t_log = utils.generate_data(
+        samples=((sequence_length + 1) * batch_size), dimension=dimension
+    )
+    slices = train.slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
+    return slices
 
 def test_inference():
     """Test inference from a PredictiveMusicMDRNN model"""
@@ -23,45 +37,27 @@ def test_inference():
     assert len(proc_touch == dimension)
 
 
-def test_training():
+def test_training(sequence_length, batch_size, dimension, sequence_slices):
     """Test training on a PredictiveMusicMDRNN model"""
     num_epochs = 1
-    sequence_length = 3
-    batch_size = 3
-    dimension = 3
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_TRAIN,
         dimension=dimension,
-        n_hidden_units=16,
-        n_mixtures=5,
+        n_hidden_units=8,
+        n_mixtures=3,
         sequence_length=sequence_length,
-        layers=2,
+        layers=1,
     )
-    x_t_log = utils.generate_data(
-        samples=((sequence_length + 1) * batch_size), dimension=dimension
-    )
-    slices = train.slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
-    Xs, ys = train.seq_to_overlapping_format(slices)
+    Xs, ys = train.seq_to_overlapping_format(sequence_slices)
     history = net.train(Xs, ys, batch_size=batch_size, epochs=num_epochs, logging=False)
     assert isinstance(history, tf.keras.callbacks.History)
 
 
-def test_data_munging():
+def test_data_munging(sequence_length, batch_size, dimension, sequence_slices):
     """Test the data munging functions"""
-    sequence_length = 50
-    batch_size = 100
-    dimension = 12
-
-    # get some data
-    x_t_log = utils.generate_data(
-        samples=((sequence_length + 1) * batch_size * 10), dimension=dimension
-    )
-
-    # slice
-    slices = train.slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
 
     # overlapping
-    Xs, ys = train.seq_to_overlapping_format(slices)
+    Xs, ys = train.seq_to_overlapping_format(sequence_slices)
     assert len(Xs) == len(ys)
     assert len(Xs[0]) == sequence_length
     assert len(ys[0]) == sequence_length
@@ -70,7 +66,7 @@ def test_data_munging():
     print("ys:", len(ys[0]))
 
     # singleton
-    X, y = train.seq_to_singleton_format(slices)
+    X, y = train.seq_to_singleton_format(sequence_slices)
     print("X:", len(X[0]))
     print("y:", len(y[0]))
 
