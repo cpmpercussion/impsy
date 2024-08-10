@@ -9,6 +9,7 @@ import tensorflow as tf
 import keras_mdn_layer as mdn
 import time
 import datetime
+from pathlib import Path
 
 NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
@@ -193,8 +194,9 @@ class PredictiveMusicMDRNN(object):
         )
 
     def load_model(self, model_file=None, model_dir="models"):
+        model_dir = Path(model_dir)
         if model_file is None:
-            model_file = model_dir + "/" + self.model_name() + ".h5"
+            model_file = model_dir / f"{self.model_name()}.h5"
         try:
             self.model.load_weights(model_file)
         except OSError as err:
@@ -223,10 +225,10 @@ class PredictiveMusicMDRNN(object):
         """Train the network for a number of epochs with a specific dataset."""
         # Setup callbacks
         date_string = datetime.datetime.today().strftime("%Y%m%d-%H_%M_%S")
-        checkpoint_path = save_location + "/" + self.model_name() + "-ckpt.keras"
-        # checkpoint_path = save_location + "/" + model_name + "-E{epoch:02d}-VL{val_loss:.2f}.keras"
+        save_location = Path(save_location)
+        checkpoint_path = save_location / f"{self.model_name()}-ckpt.keras"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-            checkpoint_path,
+            str(checkpoint_path),
             monitor="val_loss",
             verbose=1,
             save_best_only=True,
@@ -237,7 +239,7 @@ class PredictiveMusicMDRNN(object):
             monitor="val_loss", mode="min", verbose=1, patience=patience
         )
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=save_location + "/" + date_string + self.model_name(),
+            log_dir=save_location / f"{date_string}{self.model_name()}",
             histogram_freq=0,
             write_graph=True,
             update_freq="epoch",

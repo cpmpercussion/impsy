@@ -5,6 +5,7 @@ import numpy as np
 import click
 from .utils import mdrnn_config
 import os
+from pathlib import Path
 
 
 # Model training hyperparameters
@@ -66,6 +67,8 @@ def train_mdrnn(
     mdrnn_layers = model_config["layers"]
     mdrnn_mixes = model_config["mixes"]
 
+    save_location = Path(save_location)
+
     click.secho(f"Model size: {model_size}", fg="blue")
     click.secho(f"Units: {mdrnn_units}", fg="blue")
     click.secho(f"Layers: {mdrnn_layers}", fg="blue")
@@ -117,7 +120,7 @@ def train_mdrnn(
 
     # Save final Model
     model_name = mdrnn_manager.model_name()
-    model_weights_file = os.path.join(save_location, f"{model_name}.h5")
+    model_weights_file = save_location / f"{model_name}.h5"
     mdrnn_manager.model.save_weights(model_weights_file)
     trained_weights = mdrnn_manager.model.get_weights()
 
@@ -131,7 +134,7 @@ def train_mdrnn(
         layers=mdrnn_layers,
     )
     model_name = inference_mdrnn.model_name()
-    model_keras_file = os.path.join(save_location, f"{model_name}.keras")
+    model_keras_file = save_location / f"{model_name}.keras"
     inference_mdrnn.model.set_weights(trained_weights)
     inference_mdrnn.model.save(model_keras_file)
 

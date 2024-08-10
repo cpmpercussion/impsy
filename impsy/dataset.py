@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 import click
+from pathlib import Path
 
 
 def transform_log_to_sequence_example(logfile: str, dimension: int):
@@ -28,7 +29,7 @@ def generate_dataset(
     """Generate a dataset from .log files in the log directory."""
     # Load up the performances
     log_location = f"{source}/"
-    log_file_ending = "-" + str(dimension) + "d-mdrnn.log"
+    log_file_ending = f"-{dimension}d-mdrnn.log"
     log_arrays = []
 
     for local_file in os.listdir(log_location):
@@ -43,8 +44,8 @@ def generate_dataset(
                 print("Processing failed for", local_file)
 
     # Save Performance Data in a compressed numpy file.
-    dataset_location = destination + "/"
-    dataset_filename = "training-dataset-" + str(dimension) + "d.npz"
+    dataset_name = f"training-dataset-{dimension}d.npz"
+    dataset_file = Path(destination) / dataset_name
 
     # Input format is:
     # 0. 1. 2. ... n.
@@ -71,9 +72,9 @@ def generate_dataset(
     click.secho(f"total time represented: {time}", fg="blue")
     click.secho(f"total number of perfs in raw array: {len(raw_perfs)}", fg="blue")
     raw_perfs = np.array(raw_perfs)
-    np.savez_compressed(dataset_location + dataset_filename, perfs=raw_perfs)
-    click.secho(f"done saving: {dataset_location + dataset_filename}", fg="green")
-    return dataset_filename
+    np.savez_compressed(dataset_file, perfs=raw_perfs)
+    click.secho(f"done saving: {dataset_name}", fg="green")
+    return dataset_file
 
 
 @click.command(name="dataset")
