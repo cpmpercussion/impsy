@@ -13,7 +13,7 @@ services:
       - impsy_network
 
   application:
-    image: charlepm/impsy:0.5.3
+    image: charlepm/impsy
     command: poetry run ./start_impsy.py run
     ports:
       - "5000:5000"

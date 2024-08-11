@@ -4,11 +4,13 @@ DOCKERHUB_USERNAME = charlepm
 CONTAINER_NAME = impsy
 CONTAINER_VERSION = latest
 
+CONTAINER = $(DOCKERHUB_USERNAME)/$(CONTAINER_NAME):$(CONTAINER_VERSION)
+
 build: Dockerfile
-	docker build --tag $(DOCKERHUB_USERNAME)/$(CONTAINER_NAME):$(CONTAINER_VERSION) --platform linux/amd64,linux/arm64 -f Dockerfile ..
+	docker build --tag $(CONTAINER) --platform linux/amd64,linux/arm64 -f Dockerfile ..
 
 publish: build
-	docker push $(DOCKERHUB_USERNAME)/$(CONTAINER_NAME):$(CONTAINER_VERSION)
+	docker push $(CONTAINER)
 
 run: build
-	docker run -it $(DOCKERHUB_USERNAME)/$(CONTAINER_NAME):$(CONTAINER_VERSION) poetry run ./start_impsy.py run
+	docker run -it --rm $(CONTAINER) poetry run ./start_impsy.py run
