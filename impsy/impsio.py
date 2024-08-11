@@ -220,11 +220,12 @@ class WebSocketServer(IOServer):
     def disconnect(self) -> None:
         if self.ws_server:
             self.ws_server.shutdown() # stops the server_forever loop on the server if it exists.
-            # the shutdown poll is 0.5 seconds.
         try:
-            self.ws_thread.join(timeout=1.0)
+            self.ws_thread.join(timeout=1.0) # the shutdown poll is usually 0.5 seconds.
         except:
             pass
+        if self.ws_server:
+            self.ws_server.socket.close() 
 
     def websocket_send_midi(self, message):
         """Sends a mido MIDI message via websockets if available."""
@@ -364,10 +365,14 @@ class OSCServer(IOServer):
         self.server_thread.start()
 
     def disconnect(self) -> None:
+        if self.server:
+            self.server.shutdown()
         try:
-            self.server_thread.join(timeout=0.1)
+            self.server_thread.join(timeout=1.0)
         except:
             pass
+        if self.server:
+            self.server.socket.close()
 
     def send(self, output_values) -> None:
         self.osc_client.send_message(OSCServer.OUTPUT_MESSAGE_ADDRESS, output_values)
