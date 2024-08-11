@@ -178,12 +178,13 @@ class SerialMIDIServer(IOServer):
         """Tries to open a serial port for MIDI IO on Raspberry Pi."""
         try:
             click.secho(
-                "Trying to open Raspberry Pi serial port for MIDI in/out.", fg="yellow"
+                "Trying to open serial port for MIDI in/out.", fg="yellow"
             )
-            self.serial = serial.Serial("/dev/ttyAMA0", baudrate=31250)
+            # TODO make the serial port configurable duh.
+            self.serial = serial.Serial("/dev/ttyAMA0", baudrate=31250) 
         except:
             self.serial = None
-            click.secho("Could not open Raspberry Pi serial port.", fg="red")
+            click.secho("Could not open serial port.", fg="red")
 
     def disconnect(self) -> None:
         try:
@@ -386,19 +387,19 @@ class MIDIServer(IOServer):
         else:
             return contains_list[0]
 
-    def open_raspberry_serial():
-        """Tries to open a serial port for MIDI IO on Raspberry Pi."""
-        try:
-            click.secho(
-                "Trying to open Raspberry Pi serial port for MIDI in/out.", fg="yellow"
-            )
-            ser = serial.Serial("/dev/ttyAMA0", baudrate=31250)
-        except:
-            ser = None
-            click.secho(
-                "Could not open serial port, might be in development mode.", fg="red"
-            )
-        return ser
+    # def open_raspberry_serial():
+    #     """Tries to open a serial port for MIDI IO on Raspberry Pi."""
+    #     try:
+    #         click.secho(
+    #             "Trying to open Raspberry Pi serial port for MIDI in/out.", fg="yellow"
+    #         )
+    #         ser = serial.Serial("/dev/ttyAMA0", baudrate=31250)
+    #     except:
+    #         ser = None
+    #         click.secho(
+    #             "Could not open serial port, might be in development mode.", fg="red"
+    #         )
+    #     return ser
 
     def __init__(self, config, callback, dense_callback) -> None:
         super().__init__(config, callback, dense_callback)
@@ -407,11 +408,11 @@ class MIDIServer(IOServer):
         ]  # retrieve dimension from the config file.
         self.verbose = self.config["verbose"]
         self.last_midi_notes = {}  # dict to store last played notes via midi
-        self.websocket_send_midi = None  # TODO implement some kind generic MIDI callback for other output channels.
+        # self.websocket_send_midi = None  # TODO implement some kind generic MIDI callback for other output channels.
 
     def connect(self) -> None:
         # Try Raspberry Pi serial opening
-        self.serial = MIDIServer.open_raspberry_serial()
+        # self.serial = MIDIServer.open_raspberry_serial()
         # MIDI port opening
         click.secho("Opening MIDI port for input/output.", fg="yellow")
         potential_midi_inputs = []
@@ -449,26 +450,26 @@ class MIDIServer(IOServer):
             self.midi_out_port.close()
         except:
             pass
-        try:
-            self.serial.close()
-        except:
-            pass
+        # try:
+        #     self.serial.close()
+        # except:
+        #     pass
 
-    def serial_send_midi(self, message):
-        """Sends a mido MIDI message via the very basic serial output on Raspberry Pi GPIO."""
-        try:
-            self.serial.write(message.bin())
-        except:
-            pass
+    # def serial_send_midi(self, message):
+    #     """Sends a mido MIDI message via the very basic serial output on Raspberry Pi GPIO."""
+    #     try:
+    #         self.serial.write(message.bin())
+    #     except:
+    #         pass
 
     def send_midi_message(self, message):
         """Send a MIDI message across all required outputs"""
         # TODO: this is where we can have laggy performance, careful.
         if self.midi_out_port is not None:
             self.midi_out_port.send(message)
-        self.serial_send_midi(message)
-        if self.websocket_send_midi is not None:
-            self.websocket_send_midi(message)
+        # self.serial_send_midi(message)
+        # if self.websocket_send_midi is not None:
+        #     self.websocket_send_midi(message)
 
     def send_midi_note_on(self, channel, pitch, velocity):
         """Send a MIDI note on (and implicitly handle note_off)"""
