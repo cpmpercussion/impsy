@@ -310,7 +310,6 @@ class InteractionServer(object):
         rnn_thread = Thread(
             target=self.playback_rnn_loop, name="rnn_player_thread", daemon=True
         )
-        self.websocket_sender.connect()  # TODO verify websockets again.
 
         # Logging
         if self.config["log"]:
