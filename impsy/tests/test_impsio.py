@@ -2,6 +2,7 @@ from impsy import impsio
 import pytest
 import tomllib
 import numpy as np
+import time
 
 
 @pytest.fixture(scope="session")
@@ -40,6 +41,7 @@ def test_websocket_server(default_config, sparse_callback, dense_callback, outpu
     sender.connect()
     sender.handle()
     sender.send(output_values)
+    time.sleep(0.1)
     sender.disconnect()
 
 
@@ -50,6 +52,7 @@ def test_osc_server(default_config, sparse_callback, dense_callback, output_valu
     sender.connect()
     sender.handle()
     sender.send(output_values)
+    time.sleep(0.1)
     sender.disconnect()
 
 
