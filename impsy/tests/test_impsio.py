@@ -3,6 +3,7 @@ import pytest
 import tomllib
 import numpy as np
 
+
 @pytest.fixture(scope="session")
 def default_config():
     # get the default config file.
@@ -17,11 +18,13 @@ def output_values(default_config):
     dimension = default_config["model"]["dimension"]
     return np.random.rand(dimension - 1)
 
+
 @pytest.fixture(scope="session")
 def sparse_callback():
     def callback():
         return
     return callback
+
 
 @pytest.fixture(scope="session")
 def dense_callback():
@@ -39,14 +42,6 @@ def test_websocket_server(default_config, sparse_callback, dense_callback, outpu
     sender.send(output_values)
     sender.disconnect()
 
-def test_osc_server(default_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.OSCServer(
-        default_config, sparse_callback, dense_callback
-    )
-    sender.connect()
-    sender.handle()
-    sender.send(output_values)
-    sender.disconnect()
 
 def test_osc_server(default_config, sparse_callback, dense_callback, output_values):
     sender = impsio.OSCServer(
@@ -56,6 +51,7 @@ def test_osc_server(default_config, sparse_callback, dense_callback, output_valu
     sender.handle()
     sender.send(output_values)
     sender.disconnect()
+
 
 def test_serial_server(default_config, sparse_callback, dense_callback, output_values):
     sender = impsio.SerialMIDIServer(
@@ -65,6 +61,7 @@ def test_serial_server(default_config, sparse_callback, dense_callback, output_v
     # sender.handle()
     sender.send(output_values)
     sender.disconnect()
+
 
 def test_midi_server(default_config, sparse_callback, dense_callback, output_values):
     sender = impsio.MIDIServer(
