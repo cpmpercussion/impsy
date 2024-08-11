@@ -48,10 +48,3 @@ output = [
   ["control_change", 1, 13],
   ["control_change", 1, 23],
 ]
-
-# Websocket section enables websocket sending, remove to disable websocket sending
-[websocket]
-client_ip = "localhost" # "192.168.0.103" # The address to send messages to
-client_port = 8765 # "3000" # The port to send messages to
-server_ip = "localhost" # The address of this server
-server_port = 5001 # The port this server should listen on.

@@ -49,7 +49,3 @@ output = [ # Volca FM
   ["control_change", 1, 47], # LFO depth
   ["control_change", 1, 48], # Algorithm
 ]
-
-[websocket]
-server_ip = "0.0.0.0" # The address of this server
-server_port = 5001 # The port this server should listen on.

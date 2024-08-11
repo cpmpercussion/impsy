@@ -16,9 +16,9 @@ services:
     image: charlepm/impsy
     command: poetry run ./start_impsy.py run
     ports:
-      - "5000:5000"
+      - "6000:6000"
+      - "6001:6001"
       - "5001:5001"
-      - "5002:5002"
     volumes:
       - ./datasets:/impsy/datasets
       - ./logs:/impsy/logs

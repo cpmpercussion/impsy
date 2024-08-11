@@ -54,14 +54,3 @@ output = [
   ["control_change", 3, 25], # filter lvo knob
   ["control_change", 3, 71], # filter reso knob
 ]
-
-
-[websocket]
-server_ip = "0.0.0.0" # The address of this server
-server_port = 5001 # The port this server should listen on.
-
-[osc]
-server_ip = "localhost" # Address of IMPSY
-server_port = "5000" # Port IMPSY listens on
-client_ip = "localhost" # Address of the output device
-client_port = "5002" # Port of the output device
