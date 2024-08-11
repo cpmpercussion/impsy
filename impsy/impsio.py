@@ -358,7 +358,7 @@ class OSCServer(IOServer):
         # TODO: do something with this information...
 
     def connect(self) -> None:
-        print("Preparing Server thread.")
+        click.secho("Preparing OSC server thread.", fg="yellow")
         self.server_thread = Thread(
             target=self.server.serve_forever, name="osc_server_thread", daemon=True
         )
