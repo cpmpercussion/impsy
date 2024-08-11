@@ -200,6 +200,7 @@ class WebSocketServer(IOServer):
         super().__init__(config, callback, dense_callback)
         self.ws_clients = set()  # storage for potential ws clients.
         self.ws_thread = None
+        self.ws_server = None
 
     def send(self, output_values) -> None:
         return super().send(output_values)
@@ -217,8 +218,11 @@ class WebSocketServer(IOServer):
         self.ws_thread.start()  # send it!
 
     def disconnect(self) -> None:
+        if self.ws_server:
+            self.ws_server.shutdown() # stops the server_forever loop on the server if it exists.
+            # the shutdown poll is 0.5 seconds.
         try:
-            self.ws_thread.join(timeout=0.1)
+            self.ws_thread.join(timeout=1.0)
         except:
             pass
 
@@ -287,6 +291,7 @@ class WebSocketServer(IOServer):
         hostname = self.config["websocket"]["server_ip"]
         port = self.config["websocket"]["server_port"]
         with serve(self.websocket_handler, hostname, port) as server:
+            self.ws_server = server
             server.serve_forever()
 
 
