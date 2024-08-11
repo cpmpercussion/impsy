@@ -43,6 +43,9 @@ def test_websocket_server(default_config, sparse_callback, dense_callback, outpu
     sender.send(output_values)
     time.sleep(0.1)
     sender.disconnect()
+    time.sleep(0.1)
+    # test if we can open the socket that was just closed.
+
 
 
 def test_osc_server(default_config, sparse_callback, dense_callback, output_values):
@@ -54,6 +57,7 @@ def test_osc_server(default_config, sparse_callback, dense_callback, output_valu
     sender.send(output_values)
     time.sleep(0.1)
     sender.disconnect()
+    time.sleep(0.1)
 
 
 def test_serial_server(default_config, sparse_callback, dense_callback, output_values):
