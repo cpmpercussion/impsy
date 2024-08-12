@@ -1,0 +1,40 @@
+# The configuration file for IMPSY: Interactive Musical Prediction System
+
+# Metadata about this configuration
+title = "Microbit Serial Demo"
+owner = "Charles Martin"
+description = "Communicates with a microbit interface over serial."
+
+# Basic config
+log = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 4
+file = "models/musicMDRNN-dim4-layers2-units64-mixtures5-scale10.h5"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI over serial mapping
+[midiserial]
+device = "/dev/tty.usbmodem14602"
+input = [
+  ["control_change", 0, 0], #
+  ["control_change", 0, 1], #
+  ["control_change", 0, 2], #
+]
+output = [
+  ["control_change", 0, 0], #
+  ["control_change", 0, 1], #
+  ["control_change", 0, 2], #
+]
