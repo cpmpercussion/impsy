@@ -323,7 +323,7 @@ class InteractionServer(object):
                     self.monitor_user_action()
         except KeyboardInterrupt:
             click.secho("\nCtrl-C received... exiting.", fg="red")
-            rnn_thread.join(timeout=0.1)
+            rnn_thread.join(timeout=1.0)
             for sender in self.senders:
                 sender.disconnect()
         finally:
