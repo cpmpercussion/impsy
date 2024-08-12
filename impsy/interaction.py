@@ -5,10 +5,9 @@ import time
 import datetime
 import numpy as np
 import queue
-import tomllib
 from threading import Thread
 import click
-from .utils import mdrnn_config
+from .utils import mdrnn_config, get_config_data
 import impsy.impsio as impsio
 
 np.set_printoptions(precision=2)
@@ -52,12 +51,10 @@ def build_network(config):
 class InteractionServer(object):
     """Interaction server class. Contains state and functions for the interaction loop."""
 
-    def __init__(self):
+    def __init__(self, config: dict):
         """Initialises the interaction server including loading the config from a config.toml file."""
         click.secho("Preparing IMPSY interaction server...", fg="yellow")
-        click.secho("Opening configuration.", fg="yellow")
-        with open("config.toml", "rb") as f:
-            self.config = tomllib.load(f)
+        self.config = config
 
         ## Load global variables from the config file.
         self.verbose = self.config["verbose"]
@@ -334,8 +331,10 @@ class InteractionServer(object):
 
 
 @click.command(name="run")
-def run():
+@click.option('--config', '-c', default='config.toml', help='Path to a .toml configuration file.')
+def run(config: str):
     """Run IMPSY interaction system with MIDI, WebSockets, and OSC."""
-    click.secho("GenAI: Running startup and main loop.", fg="blue")
-    interaction_server = InteractionServer()
+    click.secho("IMPSY Starting up...", fg="blue")
+    config_data = get_config_data(config)
+    interaction_server = InteractionServer(config_data)
     interaction_server.serve_forever()

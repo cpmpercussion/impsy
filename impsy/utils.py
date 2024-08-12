@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import random
-
+import tomllib
+import click
 
 # MDRNN config
 
@@ -58,3 +58,19 @@ def generate_data(samples: int = 50000, dimension: int = 2):
     df.t = df.t.fillna(1e-4)
     print(df.describe())
     return np.array(df)
+
+
+def get_config_data(config_path: str):
+    """Loads a TOML config from a string path."""
+    click.secho(f"Opening configuration from {config_path}", fg="yellow")
+    try:
+        with open(config_path, "rb") as f:
+            config_data = tomllib.load(f)
+    except FileNotFoundError:
+        click.secho(f"Error: Could not find config file '{config_path}'.", fg="red")
+        raise click.Abort()
+    except tomllib.TOMLDecodeError:
+        click.secho(f"Error: Configuration file '{config_path}' is not valid TOML format.", fg="red")
+        raise click.Abort()
+    return config_data
+    

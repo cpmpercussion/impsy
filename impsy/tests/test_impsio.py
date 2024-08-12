@@ -1,16 +1,15 @@
-from impsy import impsio
+from impsy import impsio, utils
 import pytest
-import tomllib
 import numpy as np
 import time
+from pathlib import Path
 
 
 @pytest.fixture(scope="session")
 def default_config():
-    # get the default config file.
-    config_path = "configs/default.toml"
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
+    """get the default config file."""
+    config_path = Path("configs") / "default.toml"
+    config = utils.get_config_data(config_path)
     return(config)
 
 

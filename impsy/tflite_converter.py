@@ -1,9 +1,7 @@
 """impsy.tflite_converter: Functions for converting a model to tflite format."""
 
 import click
-from .utils import mdrnn_config
-import tomllib
-import os
+from .utils import mdrnn_config, get_config_data
 from pathlib import Path
 
 
@@ -41,14 +39,14 @@ def model_file_to_tflite(filename):
     model_to_tflite(loaded_model, model_file)
 
 
+
 def config_to_tflite(config_path):
     """Converts the model specified in a config dictionary to tflite format."""
     import tensorflow as tf
     import impsy.mdrnn as mdrnn
 
     click.secho("IMPSY: Converting model to tflite.", fg="blue")
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
+    config = get_config_data(config_path)
 
     click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
 
