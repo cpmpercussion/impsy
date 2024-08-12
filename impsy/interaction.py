@@ -9,32 +9,27 @@ from threading import Thread
 import click
 from .utils import mdrnn_config, get_config_data
 import impsy.impsio as impsio
+from pathlib import Path
 
 np.set_printoptions(precision=2)
 
 
-def setup_logging(dimension, location="logs/"):
+def setup_logging(dimension: int, location="logs"):
     """Setup a log file and logging, requires a dimension parameter"""
-    log_file = (
-        datetime.datetime.now().isoformat().replace(":", "-")[:19]
-        + "-"
-        + str(dimension)
-        + "d"
-        + "-mdrnn.log"
-    )  # Log file name.
-    log_file = location + log_file
+    log_date = datetime.datetime.now().isoformat().replace(":", "-")[:19]
+    log_name = f"{log_date}-{dimension}d-mdrnn.log"
+    log_file = Path(location) / log_name
     log_format = "%(message)s"
     logging.basicConfig(filename=log_file, level=logging.INFO, format=log_format)
-    click.secho(f"Logging enabled: {log_file}", fg="green")
+    click.secho(f"Logging enabled: {log_name}", fg="green")
 
 
-def build_network(config):
+def build_network(config: dict):
     """Build the MDRNN, uses a high-level size parameter and dimension."""
     from . import mdrnn
 
     click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
     model_config = mdrnn_config(config["model"]["size"])
-    mdrnn.MODEL_DIR = "./models/"
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
         dimension=config["model"]["dimension"],
@@ -327,7 +322,7 @@ class InteractionServer(object):
             for sender in self.senders:
                 sender.disconnect()
         finally:
-            click.secho("\nDone, shutting down.", fg="red")
+            click.secho("\nIMPSY has shut down. Bye!", fg="red")
 
 
 @click.command(name="run")

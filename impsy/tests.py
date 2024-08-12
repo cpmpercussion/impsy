@@ -10,7 +10,6 @@ def build_network(dimension=4, units=64, mixes=5, layers=2):
     """Build an MDRNN model."""
     from . import mdrnn
 
-    mdrnn.MODEL_DIR = "./models/"
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
         dimension=dimension,
