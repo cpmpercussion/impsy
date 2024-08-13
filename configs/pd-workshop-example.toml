@@ -1,0 +1,32 @@
+# The configuration file for IMPSY: Interactive Musical Prediction System
+
+# Metadata about this configuration
+title = "IMPSY to Pd using OSC in a docker container"
+owner = "Charles Martin"
+description = "An example for the workshop, this uses OSC and uses the special address to get UDP messages out of the docker container."
+
+# Basic config
+log = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 4
+file = "models/musicMDRNN-dim4-layers2-units64-mixtures5-scale10.h5"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+[osc]
+server_ip = "0.0.0.0" # Address of IMPSY
+server_port = 6000 # Port IMPSY listens on
+client_ip = "host.docker.internal" # Address of the output device
+client_port = 6001 # Port of the output device
