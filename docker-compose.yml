@@ -5,6 +5,7 @@ services:
     ports:
       - "4000:4000"
     volumes:
+      - ./configs:/impsy/configs
       - ./datasets:/impsy/datasets
       - ./logs:/impsy/logs
       - ./models:/impsy/models
@@ -20,6 +21,7 @@ services:
       - "6001:6001"
       - "5001:5001"
     volumes:
+      - ./configs:/impsy/configs
       - ./datasets:/impsy/datasets
       - ./logs:/impsy/logs
       - ./models:/impsy/models
