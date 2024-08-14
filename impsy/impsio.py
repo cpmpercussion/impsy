@@ -52,6 +52,60 @@ class IOServer(abc.ABC):
         pass
 
 
+class SerialServer(IOServer):
+    """Handles standard serial communication for IMPSY. 
+    Messages are encoded in CSV format with new lines at the end of each message."""
+
+
+    def __init__(self, config: dict, callback: Callable[[int, float], None], dense_callback: Callable[[List[int]], None]) -> None:
+        super().__init__(config, callback, dense_callback)
+        self.serial_port = config["serial"]["port"]
+        self.baudrate = config["serial"]["baudrate"] # 31250 midi, 
+        self.serial = None
+        self.buffer = ""
+
+    
+    def send(self, output_values) -> None:
+        """Send values as a CSV line."""
+        output_message = ','.join(map(str, output_values)) + '\n'
+        self.serial.write(output_message.encode())
+    
+
+    def handle(self) -> None:
+        """read in the serial bytes and process lines into value lists for IMPSY"""
+        # first read in the serial bytes in waiting
+        while self.serial.in_waiting:
+            self.buffer += self.serial.read(self.serial.in_waiting).decode()
+        
+        # process lines into values.
+        while '\n' in self.buffer:
+            line, self.buffer = self.buffer.split('\n', 1)
+            if line:
+                try:
+                    value_list = [float(x) for x in line.split(',')]
+                    self.dense_callback(value_list) # callback with the value list.
+                except ValueError:
+                    click.secho(f"Serial: Could not parse line: {line}", fg="red")
+
+
+    def connect(self) -> None:
+        """Tries to open a serial port for regular IO."""
+        try:
+            click.secho("Serial: Opening port", fg="yellow")
+            # TODO make the serial port configurable duh.
+            self.serial = serial.Serial( self.serial_port, baudrate=self.baudrate, timeout=0)
+        except:
+            self.serial = None
+            click.secho("Serial: Could not open port.", fg="red")
+
+
+    def disconnect(self) -> None:
+        try:
+            self.serial.close()
+        except:
+            pass
+    
+
 class SerialMIDIServer(IOServer):
     """Handles MIDI over serial."""
 
