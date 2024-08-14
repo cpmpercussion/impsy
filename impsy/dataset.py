@@ -57,10 +57,13 @@ def generate_dataset(
     time = 0
     interactions = 0
     for l in log_arrays:
+        if l.shape[0] == 0:
+            continue # ignore logs with zero values.
         acc += l.shape[0] * l.shape[1]
         interactions += l.shape[0]
         time += l.T[0].sum()
         raw = l.astype("float32")  # dt, x_1, ... , x_n
+        print(f'Shape: {raw.shape}')
         raw_perfs.append(raw)
 
     if acc == 0:
@@ -71,7 +74,7 @@ def generate_dataset(
     click.secho(f"total number of interactions: {interactions}", fg="blue")
     click.secho(f"total time represented: {time}", fg="blue")
     click.secho(f"total number of perfs in raw array: {len(raw_perfs)}", fg="blue")
-    raw_perfs = np.array(raw_perfs)
+    raw_perfs = np.array(raw_perfs, dtype=object) # use object encoding to allow inhomogeneous arrays.
     np.savez_compressed(dataset_file, perfs=raw_perfs)
     click.secho(f"done saving: {dataset_name}", fg="green")
     return dataset_file

@@ -40,8 +40,9 @@ def log_files(log_location, dimension, number=20, events=55):
     test_log_files = []
     for i in range(number):
         test_log_file = log_location / f"2024-06-{i:02d}T12-00-00-{dimension}d-mdrnn.log"
+        num_events = random.randint(events, events + 10) # generate a random number of events in a range of 10.
         with open(test_log_file, "w") as file:
-            for j in range(events):
+            for j in range(num_events):
                 nums = [random.random() for _ in range(dimension - 1)]
                 num_string = ",".join(map(str, nums))
                 test_line = f"2024-06-01T12:00:{j:02d},interface,{num_string}\n"
