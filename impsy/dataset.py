@@ -63,7 +63,6 @@ def generate_dataset(
         interactions += l.shape[0]
         time += l.T[0].sum()
         raw = l.astype("float32")  # dt, x_1, ... , x_n
-        print(f'Shape: {raw.shape}')
         raw_perfs.append(raw)
 
     if acc == 0:
