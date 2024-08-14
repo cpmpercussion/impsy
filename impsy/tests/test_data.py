@@ -33,7 +33,7 @@ def models_location(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
-def log_files(log_location, dimension, number=20, events=55):
+def log_files(log_location, dimension, number=20, events=49):
     """Creates some test log files for dataset testing."""
     assert dimension > 1, "minimum dimension is 2"
     print(f"dimension: {dimension}")
