@@ -1,4 +1,4 @@
-#N canvas 588 38 540 550 12;
+#N canvas 510 48 540 550 12;
 #X obj 78 50 vsl 50 160 0 127 0 0 impsyin1 empty empty 0 -9 0 12 #ffc7c6 #000000 #000000 0 1;
 #X obj 137 50 vsl 50 160 0 127 0 0 impsyin2 empty empty 0 -9 0 12 #ffe3c6 #000000 #000000 0 1;
 #X obj 199 50 vsl 50 160 0 127 0 0 impsyin3 empty empty 0 -9 0 12 #feffc6 #000000 #000000 0 1;
@@ -6,7 +6,7 @@
 #X obj 136 321 vsl 50 160 0 127 0 0 synth2 impsyout2 empty 0 -9 0 12 #c6feff #000000 #000000 0 1;
 #X obj 198 321 vsl 50 160 0 127 0 0 synth3 impsyout3 empty 0 -9 0 12 #c7c6ff #000000 #000000 0 1;
 #X text 61 217 inputs to IMPSY (touch these!);
-#N canvas -2065 277 763 434 synth 1;
+#N canvas -2065 277 763 434 synth 0;
 #X obj 250 339 dac~;
 #N canvas -1250 15 702 495 one_touch_sine 0;
 #X obj 87 13 inlet;
@@ -87,7 +87,7 @@
 #X connect 7 0 0 0;
 #X connect 7 0 0 1;
 #X restore 334 449 pd synth;
-#N canvas 888 278 681 449 receive-osc 1;
+#N canvas 888 278 681 449 receive-osc 0;
 #X obj 58 96 oscparse;
 #X obj 58 74 netreceive -u -b;
 #X obj 54 115 list trim;
@@ -136,7 +136,7 @@
 #X connect 21 0 15 0;
 #X connect 22 0 1 0;
 #X restore 334 379 pd receive-osc;
-#N canvas 642 48 733 751 send-osc 1;
+#N canvas 642 48 733 751 send-osc 0;
 #X obj 95 554 netsend -u -b;
 #X obj 95 479 list prepend send;
 #X obj 95 504 list trim;
@@ -204,11 +204,14 @@
 #X restore 332 306 pd send-osc;
 #X obj 332 335 tgl 19 0 empty empty empty 0 -10 0 12 #fcfcfc #000000 #000000 0 1;
 #X obj 390 335 bng 19 250 50 0 empty empty empty 0 -10 0 12 #fcfcfc #000000 #000000;
-#X obj 350 109 bng 50 250 50 0 reconnect empty Reconnect\ OSC 0 -10 0 12 #ff0400 #000000 #000000;
+#X obj 340 114 bng 50 250 50 0 reconnect empty Reconnect\ OSC 0 -10 0 12 #ff0400 #000000 #000000;
 #X obj 333 406 tgl 19 0 empty empty empty 0 -10 0 12 #fcfcfc #000000 #000000 0 1;
 #X obj 409 405 bng 19 250 50 0 empty empty empty 0 -10 0 12 #fcfcfc #000000 #000000;
 #X text 31 493 outputs from IMPSY (controlled by IMPSY!);
+#X obj 338 199 loadbang;
+#X msg 338 228 \; pd dsp 1;
 #X connect 8 0 13 0;
 #X connect 8 1 14 0;
 #X connect 9 0 10 0;
 #X connect 9 1 11 0;
+#X connect 16 0 17 0;
