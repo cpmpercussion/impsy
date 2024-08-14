@@ -9,6 +9,14 @@
 <body>
     <h1>IMPSY Dataset Files</h1>
 
+    {% with messages = get_flashed_messages()%}
+    {% if messages%}
+    {% for message in messages%}
+    <p>{{message}}</p>
+    {%endfor%}
+    {%endif%}
+    {%endwith%}
+
     <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
 
     <form method="POST" action="{{ url_for('datasets') }}">
@@ -20,9 +28,9 @@
     {% if dataset_files %}
         <ul>
         {% for file in dataset_files %}
-            <li>
+            <li {% if file == new_dataset %}class="highlight"{% endif %}>
                 {{ file }} 
-                <a href="{{ url_for('download_dataset', filename=file) }}">[Download]</a>
+                <a href="{{ url_for('download_dataset', filename=file) }}">[Download] {% if file == new_dataset %}<i> updated!</i>{% endif %}</a>
             </li>
         {% endfor %}
         </ul>

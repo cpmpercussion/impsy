@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask import Flask, render_template, request, send_file, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 import click
 import psutil
@@ -10,6 +10,7 @@ from impsy.dataset import generate_dataset
 from pathlib import Path
 
 app = Flask(__name__)
+app.secret_key = "impsywebui"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = Path(os.path.dirname(CURRENT_DIR))
@@ -101,17 +102,23 @@ def logs():
 
 @app.route('/datasets', methods=['GET', 'POST'])
 def datasets():
+    new_dataset = None
     if request.method == 'POST':
         dimension = request.form.get('dimension', type=int)
         if dimension:
             try:
                 new_dataset_path = generate_dataset(dimension, source=LOGS_DIR, destination=DATASET_DIR)
                 # return redirect(url_for('datasets'))
+                new_dataset = os.path.basename(new_dataset_path)
+                flash(f"Dataset with dimension {dimension} generated successfully!", "success")
             except Exception as e:
-                return f"Error generating dataset: {str(e)}"
+                flash(f"Error generating dataset: {str(e)}", "error")
+            print(f"New dataset {new_dataset}")
+            return redirect(url_for('datasets', new_dataset=new_dataset))
     dataset_files = [f for f in os.listdir(DATASET_DIR) if allowed_dataset_file(f)]
     # print(dataset_files)
-    return render_template('datasets.html', dataset_files=dataset_files)
+    new_dataset = request.args.get('new_dataset')
+    return render_template('datasets.html', dataset_files=dataset_files, new_dataset=new_dataset)
 
 @app.route('/models', methods=['GET', 'POST'])
 def models():
