@@ -20,19 +20,23 @@ def build_network(dimension=4, units=64, mixes=5, layers=2):
     return net
 
 
-@click.command(name="test-mdrnn")
-def test_mdrnn():
-    """This command simply loads the MDRNN to test that it works and how long it takes."""
+def time_network_build(dimension, size):
     click.secho("Building MDRNN.")
     start_build = time.time()
-    model_config = mdrnn_config("s")
+    model_config = mdrnn_config(size)
     build_network(
-        4,
+        dimension,
         model_config["units"],
         model_config["mixes"],
         model_config["layers"],
     )
     click.secho(f"Done in {round(time.time() - start_build, 2)}s.")
+
+
+@click.command(name="test-mdrnn")
+def test_mdrnn():
+    """This command simply loads the MDRNN to test that it works and how long it takes."""
+    time_network_build(4, "s")
 
 
 @click.command(name="test-speed")
