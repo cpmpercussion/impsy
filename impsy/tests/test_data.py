@@ -49,10 +49,6 @@ def log_files(log_location, dimension, number=20, events=49):
                 file.write(test_line)
         test_log_files.append(test_log_file)
     return test_log_files
-    # yield test_log_files
-    # after test, delete the files.
-    # for f in test_log_files:
-    #     os.remove(f)
 
 
 @pytest.fixture(scope="session")
@@ -98,9 +94,6 @@ def trained_model(dimension, dataset_file, dataset_location, models_location, md
         batch_size=batch_size,
         save_location=models_location,
     )
-    # yield train_output
-    # os.remove(train_output["weights_file"])
-    # os.remove(train_output["keras_file"])
     return train_output
 
 
