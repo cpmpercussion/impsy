@@ -166,7 +166,7 @@ class SerialMIDIServer(IOServer):
                 self.callback(index, value)
             except ValueError as e:
                 # error when handling the MIDI message
-                click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
+                # click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
                 pass
 
     def connect(self) -> None:
@@ -433,7 +433,7 @@ class MIDIServer(IOServer):
                 self.callback(index, value)
             except ValueError as e:
                 # error when handling the MIDI message
-                click.secho(f"MIDI Handling failed for a message: {e}", fg="red")
+                # click.secho(f"MIDI Handling failed for a message: {e}", fg="red")
                 pass
 
 

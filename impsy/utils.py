@@ -126,7 +126,7 @@ def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int,
         )
         value = msg.value / 127.0
     else:
-        raise ValueError("Only note_on and control_change messages can be processed.")
+        raise ValueError(f"Only note_on and control_change messages can be processed, this was a {msg.type} message.")
     return (index, value)
 
 
