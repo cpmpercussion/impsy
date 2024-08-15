@@ -60,30 +60,36 @@ class InteractionServer(object):
 
         ## Set up IO.
         self.senders = []
-        if "midi" in self.config:
-            # Set up MIDI 
-            self.midi_sender = impsio.MIDIServer(
-                self.config, self.construct_input_list, self.dense_callback
-            )
-            self.midi_sender.connect()
-            self.senders.append(self.midi_sender)
-        if "websocket" in self.config:
-            # Set up websocket
-            self.websocket_sender = impsio.WebSocketServer(
-                self.config, self.construct_input_list, self.dense_callback
-            )
-            self.websocket_sender.connect()
-            self.senders.append(self.websocket_sender)
-        if "osc" in self.config:
-            # Set up OSC
-            self.osc_sender = impsio.OSCServer(
-                self.config, self.construct_input_list, self.dense_callback
-            )
-            self.osc_sender.connect()
-            self.senders.append(self.osc_sender)
-        # if "serial" in self.config: ... TODO
 
-        # Import MDRNn
+        if "midi" in self.config:
+            midi_sender = impsio.MIDIServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.senders.append(midi_sender)
+        
+        if "websocket" in self.config:
+            websocket_sender = impsio.WebSocketServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.senders.append(websocket_sender)
+        
+        if "osc" in self.config:
+            osc_sender = impsio.OSCServer(
+                self.config, self.construct_input_list, self.dense_callback
+            )
+            self.senders.append(osc_sender)
+        
+        if "serial" in self.config:
+            self.senders.append(impsio.SerialServer(self.config, self.construct_input_list, self.dense_callback))
+
+        if "serialmidi" in self.config:
+            self.senders.append(impsio.SerialMIDIServer(self.config, self.construct_input_list, self.dense_callback))
+
+        # connect all the senders
+        for sender in self.senders:
+            sender.connect()
+
+        # Import MDRNN
         click.secho("Importing MDRNN.", fg="yellow")
         start_import = time.time()
         import impsy.mdrnn as mdrnn
@@ -253,7 +259,6 @@ class InteractionServer(object):
                     self.rnn_output_buffer.task_done()
                 # send MIDI noteoff messages to stop previous sounds
                 # TODO: this could be framed as "control switching"
-                # self.midi_sender.send_midi_note_offs()
 
     def playback_rnn_loop(self):
         """Plays back RNN notes from its buffer queue. This loop blocks and should run in a separate thread."""
