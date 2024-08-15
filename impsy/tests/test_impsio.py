@@ -100,19 +100,19 @@ def test_serial_server(default_config, sparse_callback, dense_callback, output_v
         default_config, sparse_callback, dense_callback
     )
     sender.connect()
-    # sender.handle()
+    sender.handle()
     sender.send(output_values)
     sender.disconnect()
 
 
-# def test_serial_midi_server(default_config, sparse_callback, dense_callback, output_values):
-#     sender = impsio.SerialMIDIServer(
-#         default_config, sparse_callback, dense_callback
-#     )
-#     sender.connect()
-#     # sender.handle()
-#     sender.send(output_values)
-#     sender.disconnect()
+def test_serial_midi_server(default_config, sparse_callback, dense_callback, output_values):
+    sender = impsio.SerialMIDIServer(
+        default_config, sparse_callback, dense_callback
+    )
+    sender.connect()
+    sender.handle()
+    sender.send(output_values)
+    sender.disconnect()
 
 
 def test_midi_server(default_config, sparse_callback, dense_callback, output_values):
