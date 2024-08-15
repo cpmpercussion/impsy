@@ -11,7 +11,7 @@ import mido
 from websockets.sync.server import serve
 from pythonosc import dispatcher, osc_server, udp_client
 from threading import Thread
-from impsy.utils import get_midi_note_offs, output_values_to_midi_messages
+from impsy.utils import get_midi_note_offs, output_values_to_midi_messages, match_midi_port_to_list, midi_message_to_index_value
 
 
 class IOServer(abc.ABC):
@@ -161,25 +161,13 @@ class SerialMIDIServer(IOServer):
         if message is None:
             return
         else:
-            if message.type == "note_on":
-                try:
-                    index = self.config["midi"]["input"].index(
-                        ["note_on", message.channel + 1]
-                    )
-                    value = message.note / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    pass
-
-            if message.type == "control_change":
-                try:
-                    index = self.config["midi"]["input"].index(
-                        ["control_change", message.channel + 1, message.control]
-                    )
-                    value = message.value / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    pass
+            try:
+                index, value = midi_message_to_index_value(message, self.midi_input_mapping)
+                self.callback(index, value)
+            except ValueError as e:
+                # error when handling the MIDI message
+                click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
+                pass
 
     def connect(self) -> None:
         """Tries to open a serial port for regular IO."""
@@ -403,19 +391,6 @@ class OSCServer(IOServer):
 class MIDIServer(IOServer):
     """Handles MIDI IO for IMPSY."""
 
-    # midi_in_port: mido.ports.BaseInput
-    # midi_in_port: mido.ports.BaseOutput
-
-    def match_midi_port_to_list(port, port_list):
-        """Return the closest actual MIDI port name given a partial match and a list."""
-        if port in port_list:
-            return port
-        contains_list = [x for x in port_list if port in x]
-        if not contains_list:
-            return False
-        else:
-            return contains_list[0]
-
 
     def __init__(self, config, callback, dense_callback) -> None:
         super().__init__(config, callback, dense_callback)
@@ -428,6 +403,40 @@ class MIDIServer(IOServer):
         self.midi_input_mapping = self.config["midi"]["input"]
         # self.websocket_send_midi = None  # TODO implement some kind generic MIDI callback for other output channels.
 
+
+    def send(self, output_values) -> None:
+        """Sends sound commands via MIDI"""
+        assert (
+            len(output_values) + 1 == self.dimension
+        ), "Dimension not same as prediction size."  # Todo more useful error.
+        
+        output_midi_messages = output_values_to_midi_messages(output_values, self.midi_output_mapping)
+        for msg in output_midi_messages:
+            # send note off if a previous note_on had been sent
+            if msg.type == 'note_on' and msg.channel in self.last_midi_notes:
+                note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[msg.channel], velocity=0)
+                self.send_midi_message(note_off_msg)
+            # actually send the message.
+            self.send_midi_message(msg)
+            # store last midi note if it was a note_on.
+            if msg.type == 'note_on':
+                self.last_midi_notes[msg.channel] = msg.note
+    
+
+    def handle(self) -> None:
+        """Handle MIDI input messages that might come from mido"""
+        if self.midi_in_port is None:
+            return  # fail early if MIDI not open.
+        for message in self.midi_in_port.iter_pending():
+            try:
+                index, value = midi_message_to_index_value(message, self.midi_input_mapping)
+                self.callback(index, value)
+            except ValueError as e:
+                # error when handling the MIDI message
+                click.secho(f"MIDI Handling failed for a message: {e}", fg="red")
+                pass
+
+
     def connect(self) -> None:
         """Opens MIDI Ports"""
         click.secho("Opening MIDI port for input/output.", fg="yellow")
@@ -435,7 +444,7 @@ class MIDIServer(IOServer):
         potential_midi_outputs = []
         try:
             potential_midi_inputs = mido.get_input_names()
-            desired_input_port = MIDIServer.match_midi_port_to_list(
+            desired_input_port = match_midi_port_to_list(
                 self.config["midi"]["in_device"], potential_midi_inputs
             )
             self.midi_in_port = mido.open_input(desired_input_port)
@@ -446,7 +455,7 @@ class MIDIServer(IOServer):
             click.secho(f"MIDI Inputs: {potential_midi_inputs}", fg="blue")
         try:
             potential_midi_outputs = mido.get_output_names()
-            desired_output_port = MIDIServer.match_midi_port_to_list(
+            desired_output_port = match_midi_port_to_list(
                 self.config["midi"]["out_device"], potential_midi_outputs
             )
             self.midi_out_port = mido.open_output(desired_output_port)
@@ -455,6 +464,7 @@ class MIDIServer(IOServer):
             self.midi_out_port = None
             click.secho("Could not open MIDI output.", fg="red")
             click.secho(f"MIDI Outputs: {potential_midi_outputs}", fg="blue")
+
 
     def disconnect(self) -> None:
         self.send_midi_note_offs()
@@ -481,47 +491,3 @@ class MIDIServer(IOServer):
         note_off_messages = get_midi_note_offs(self.midi_output_mapping, self.last_midi_notes)
         for msg in note_off_messages:
             self.send_midi_message(msg)
-
-
-    def send(self, output_values) -> None:
-        """Sends sound commands via MIDI"""
-        assert (
-            len(output_values) + 1 == self.dimension
-        ), "Dimension not same as prediction size."  # Todo more useful error.
-        
-        output_midi_messages = output_values_to_midi_messages(output_values, self.midi_output_mapping)
-        for msg in output_midi_messages:
-            # send note off if a previous note_on had been sent
-            if msg.type == 'note_on' and msg.channel in self.last_midi_notes:
-                note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[msg.channel], velocity=0)
-                self.send_midi_message(note_off_msg)
-            # actually send the message.
-            self.send_midi_message(msg)
-            # store last midi note if it was a note_on.
-            if msg.type == 'note_on':
-                self.last_midi_notes[msg.channel] = msg.note
-
-    def handle(self) -> None:
-        """Handle MIDI input messages that might come from mido"""
-        if self.midi_in_port is None:
-            return  # fail early if MIDI not open.
-        for message in self.midi_in_port.iter_pending():
-            if message.type == "note_on":
-                try:
-                    index = self.config["midi"]["input"].index(
-                        ["note_on", message.channel + 1]
-                    )
-                    value = message.note / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    pass
-
-            if message.type == "control_change":
-                try:
-                    index = self.config["midi"]["input"].index(
-                        ["control_change", message.channel + 1, message.control]
-                    )
-                    value = message.value / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    pass

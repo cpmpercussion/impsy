@@ -112,3 +112,30 @@ def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> List[mido.M
             output_messages.append(midi_msg)
     return output_messages
 
+
+def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int, float):
+    """Takes a MIDO message and an input mapping and returns a tuple of index and value for sending to the IMPSY callback."""
+    if msg.type == "note_on":
+        index = input_mapping.index(
+            ["note_on", msg.channel + 1]
+        )
+        value = msg.note / 127.0
+    elif msg.type == "control_change":
+        index = input_mapping.index(
+            ["control_change", msg.channel + 1, msg.control]
+        )
+        value = msg.value / 127.0
+    else:
+        raise ValueError("Only note_on and control_change messages can be processed.")
+    return (index, value)
+
+
+def match_midi_port_to_list(port, port_list):
+    """Return the closest actual MIDI port name given a partial match and a list."""
+    if port in port_list:
+        return port
+    contains_list = [x for x in port_list if port in x]
+    if not contains_list:
+        return False
+    else:
+        return contains_list[0]
