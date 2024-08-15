@@ -66,7 +66,8 @@ class SerialServer(IOServer):
     
     def send(self, output_values) -> None:
         """Send values as a CSV line."""
-        output_message = ','.join(map(str, output_values)) + '\n'
+        output_message = ','.join(f"{num:.4f}" for num in output_values) + '\n'
+        # click.secho(f"Serial out: {output_message}")
         if self.serial is not None:
             self.serial.write(output_message.encode())
     
@@ -88,6 +89,7 @@ class SerialServer(IOServer):
                 try:
                     value_list = [float(x) for x in line.split(',')]
                     self.dense_callback(value_list) # callback with the value list.
+                    # click.secho(f"Serial parsed: {value_list}", fg="green")
                 except ValueError:
                     click.secho(f"Serial: Could not parse line: {line}", fg="red")
 
