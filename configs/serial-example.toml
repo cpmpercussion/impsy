@@ -25,16 +25,7 @@ sigmatemp = 0.01
 pitemp = 1
 timescale = 1
 
-# MIDI over serial mapping
-[midiserial]
-device = "/dev/tty.usbmodem14602"
-input = [
-  ["control_change", 0, 0], #
-  ["control_change", 0, 1], #
-  ["control_change", 0, 2], #
-]
-output = [
-  ["control_change", 0, 0], #
-  ["control_change", 0, 1], #
-  ["control_change", 0, 2], #
-]
+# Serial mapping
+[serial]
+port = "/dev/tty.usbmodem102" # default GPIO serial port on raspberry pi
+baudrate = 115200 # a typical default choice of baudrate
