@@ -18,6 +18,10 @@ def midi_output_mapping(default_config):
     """get the default MIDI output mapping."""
     return(default_config["midi"]["output"])
 
+@pytest.fixture(scope="session")
+def midi_input_mapping(default_config):
+    """get the default MIDI input mapping."""
+    return(default_config["midi"]["input"])
 
 @pytest.fixture(scope="session")
 def output_values(default_config):
@@ -32,7 +36,6 @@ def last_midi_notes_dict(midi_output_mapping):
     for chan in out_channels:
         last_midi_notes[chan] = 60 # played middle c on each output channel.
     return last_midi_notes
-
 
 
 @pytest.fixture(scope="session")
@@ -50,6 +53,19 @@ def dense_callback():
 
 
 # test utils.
+
+def test_midi_message_handling():
+    # notes
+    input_mapping = [['note_on', 1]]
+    note_msg = mido.Message('note_on', channel=0, note=12, velocity=64)
+    index, value = utils.midi_message_to_index_value(note_msg, input_mapping)
+    assert(index == 0 and value == 12/127)
+    # cc
+    input_mapping = [['control_change', 1, 1]]
+    cc_msg = mido.Message("control_change", channel=0, control=1, value=64)
+    index, value = utils.midi_message_to_index_value(cc_msg, input_mapping)
+    assert(index == 0 and value == 64/127)
+
 
 
 def test_midi_mapping_to_output(output_values, midi_output_mapping):
