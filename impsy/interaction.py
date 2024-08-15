@@ -13,6 +13,30 @@ from pathlib import Path
 
 np.set_printoptions(precision=2)
 
+INTERACTION_MODES = {
+    "callresponse": {
+        "user_to_rnn": True,
+        "rnn_to_rnn": False,
+        "rnn_to_sound": False,
+    },
+    "polyphony": {
+        "user_to_rnn": True,
+        "rnn_to_rnn": False,
+        "rnn_to_sound": True,
+    },
+    "battle": {
+        "user_to_rnn": False,
+        "rnn_to_rnn": True,
+        "rnn_to_sound": True,
+    },
+    "useronly": {
+        "user_to_rnn": False,
+        "rnn_to_rnn": False,
+        "rnn_to_sound": False,
+    },
+}
+
+
 
 def setup_logging(dimension: int, location="logs"):
     """Setup a log file and logging, requires a dimension parameter"""
@@ -99,35 +123,16 @@ class InteractionServer(object):
             fg="yellow",
         )
 
-        # Interaction Loop Parameters
-        # All set to false before setting is chosen.
-
-        # Interactive Mapping
-        if self.mode == "callresponse":
-            click.secho("Config: call and response mode.", fg="blue")
-            self.user_to_rnn = True
-            self.rnn_to_rnn = False
-            self.rnn_to_sound = False
-        elif self.mode == "polyphony":
-            click.secho("Config: polyphony mode.", fg="blue")
-            self.user_to_rnn = True
-            self.rnn_to_rnn = False
-            self.rnn_to_sound = True
-        elif self.mode == "battle":
-            click.secho("Config: battle royale mode.", fg="blue")
-            self.user_to_rnn = False
-            self.rnn_to_rnn = True
-            self.rnn_to_sound = True
-        elif self.mode == "useronly":
-            click.secho("Config: user only mode.", fg="blue")
-            self.user_to_rnn = False
-            self.rnn_to_rnn = False
-            self.rnn_to_sound = False
+        # Interaction Loop Mapping
+        if self.mode in INTERACTION_MODES:
+            mode_mapping = INTERACTION_MODES[self.mode]
         else:
-            click.secho("Config: no mode set, setting to user only")
-            self.user_to_rnn = False
-            self.rnn_to_rnn = False
-            self.rnn_to_sound = False
+            click.secho(f"Warning: could not set {self.mode} mode, using default.", fg="yellow")
+            mode_mapping = INTERACTION_MODES["useronly"]
+        click.secho(f"Config: {self.mode} mode.", fg="blue")
+        self.user_to_rnn = mode_mapping["user_to_rnn"]
+        self.rnn_to_rnn = mode_mapping["rnn_to_rnn"]
+        self.rnn_to_sound = mode_mapping["rnn_to_sound"]
 
         # Set up runtime variables.
         self.interface_input_queue = queue.Queue()

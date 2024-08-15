@@ -38,6 +38,8 @@ def interaction_server(default_config):
     interaction_server = interaction.InteractionServer(default_config)
     return interaction_server
 
+# def test_broken_interaction_server():
+#     interaction_server = interaction.InteractionServer({})
 
 def test_monitor_user_action(interaction_server):
     """Just tests creation of an interaction server object"""
