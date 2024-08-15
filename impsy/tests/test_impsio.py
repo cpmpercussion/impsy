@@ -60,6 +60,13 @@ def test_midi_message_handling():
     note_msg = mido.Message('note_on', channel=0, note=12, velocity=64)
     index, value = utils.midi_message_to_index_value(note_msg, input_mapping)
     assert(index == 0 and value == 12/127)
+    # note off
+    note_off_msg = mido.Message('note_off', channel=0, note=12, velocity=0)
+    try: 
+        index, value = utils.midi_message_to_index_value(note_off_msg, input_mapping)
+    except ValueError as e:
+        # supposed to get a valueerror here.
+        pass
     # cc
     input_mapping = [['control_change', 1, 1]]
     cc_msg = mido.Message("control_change", channel=0, control=1, value=64)
