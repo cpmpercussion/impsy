@@ -143,6 +143,8 @@ class InteractionServer(object):
     def send_back_values(self, output_values):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
         output = np.minimum(np.maximum(output_values, 0), 1)
+        if self.verbose:
+            click.secho(f"out: {output_values}", fg="green")
         for sender in self.senders:
             sender.send(output)
 
