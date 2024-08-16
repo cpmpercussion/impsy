@@ -7,7 +7,7 @@ import numpy as np
 import queue
 from threading import Thread
 import click
-from .utils import mdrnn_config, get_config_data
+from .utils import mdrnn_config, get_config_data, print_io
 import impsy.impsio as impsio
 from pathlib import Path
 
@@ -37,15 +37,38 @@ INTERACTION_MODES = {
 }
 
 
-
-def setup_logging(dimension: int, location="logs"):
+def setup_logging(dimension: int, location="logs", delay_file_open=True):
     """Setup a log file and logging, requires a dimension parameter"""
     log_date = datetime.datetime.now().isoformat().replace(":", "-")[:19]
     log_name = f"{log_date}-{dimension}d-mdrnn.log"
     log_file = Path(location) / log_name
+    # make sure logging directory exists.
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     log_format = "%(message)s"
-    logging.basicConfig(filename=log_file, level=logging.INFO, format=log_format)
+    
+    # Set up a specific logger for IMPSY
+    file_handler = logging.FileHandler(log_file, delay=delay_file_open)
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(log_format)
+    file_handler.setFormatter(formatter)
+    logger = logging.getLogger("impsylogger")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+
     click.secho(f"Logging enabled: {log_name}", fg="green")
+    return logger
+
+
+def log_interaction(source: str, values: np.ndarray, logger: logging.Logger):
+    value_string = ",".join(map(str, values))
+    logger.info(f"{datetime.datetime.now().isoformat()},{source},{value_string}")
+
+
+def close_log(logger: logging.Logger):
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+        handler.close()
+
 
 
 def build_network(config: dict):
@@ -81,6 +104,9 @@ class InteractionServer(object):
             "dimension"
         ]  # retrieve dimension from the config file.
         self.mode = self.config["interaction"]["mode"]
+
+        ## Set up log
+        self.logger = setup_logging(self.dimension)
 
         ## Set up IO.
         self.senders = []
@@ -149,27 +175,22 @@ class InteractionServer(object):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
         output = np.minimum(np.maximum(output_values, 0), 1)
         if self.verbose:
-            click.secho(f"out: {output_values}", fg="green")
+            print_io("out", output, "green")
         for sender in self.senders:
             sender.send(output)
 
     def dense_callback(self, values) -> None:
         """insert a dense input list into the interaction stream (e.g., when receiving OSC)."""
-        int_input = np.array(values)
+        values_arr = np.array(values)
         if self.verbose:
-            click.secho(f"in: {int_input}", fg="yellow")
-        logger = logging.getLogger("impslogger")
-        logger.info(
-            "{1},interface,{0}".format(
-                ",".join(map(str, int_input)), datetime.datetime.now().isoformat()
-            )
-        )
+            print_io("in", values_arr, "yellow")
+        log_interaction("interface", values_arr, self.logger)
         dt = time.time() - self.last_user_interaction_time
         self.last_user_interaction_time = time.time()
-        self.last_user_interaction_data = np.array([dt, *int_input])
+        self.last_user_interaction_data = np.array([dt, *values_arr])
         assert (
             len(self.last_user_interaction_data) == self.dimension
-        ), "Input is incorrect dimension, set dimension to %r" % len(
+        ), "Input is incorrect dimension. set dimension to %r" % len(
             self.last_user_interaction_data
         )
         # These values are accessed by the RNN in the interaction loop function.
@@ -179,21 +200,16 @@ class InteractionServer(object):
     def construct_input_list(self, index: int, value: float) -> None:
         """constructs a dense input list from a sparse format (e.g., when receiving MIDI)"""
         # set up dense interaction list
-        int_input = self.last_user_interaction_data[1:]
-        int_input[index] = value
+        values = self.last_user_interaction_data[1:]
+        values[index] = value
         # log
-        values = list(map(int, (np.ceil(int_input * 127))))
         if self.verbose:
-            click.secho(f"in: {values}", fg="yellow")
-        logging.info(
-            "{1},interface,{0}".format(
-                ",".join(map(str, int_input)), datetime.datetime.now().isoformat()
-            )
-        )
+            print_io("in", values, "yellow")
+        log_interaction("interface", values, self.logger)
         # put it in the queue
         dt = time.time() - self.last_user_interaction_time
         self.last_user_interaction_time = time.time()
-        self.last_user_interaction_data = np.array([dt, *int_input])
+        self.last_user_interaction_data = np.array([dt, *values])
         assert (
             len(self.last_user_interaction_data) == self.dimension
         ), "Input is incorrect dimension, set dimension to %r" % len(
@@ -289,13 +305,16 @@ class InteractionServer(object):
                 # Send predictions to outputs via impsio objects
                 self.send_back_values(x_pred)
                 if self.config["log_predictions"]:
-                    logging.info(
-                        "{1},rnn,{0}".format(
-                            ",".join(map(str, x_pred)),
-                            datetime.datetime.now().isoformat(),
-                        )
-                    )
+                    log_interaction("rnn", x_pred, self.logger)
             self.rnn_output_buffer.task_done()
+
+
+    def shutdown(self):
+        """Close IO and logs and prepare to exit."""
+        for sender in self.senders:
+            sender.disconnect()
+        close_log(self.logger)
+
 
     def serve_forever(self):
         """Run the interaction server opening required IO."""
@@ -314,10 +333,6 @@ class InteractionServer(object):
             target=self.playback_rnn_loop, name="rnn_player_thread", daemon=True
         )
 
-        # Logging
-        if self.config["log"]:
-            setup_logging(self.dimension)
-
         # Start threads and run IO loop
         try:
             rnn_thread.start()
@@ -331,8 +346,7 @@ class InteractionServer(object):
         except KeyboardInterrupt:
             click.secho("\nCtrl-C received... exiting.", fg="red")
             rnn_thread.join(timeout=1.0)
-            for sender in self.senders:
-                sender.disconnect()
+            self.shutdown()
         finally:
             click.secho("\nIMPSY has shut down. Bye!", fg="red")
 
