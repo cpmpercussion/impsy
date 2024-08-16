@@ -53,6 +53,26 @@ output = [ # Volca FM
 [websocket]
 server_ip = "0.0.0.0" # The address of this server
 server_port = 5001 # The port this server should listen on.
+input = [ # Volca FM
+  ["note_on", 1], # note
+  ["control_change", 1, 42], # Modulator Attack
+  ["control_change", 1, 43], # Modulator Decay
+  ["control_change", 1, 44], # Carrier Attack
+  ["control_change", 1, 45], # Carrier Decay
+  ["control_change", 1, 46], # LFO rate
+  ["control_change", 1, 47], # LFO depth
+  ["control_change", 1, 48], # Algorithm
+]
+output = [ # Volca FM
+  ["note_on", 1], # note
+  ["control_change", 1, 42], # Modulator Attack
+  ["control_change", 1, 43], # Modulator Decay
+  ["control_change", 1, 44], # Carrier Attack
+  ["control_change", 1, 45], # Carrier Decay
+  ["control_change", 1, 46], # LFO rate
+  ["control_change", 1, 47], # LFO depth
+  ["control_change", 1, 48], # Algorithm
+]
 
 [osc]
 server_ip = "0.0.0.0" # Address of IMPSY

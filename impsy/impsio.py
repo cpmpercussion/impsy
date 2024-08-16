@@ -127,8 +127,8 @@ class SerialMIDIServer(IOServer):
         self.serial = None
         self.buffer = "" # used for storing serial data after reading
         self.last_midi_notes = {}  # dict to store last played notes via midi
-        self.midi_output_mapping = self.config["midi"]["output"]
-        self.midi_input_mapping = self.config["midi"]["input"]
+        self.midi_output_mapping = self.config["serialmidi"]["output"]
+        self.midi_input_mapping = self.config["serialmidi"]["input"]
 
 
     def send(self, output_values) -> None:
@@ -210,10 +210,20 @@ class WebSocketServer(IOServer):
         self.ws_clients = set()  # storage for potential ws clients.
         self.ws_thread = None
         self.ws_server = None
+        self.last_midi_notes = {}  # dict to store last played notes via midi
+        self.midi_output_mapping = self.config["websocket"]["output"]
+        self.midi_input_mapping = self.config["websocket"]["input"]
 
     def send(self, output_values) -> None:
-        return super().send(output_values)
-        # TODO implement this to do something useful.
+        output_midi_messages = output_values_to_midi_messages(output_values, self.midi_output_mapping)
+        for msg in output_midi_messages:
+            # send note off if a previous note_on had been sent
+            if msg.type == 'note_on' and msg.channel in self.last_midi_notes:
+                note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[msg.channel], velocity=0)
+                self.websocket_send_midi(note_off_msg)
+            self.websocket_send_midi(msg) # actually send the message.
+            if msg.type == 'note_on':
+                self.last_midi_notes[msg.channel] = msg.note # store last midi note if it was a note_on.
 
     def handle(self) -> None:
         return super().handle()
