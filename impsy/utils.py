@@ -139,3 +139,11 @@ def match_midi_port_to_list(port, port_list):
         return False
     else:
         return contains_list[0]
+    
+
+# Printing functions
+
+def print_io(label, values, colour):
+    """Neatly prints an array of values with a label."""
+    vals = np.array([round(val, 3) for val in values])
+    click.secho(f"{label}: {vals}", fg=colour)
