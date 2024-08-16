@@ -353,9 +353,11 @@ class InteractionServer(object):
 
 @click.command(name="run")
 @click.option('--config', '-c', default='config.toml', help='Path to a .toml configuration file.')
-def run(config: str):
+@click.option('--logdir', '-l', default='logs', help='Path to a directory for logs.')
+def run(config: str, logdir: str):
     """Run IMPSY interaction system with MIDI, WebSockets, and OSC."""
     click.secho("IMPSY Starting up...", fg="blue")
     config_data = get_config_data(config)
-    interaction_server = InteractionServer(config_data)
+    # TODO: have some way set log dir in config as well?
+    interaction_server = InteractionServer(config_data, log_location=logdir)
     interaction_server.serve_forever()
