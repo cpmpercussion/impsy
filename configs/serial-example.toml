@@ -6,7 +6,7 @@ owner = "Charles Martin"
 description = "Communicates with a microbit interface over serial."
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

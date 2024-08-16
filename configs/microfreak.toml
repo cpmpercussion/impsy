@@ -5,7 +5,7 @@ owner = "Charles Martin"
 description = "Config for USB connection to an Arturia Microfreak"
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

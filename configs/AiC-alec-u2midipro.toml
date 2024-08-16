@@ -6,7 +6,7 @@ owner = "Alec Hunter and Charles Martin"
 description = "Connects via audio interface to ableton External Instrument tracks"
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

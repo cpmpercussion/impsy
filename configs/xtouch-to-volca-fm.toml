@@ -6,7 +6,7 @@ owner = "Charles Martin"
 description = "Uses x-touch over it's own USB connector and Volca FM over the Studio 1824c"
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

@@ -6,7 +6,7 @@ owner = "Charles and Yichen"
 description = "Uses OP1 over it's USB connection and Volca FM over RPi serial"
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

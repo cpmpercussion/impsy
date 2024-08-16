@@ -4,7 +4,7 @@ title = "MiniLab and Analogue V configuration"
 name = "Charles Martin"
 
 # General Settings
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 

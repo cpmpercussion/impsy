@@ -6,7 +6,7 @@ owner = "Charles Martin"
 description = "An example for the workshop, this uses OSC and uses the special address to get UDP messages out of the docker container."
 
 # Basic config
-log = true
+log_input = true
 log_predictions = false
 verbose = true
 
