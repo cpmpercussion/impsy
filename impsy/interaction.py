@@ -70,7 +70,6 @@ def close_log(logger: logging.Logger):
         handler.close()
 
 
-
 def build_network(config: dict):
     """Build the MDRNN, uses a high-level size parameter and dimension."""
     from . import mdrnn
@@ -93,7 +92,7 @@ def build_network(config: dict):
 class InteractionServer(object):
     """Interaction server class. Contains state and functions for the interaction loop."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, log_location: str = "logs"):
         """Initialises the interaction server including loading the config from a config.toml file."""
         click.secho("Preparing IMPSY interaction server...", fg="yellow")
         self.config = config
@@ -106,7 +105,8 @@ class InteractionServer(object):
         self.mode = self.config["interaction"]["mode"]
 
         ## Set up log
-        self.logger = setup_logging(self.dimension)
+        self.log_location = log_location
+        self.logger = setup_logging(self.dimension, location=self.log_location)
 
         ## Set up IO.
         self.senders = []

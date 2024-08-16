@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 import time
 import numpy as np
+import logging
 
 @pytest.fixture(scope="session")
 def default_config():
@@ -17,10 +18,23 @@ def default_config():
 def dimension(default_config):
     return default_config["model"]["dimension"]
 
+@pytest.fixture(scope="session")
+def log_location(tmp_path_factory):
+    location = tmp_path_factory.mktemp("logs")
+    return location
 
-def test_logging(dimension):
+@pytest.fixture(scope="session")
+def logger(dimension, log_location):
+    logger = interaction.setup_logging(dimension, location=log_location)
+    return logger
+
+
+def test_logging(logger, dimension):
     """Just sets up logging"""
-    interaction.setup_logging(dimension)
+    assert isinstance(logger, logging.Logger)
+    values = np.random.rand(dimension - 1)
+    interaction.log_interaction("tests", values, logger)
+    interaction.close_log(logger)
 
 
 @pytest.fixture(scope="session")
@@ -34,8 +48,8 @@ def test_build_network(neural_network):
 
 
 @pytest.fixture(scope="session")
-def interaction_server(default_config):
-    interaction_server = interaction.InteractionServer(default_config)
+def interaction_server(default_config, log_location):
+    interaction_server = interaction.InteractionServer(default_config, log_location=log_location)
     return interaction_server
 
 # def test_broken_interaction_server():
