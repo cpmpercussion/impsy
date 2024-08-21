@@ -46,7 +46,9 @@ def float_to_freq(value_in):
     """maps a float 0-1 to a frequency."""
     base = 220
     top = 880
-    return int(base + (value_in * (top - base)))
+    out = int(base + (value_in * (top - base)))
+    out = max(0, min(out, 999))
+    return out
 
 def play_freqs(freqs):
     global last_played_freqs
@@ -54,7 +56,7 @@ def play_freqs(freqs):
         eff = audio.SoundEffect(
             freq_start=freqs[0], 
             freq_end=freqs[1], 
-            duration=freqs[2]*3,
+            duration=freqs[2],
             vol_start=255,
             vol_end=255
         )
