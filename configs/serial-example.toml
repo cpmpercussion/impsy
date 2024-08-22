@@ -27,5 +27,6 @@ timescale = 1
 
 # Serial mapping
 [serial]
-port = "/dev/tty.usbmodem1102" # default GPIO serial port on raspberry pi
+port = "/dev/tty.usbmodem1102" # likely serial port on macOS
+# port = "/dev/ttyACM0" # likely serial port on Raspberry Pi (also the default GPIO serial port name if enabled).
 baudrate = 115200 # a typical default choice of baudrate
