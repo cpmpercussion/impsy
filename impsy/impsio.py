@@ -80,7 +80,10 @@ class SerialServer(IOServer):
         
         # first read in the serial bytes in waiting
         while self.serial.in_waiting:
-            self.buffer += self.serial.read(self.serial.in_waiting).decode()
+            try:
+                self.buffer += self.serial.read(self.serial.in_waiting).decode()
+            except Exception as e:
+                click.secho(f"Serial: error decoding input {e}")
         
         # process lines into values.
         while '\n' in self.buffer:
