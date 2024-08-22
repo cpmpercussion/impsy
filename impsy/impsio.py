@@ -70,7 +70,10 @@ class SerialServer(IOServer):
         # click.secho(f"Serial out: {output_message}")
         if self.serial is not None:
             self.serial.write(output_message.encode())
-    
+        else: 
+            # try to reconnect -- may as well, alternative is just never working.
+            self.connect()
+
 
     def handle(self) -> None:
         """read in the serial bytes and process lines into value lists for IMPSY"""
