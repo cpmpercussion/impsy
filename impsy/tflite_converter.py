@@ -19,6 +19,9 @@ def model_to_tflite(model, model_path: Path):
 
     click.secho("Do the conversion.", fg="blue")
     tflite_model = converter.convert()
+    
+    click.secho("Print Analysis...", fg="blue")
+    tf.lite.experimental.Analyzer.analyze(model_content=tflite_model)
 
     click.secho("Saving..", fg="blue")
     click.secho(f"Saving tflite model to: {output_file}", fg="blue")
