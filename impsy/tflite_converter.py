@@ -16,6 +16,9 @@ def model_to_tflite(model, model_path: Path):
         tf.lite.OpsSet.SELECT_TF_OPS,
     ]
     converter._experimental_lower_tensor_list_ops = False
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.inference_input_type = tf.float32
+    converter.inference_output_type = tf.float32
 
     click.secho("Do the conversion.", fg="blue")
     tflite_model = converter.convert()
