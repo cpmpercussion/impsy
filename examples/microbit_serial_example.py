@@ -30,7 +30,11 @@ def receive_and_display():
         data = uart.readline()
         if data is None:
             return
-        data = data.decode('utf-8').strip().split(',')
+        try:
+            data = data.decode('utf-8').strip().split(',')
+        except Exception as e:
+            data = ""
+            pass
         if len(data) == 3:
             try: 
                 x, y, z = map(float, data)
