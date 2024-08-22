@@ -70,7 +70,7 @@ def config_to_tflite(config_path):
     model_to_tflite(net.model, model_path)
 
 
-def weights_file_to_model_file(weights_file, model_size, dimension, location):
+def weights_file_to_model_file(weights_file, model_size, dimension):
     """Constructs a model from a given weights file and saves as a .keras inference model."""
     import impsy.mdrnn as mdrnn
 
@@ -84,12 +84,26 @@ def weights_file_to_model_file(weights_file, model_size, dimension, location):
     )
     inference_model.load_model(model_file=weights_file)
     model_name = inference_model.model_name()
-    keras_filename = Path(location) / f"{model_name}.keras"
-    inference_model.model.save(keras_filename)
-    return keras_filename
+    keras_file_path = Path(weights_file).with_suffix(".keras")
+    inference_model.model.save(keras_file_path)
+    return keras_file_path
 
 
 @click.command(name="convert-tflite")
-def convert_tflite():
+@click.option('--model', '-m', help='Path to a .keras model or .h5 weights')
+@click.option('--dimension', '-d', type=int, help='Dimension (only needed for h5 files)')
+@click.option('--size', '-s', help="Size, one of xs, s, m, l, (only needed for h5 files)")
+def convert_tflite(model, dimension, size):
     """Convert existing IMPSY model to tflite format."""
-    config_to_tflite("config.toml")
+    if model is None:
+        config_to_tflite("config.toml")
+    elif Path(model).suffix == ".keras":
+        # it's a keras file
+        model_file_to_tflite(model)
+    elif Path(model).suffix == ".h5":
+        # it's an h5 file
+        if dimension is not None and size is not None:
+            model_file = weights_file_to_model_file(model, size, dimension)
+            model_file_to_tflite(model_file)
+        else:
+            click.secho("You need to specify a dimension and size to convert an h5 file.")

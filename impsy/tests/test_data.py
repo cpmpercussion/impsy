@@ -120,10 +120,10 @@ def test_weights_to_model_file(trained_model, dimension, tmp_path_factory, mdrnn
     weights_file = trained_model["weights_file"]
     print(f"Weights file: {weights_file}")
     test_dir = tmp_path_factory.mktemp("model_file")
-    model_file_name = tflite_converter.weights_file_to_model_file(weights_file, mdrnn_size, dimension, test_dir)
+    model_file_name = tflite_converter.weights_file_to_model_file(weights_file, mdrnn_size, dimension)
     print(f"File returned: {model_file_name}")
     assert os.path.exists(model_file_name)
-    os.remove(model_file_name)
+    # os.remove(model_file_name)
 
 
 def test_model_file_to_tflite(trained_model):
