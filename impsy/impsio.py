@@ -394,7 +394,10 @@ class OSCServer(IOServer):
             self.server.socket.close()
 
     def send(self, output_values) -> None:
-        self.osc_client.send_message(OSCServer.OUTPUT_MESSAGE_ADDRESS, output_values)
+        try:
+            self.osc_client.send_message(OSCServer.OUTPUT_MESSAGE_ADDRESS, output_values)
+        except Exception as e:
+            click.secho(f"OSC sending failed: {e}", fg="red")
 
     def handle(self) -> None:
         return super().handle()

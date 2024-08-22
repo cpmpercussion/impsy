@@ -320,7 +320,7 @@ class InteractionServer(object):
         """Run the interaction server opening required IO."""
         click.secho("Preparing MDRNN.", fg="yellow")
         net = build_network(self.config)
-        if self.config["model"]["file"] != "":
+        if "file" in self.config["model"] and self.config["model"]["file"] != "":
             net.load_model(
                 model_file=self.config["model"]["file"]
             )  # load custom model.
