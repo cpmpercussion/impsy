@@ -13,6 +13,13 @@ def default_config():
     config = utils.get_config_data(config_path)
     return(config)
 
+@pytest.fixture(scope="session")
+def user_only_untrained_config():
+    """get a config file without a neural network and in user-only mode."""
+    config_path = Path("configs") / "user-only-example.toml"
+    config = utils.get_config_data(config_path)
+    return(config)
+
 
 @pytest.fixture(scope="session")
 def dimension(default_config):
@@ -51,6 +58,12 @@ def test_build_network(neural_network):
 def interaction_server(default_config, log_location):
     interaction_server = interaction.InteractionServer(default_config, log_location=log_location)
     return interaction_server
+
+# @pytest.fixture(scope="session")
+def untrained_interaction_server(user_only_untrained_config, log_location):
+    # interaction_server = 
+    interaction.InteractionServer(user_only_untrained_config, log_location=log_location)
+    # return interaction_server
 
 # def test_broken_interaction_server():
 #     interaction_server = interaction.InteractionServer({})
