@@ -279,7 +279,7 @@ class PredictiveMusicMDRNN(object):
         )
         return history
 
-    def generate_touch(self, prev_sample):
+    def generate(self, prev_sample):
         """Generate one forward prediction from a previous sample in format
         (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
         assert (
@@ -456,3 +456,20 @@ class  KerasMDRNN(MDRNNInferenceModel):
             self.dimension,
         )
         return new_sample
+
+
+class DummyMDRNN(MDRNNInferenceModel):
+    """A dummy MDRNN for use if there is no model available (yet or ever). It just generates the same value over and over again."""
+
+
+    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+        super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
+
+
+    def prepare(self) -> None:
+        self.output_value = random_sample(out_dim=self.dimension)
+
+
+    def generate(self, prev_value: np.ndarray) -> np.ndarray:
+        return self.output_value
+    

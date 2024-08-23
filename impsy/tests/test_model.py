@@ -33,7 +33,7 @@ def test_inference():
     net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN, dimension=dimension)
     value = mdrnn.random_sample(out_dim=dimension)
     for i in range(num_test_steps):
-        value = net.generate_touch(value)
+        value = net.generate(value)
         proc_touch = mdrnn.proc_generated_touch(value, dimension)
     assert len(value) == dimension
     assert len(proc_touch == dimension)
@@ -126,3 +126,10 @@ def test_keras_predictions(keras_model: mdrnn.KerasMDRNN):
         assert len(value) == dimension
         value = mdrnn.proc_generated_touch(value, dimension)
         assert len(value) == dimension
+
+def test_dummy_model():
+    model = mdrnn.DummyMDRNN(Path("/"), 4, 64, 5, 2)
+    dimension = model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    value = model.generate(value)
+    assert len(value) == dimension
