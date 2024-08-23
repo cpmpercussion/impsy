@@ -84,7 +84,7 @@ def build_network(config: dict):
         model_size = config['model']['size']
         click.secho(f"MDRNN: Using {model_size} model.", fg="green")
     except Exception as e:
-        model_size = s
+        model_size = "s"
         click.secho(f"MDRNN: Couldn't find a model size in your config, using {model_size}.", fg="red")
 
     model_config = mdrnn_config(model_size)
