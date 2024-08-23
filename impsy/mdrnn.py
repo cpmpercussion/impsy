@@ -56,6 +56,20 @@ def proc_generated_touch(x_input, out_dim=2):
     return np.concatenate([np.array([dt]), x_output])
 
 
+def lstm_blank_states(layers: int, units: int):
+    """Create blank LSTM states for a networks with a number of layers and the same number of LSTM units in each layer"""
+    states = []
+    for i in range(layers):
+        states += [
+            np.zeros((1, units), dtype=np.float32),
+            np.zeros((1, units), dtype=np.float32),
+        ]
+    assert (
+        len(states) == layers * 2
+    ), "length of states list needs to be RNN layers times 2 (h and c for each)"
+    return states
+
+
 class PredictiveMusicMDRNN(object):
     """Builds and operates a mixture density recurrent neural network model."""
 
@@ -166,16 +180,7 @@ class PredictiveMusicMDRNN(object):
         return new_model
 
     def reset_lstm_states(self):
-        states = []
-        for i in range(self.n_rnn_layers):
-            states += [
-                np.zeros((1, self.n_hidden_units), dtype=np.float32),
-                np.zeros((1, self.n_hidden_units), dtype=np.float32),
-            ]
-        assert (
-            len(states) == self.n_rnn_layers * 2
-        ), "length of states list needs to be RNN layers times 2 (h and c for each)"
-        self.lstm_states = states
+        self.lstm_states = lstm_blank_states(self.n_rnn_layers, self.n_hidden_units)
 
     def model_name(self):
         """Returns the name of the present model for saving to disk"""
@@ -290,6 +295,71 @@ class PredictiveMusicMDRNN(object):
         # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
 
+        # sample from the MDN:
+        new_sample = (
+            mdn.sample_from_output(
+                mdn_params,
+                self.dimension,
+                self.n_mixtures,
+                temp=self.pi_temp,
+                sigma_temp=self.sigma_temp,
+            )
+            / SCALE_FACTOR
+        )
+        new_sample = new_sample.reshape(
+            self.dimension,
+        )
+        return new_sample
+
+
+class TfliteMDRNN(object):
+    """Loads an MDRNN from a tensorflow lite (.tflite) file for running predictions efficiently."""
+
+
+    def __init__(
+        self,
+        file: Path,
+        dimension: int,
+        n_hidden_units: int,
+        n_mixtures: int,
+        n_layers: int,
+    ):
+        self.dimension = dimension
+        self.n_hidden_units = n_hidden_units
+        self.n_mixtures = n_mixtures
+        self.n_layers = n_layers
+        self.model_file = file
+        # load the network
+        self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
+        self.signatures = self.interpreter.get_signature_list()
+        self.runner = self.interpreter.get_signature_runner()
+        self.reset_lstm_states()
+        # sampling hyperparameters
+        self.pi_temp = 1.5
+        self.sigma_temp = 0.01
+        
+
+
+    def reset_lstm_states(self):
+        self.lstm_states = lstm_blank_states(self.n_layers, self.n_hidden_units)
+
+
+    def generate(self, prev_value):
+        """makes a prediction. Needs to know the exact state names at the moment."""
+        input_value = prev_value.reshape(1,1,self.dimension) * SCALE_FACTOR
+        input_value = input_value.astype(np.float32, copy=False)
+        ## Create the input dictionary:
+        runner_input = {'inputs': input_value}
+        for i in range(self.n_layers):
+            runner_input[f'state_h_{i}'] = self.lstm_states[2 * i] # h
+            runner_input[f'state_c_{i}'] = self.lstm_states[2 * i + 1] # c
+        ## Run inference
+        raw_out = self.runner(**runner_input)
+        ## Extract the lstm states and mdn parameters
+        for i in range(self.n_layers):
+            self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
+            self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
+        mdn_params = raw_out['mdn_outputs'].squeeze()
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(

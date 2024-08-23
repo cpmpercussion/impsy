@@ -3,6 +3,8 @@ from impsy import train
 from impsy import utils
 import tensorflow as tf
 import pytest
+from pathlib import Path
+
 
 @pytest.fixture(scope="session")
 def dimension():
@@ -79,3 +81,28 @@ def test_model_config():
     """Tests the model config function."""
     conf = utils.mdrnn_config("s")
     assert conf["units"] == 64
+
+@pytest.fixture(scope="session")
+def tflite_file():
+    return Path("models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite")
+
+@pytest.fixture(scope="session")
+def tflite_model(tflite_file):
+    dimension = 9
+    layers = 2
+    units = 64
+    mixtures = 5
+    model = mdrnn.TfliteMDRNN(tflite_file, dimension, units, mixtures, layers)
+    return model
+
+def test_tflite_predictions(tflite_model: mdrnn.TfliteMDRNN):
+    """Test inference from a TfliteMDRNN model"""
+    num_test_steps = 5
+    dimension = tflite_model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = tflite_model.generate(value)
+        assert len(value) == dimension
+        value = mdrnn.proc_generated_touch(value, dimension)
+        assert len(value) == dimension
+    
