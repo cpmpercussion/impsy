@@ -61,6 +61,8 @@ def train_mdrnn(
     """Loads a dataset, creates a model and runs the training procedure."""
     import impsy.mdrnn as mdrnn
     from tensorflow import keras
+    from .tflite_converter import model_to_tflite
+
 
     model_config = mdrnn_config(model_size)
     mdrnn_units = model_config["units"]
@@ -138,6 +140,7 @@ def train_mdrnn(
     model_keras_file = save_location / f"{model_name}.keras"
     inference_mdrnn.model.set_weights(trained_weights)
     inference_mdrnn.model.save(model_keras_file)
+    model_to_tflite(inference_mdrnn.model, model_keras_file)
 
     # Return the output in case
     output = {
