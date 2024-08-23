@@ -19,25 +19,6 @@ LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
 
 
-# def load_inference_model(
-#     model_file="", layers=2, units=512, mixtures=5, predict_moving=False
-# ):
-#     """Returns an IMPS model loaded from a file"""
-#     # TODO: make this parse the name to get the hyperparameters.
-#     decoder = build_model(
-#         seq_len=1,
-#         hidden_units=units,
-#         num_mixtures=mixtures,
-#         layers=layers,
-#         time_dist=False,
-#         inference=True,
-#         print_summary=True,
-#         predict_moving=predict_moving,
-#     )
-#     decoder.load_weights(model_file)
-#     return decoder
-
-
 def random_sample(out_dim=2):
     """Generate a random sample in format (dt, x_1, ..., x_n), where dt is positive
     and the x_i are between 0 and 1."""
@@ -292,7 +273,6 @@ class PredictiveMusicMDRNN(object):
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
         # model_output = self.model.predict(input_list)
-        print(model_output)
         mdn_params = model_output[0][0].numpy()
         # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
@@ -436,7 +416,6 @@ class  KerasMDRNN(MDRNNInferenceModel):
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
         # model_output = self.model.predict(input_list)
-        print(model_output)
         mdn_params = model_output[0][0].numpy()
         # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
