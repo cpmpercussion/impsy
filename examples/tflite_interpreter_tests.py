@@ -17,7 +17,7 @@ SCALE_FACTOR = 10  # scales input and output from the model. Should be the same 
 
 # Load the TFLite model
 interpreter = tf.lite.Interpreter(model_path=str(MODEL))
-interpreter.allocate_tensors()
+# interpreter.allocate_tensors()
 # Get the list of signatures
 signatures = interpreter.get_signature_list()
 print("Signatures:\n", signatures)
