@@ -120,8 +120,9 @@ def train_mdrnn(
 
     # Save final Model
     model_name = mdrnn_manager.model_name()
-    model_weights_file = save_location / f"{model_name}.h5"
-    mdrnn_manager.model.save_weights(model_weights_file)
+    # Don't save h5 weights anymore, only using .keras and .tflite files.
+    # model_weights_file = save_location / f"{model_name}.h5"
+    # mdrnn_manager.model.save_weights(model_weights_file)
     trained_weights = mdrnn_manager.model.get_weights()
 
     # Setup inference model to save
