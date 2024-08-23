@@ -283,7 +283,11 @@ class PredictiveMusicMDRNN(object):
             prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
         ] + self.lstm_states
         model_output = self.model(input_list)
+        # Note that we have confirmed that model.__call__() is way faster than model.predict().
+        # model_output = self.model.predict(input_list)
+        print(model_output)
         mdn_params = model_output[0][0].numpy()
+        # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
 
         # sample from the MDN:
