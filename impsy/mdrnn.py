@@ -10,6 +10,8 @@ import keras_mdn_layer as mdn
 import time
 import datetime
 from pathlib import Path
+import abc
+
 
 NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
@@ -312,9 +314,14 @@ class PredictiveMusicMDRNN(object):
         return new_sample
 
 
-class TfliteMDRNN(object):
-    """Loads an MDRNN from a tensorflow lite (.tflite) file for running predictions efficiently."""
+class MDRNNInferenceModel(abc.ABC):
+    """Abstract class for IMPSY inferences models."""
 
+    model_file: Path
+    dimension: int
+    n_hidden_units: int
+    n_mixtures: int
+    n_layers: int
 
     def __init__(
         self,
@@ -323,28 +330,51 @@ class TfliteMDRNN(object):
         n_hidden_units: int,
         n_mixtures: int,
         n_layers: int,
-    ):
+    ) -> None:
+        self.model_file = file
         self.dimension = dimension
         self.n_hidden_units = n_hidden_units
         self.n_mixtures = n_mixtures
         self.n_layers = n_layers
-        self.model_file = file
-        # load the network
-        self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
-        self.signatures = self.interpreter.get_signature_list()
-        self.runner = self.interpreter.get_signature_runner()
         self.reset_lstm_states()
         # sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
-        
+        self.prepare() # load the network files.
 
 
     def reset_lstm_states(self):
         self.lstm_states = lstm_blank_states(self.n_layers, self.n_hidden_units)
+    
+
+    @abc.abstractmethod
+    def prepare(self) -> None:
+        """Prepare for making predictions."""
+        pass
 
 
-    def generate(self, prev_value):
+    @abc.abstractmethod
+    def generate(self, prev_value: np.ndarray) -> np.ndarray:
+        """Handles input values (synchronously) if needed."""
+        pass
+
+
+class TfliteMDRNN(MDRNNInferenceModel):
+    """Loads an MDRNN from a tensorflow lite (.tflite) file for running predictions efficiently."""
+
+
+    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+        super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
+    
+
+    def prepare(self) -> None:
+        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+        self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
+        self.signatures = self.interpreter.get_signature_list()
+        self.runner = self.interpreter.get_signature_runner()
+
+
+    def generate(self, prev_value: np.ndarray) -> np.ndarray:
         """makes a prediction. Needs to know the exact state names at the moment."""
         input_value = prev_value.reshape(1,1,self.dimension) * SCALE_FACTOR
         input_value = input_value.astype(np.float32, copy=False)
@@ -360,6 +390,57 @@ class TfliteMDRNN(object):
             self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
             self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
         mdn_params = raw_out['mdn_outputs'].squeeze()
+        # sample from the MDN:
+        new_sample = (
+            mdn.sample_from_output(
+                mdn_params,
+                self.dimension,
+                self.n_mixtures,
+                temp=self.pi_temp,
+                sigma_temp=self.sigma_temp,
+            )
+            / SCALE_FACTOR
+        )
+        new_sample = new_sample.reshape(
+            self.dimension,
+        )
+        return new_sample
+
+
+class  KerasMDRNN(MDRNNInferenceModel):
+    """Loads an MDRNN in inference mode from a .keras file."""
+
+
+    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+        super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
+
+
+    def prepare(self) -> None:
+        assert self.model_file.suffix == ".keras", "KerasMDRNN only works on .keras files."
+        self.model = tf.keras.saving.load_model(
+            str(self.model_file), 
+            custom_objects={"MDN": mdn.MDN}
+        )
+
+
+    def generate(self, prev_value: np.ndarray) -> np.ndarray:
+        """Generate one forward prediction from a previous sample in format
+        (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
+        assert (
+            len(prev_value) == self.dimension
+        ), "Only works with samples of the same dimension as the network"
+        # print("Input sample", prev_value)
+        input_list = [
+            prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
+        ] + self.lstm_states
+        model_output = self.model(input_list)
+        # Note that we have confirmed that model.__call__() is way faster than model.predict().
+        # model_output = self.model.predict(input_list)
+        print(model_output)
+        mdn_params = model_output[0][0].numpy()
+        # mdn_params = model_output[0][0]
+        self.lstm_states = model_output[1:]  # update storage of LSTM state
+
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(

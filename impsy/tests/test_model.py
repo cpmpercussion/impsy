@@ -105,4 +105,24 @@ def test_tflite_predictions(tflite_model: mdrnn.TfliteMDRNN):
         assert len(value) == dimension
         value = mdrnn.proc_generated_touch(value, dimension)
         assert len(value) == dimension
-    
+
+@pytest.fixture(scope="session")
+def keras_model():
+    keras_file = Path("models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.keras")
+    dimension = 9
+    layers = 2
+    units = 64
+    mixtures = 5
+    model = mdrnn.KerasMDRNN(keras_file, dimension, units, mixtures, layers)
+    return model
+
+def test_keras_predictions(keras_model: mdrnn.KerasMDRNN):
+    """Test inference from a KerasMDRNN model"""
+    num_test_steps = 5
+    dimension = keras_model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = keras_model.generate(value)
+        assert len(value) == dimension
+        value = mdrnn.proc_generated_touch(value, dimension)
+        assert len(value) == dimension
