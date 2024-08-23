@@ -57,8 +57,6 @@ def dataset_file(log_location, dataset_location, dimension, log_files):
         dimension=dimension, source=log_location, destination=dataset_location
     )
     dataset_full_path = dataset_location / dataset_filename
-    # yield dataset_full_path
-    # os.remove(dataset_full_path)
     return dataset_full_path
 
 
