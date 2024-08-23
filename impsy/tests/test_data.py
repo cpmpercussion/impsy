@@ -91,6 +91,9 @@ def trained_model(dimension, dataset_file, dataset_location, models_location, md
         num_epochs=epochs,
         batch_size=batch_size,
         save_location=models_location,
+        save_model=True,
+        save_weights=True,
+        save_tflite=True,
     )
     return train_output
 
@@ -106,27 +109,21 @@ def test_train_command(trained_model):
 
 def test_config_to_tflite():
     test_config = "configs/default.toml"
-    expected_output_path = (
-        "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
-    )
-    tflite_converter.config_to_tflite(test_config)
-    assert os.path.exists(expected_output_path)
-    os.remove(expected_output_path)
+    tflite_file = tflite_converter.config_to_tflite(test_config)
+    assert os.path.exists(tflite_file)
 
 
 def test_weights_to_model_file(trained_model, dimension, tmp_path_factory, mdrnn_size):
     weights_file = trained_model["weights_file"]
     print(f"Weights file: {weights_file}")
     test_dir = tmp_path_factory.mktemp("model_file")
-    model_file_name = tflite_converter.weights_file_to_model_file(weights_file, mdrnn_size, dimension)
-    print(f"File returned: {model_file_name}")
-    assert os.path.exists(model_file_name)
-    # os.remove(model_file_name)
+    tflite_file = tflite_converter.weights_file_to_model_file(weights_file, mdrnn_size, dimension)
+    print(f"File returned: {tflite_file}")
+    assert os.path.exists(tflite_file)
 
 
 def test_model_file_to_tflite(trained_model):
     model_filename = trained_model["keras_file"]
     expected_output_path = model_filename.with_suffix('.tflite')
-    tflite_converter.model_file_to_tflite(model_filename)
-    assert os.path.exists(expected_output_path)
-    os.remove(expected_output_path)
+    tflite_file = tflite_converter.model_file_to_tflite(model_filename)
+    assert os.path.exists(tflite_file)

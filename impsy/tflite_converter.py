@@ -30,6 +30,7 @@ def model_to_tflite(model, model_path: Path):
     click.secho(f"Saving tflite model to: {output_file}", fg="blue")
     with open(output_file, "wb") as f:
         f.write(tflite_model)
+    return output_file
 
 
 def model_file_to_tflite(filename):
@@ -42,7 +43,8 @@ def model_file_to_tflite(filename):
     loaded_model = tf.keras.saving.load_model(
         filename, custom_objects={"MDN": mdn_layer.MDN}
     )
-    model_to_tflite(loaded_model, model_file)
+    tflite_file = model_to_tflite(loaded_model, model_file)
+    return tflite_file
 
 
 
@@ -67,7 +69,8 @@ def config_to_tflite(config_path):
     click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
     model_path = Path(config["model"]["file"])
     net.load_model(model_file=model_path)
-    model_to_tflite(net.model, model_path)
+    tflite_file = model_to_tflite(net.model, model_path)
+    return tflite_file
 
 
 def weights_file_to_model_file(weights_file, model_size, dimension):
