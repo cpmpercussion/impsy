@@ -6,25 +6,8 @@ import pytest
 from pathlib import Path
 
 
-@pytest.fixture(scope="session")
-def dimension():
-    return 3
+## PredictiveMusicMDRNN testing.
 
-@pytest.fixture(scope="session")
-def sequence_length():
-    return 3
-
-@pytest.fixture(scope="session")
-def batch_size():
-    return 3
-
-@pytest.fixture(scope="session")
-def sequence_slices(sequence_length, dimension, batch_size):
-    x_t_log = utils.generate_data(
-        samples=((sequence_length + 1) * batch_size), dimension=dimension
-    )
-    slices = train.slice_sequence_examples(x_t_log, sequence_length + 1, step_size=1)
-    return slices
 
 def test_inference():
     """Test inference from a PredictiveMusicMDRNN model"""
@@ -55,30 +38,68 @@ def test_training(sequence_length, batch_size, dimension, sequence_slices):
     assert isinstance(history, tf.keras.callbacks.History)
 
 
-def test_data_munging(sequence_length, batch_size, dimension, sequence_slices):
-    """Test the data munging functions"""
-
-    # overlapping
-    Xs, ys = train.seq_to_overlapping_format(sequence_slices)
-    assert len(Xs) == len(ys)
-    assert len(Xs[0]) == sequence_length
-    assert len(ys[0]) == sequence_length
-
-    print("Xs:", len(Xs[0]))
-    print("ys:", len(ys[0]))
-
-    # singleton
-    X, y = train.seq_to_singleton_format(sequence_slices)
-    print("X:", len(X[0]))
-    print("y:", len(y[0]))
-
-    assert len(X) == len(y)
-    assert len(X[0]) == sequence_length
-    assert len(y[0]) == dimension
-
-
 def test_model_config():
     """Tests the model config function."""
-    conf = utils.mdrnn_config("s")
-    assert conf["units"] == 64
+    conf = utils.mdrnn_config('s')
+    assert conf["units"] == utils.SIZE_TO_PARAMETERS['s']['units']
 
+
+### inference model tests.
+
+
+@pytest.fixture(scope="session")
+def tflite_model(tflite_file, dimension, units, mixtures, layers):
+    model = mdrnn.TfliteMDRNN(tflite_file, dimension, units, mixtures, layers)
+    return model
+
+def test_tflite_predictions(tflite_model: mdrnn.TfliteMDRNN):
+    """Test inference from a TfliteMDRNN model"""
+    num_test_steps = 5
+    dimension = tflite_model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = tflite_model.generate(value)
+        assert len(value) == dimension
+        value = mdrnn.proc_generated_touch(value, dimension)
+        assert len(value) == dimension
+
+@pytest.fixture(scope="session")
+def keras_model(keras_file, dimension, units, mixtures, layers):
+    model = mdrnn.KerasMDRNN(keras_file, dimension, units, mixtures, layers)
+    return model
+
+def test_keras_predictions(keras_model: mdrnn.KerasMDRNN):
+    """Test inference from a KerasMDRNN model"""
+    num_test_steps = 5
+    dimension = keras_model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = keras_model.generate(value)
+        assert len(value) == dimension
+        value = mdrnn.proc_generated_touch(value, dimension)
+        assert len(value) == dimension
+
+@pytest.fixture(scope="session")
+def weights_model(weights_file, dimension, units, mixtures, layers):
+    assert weights_file.suffix == ".h5", "has to be an .h5 weights"
+    model = mdrnn.KerasMDRNN(weights_file, dimension, units, mixtures, layers)
+    return model
+
+def test_weights_predictions(weights_model: mdrnn.KerasMDRNN):
+    """Test inference from a KerasMDRNN model"""
+    num_test_steps = 5
+    dimension = weights_model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    for i in range(num_test_steps):
+        value = weights_model.generate(value)
+        assert len(value) == dimension
+        value = mdrnn.proc_generated_touch(value, dimension)
+        assert len(value) == dimension
+
+
+def test_dummy_model():
+    model = mdrnn.DummyMDRNN(Path("/"), 4, 64, 5, 2)
+    dimension = model.dimension
+    value = mdrnn.random_sample(out_dim=dimension)
+    value = model.generate(value)
+    assert len(value) == dimension
