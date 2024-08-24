@@ -98,8 +98,8 @@ def build_network(config: dict):
         click.secho(f"MDRNN: Couldn't find a model file in your config. Loading dummy model.", fg="red")
         model_file = Path(".")
     
-    if model_file.suffix == ".keras":
-        click.secho(f"MDRNN Loading from .keras file: {model_file}", fg="green")
+    if model_file.suffix == ".keras" or model_file.suffix == ".h5":
+        click.secho(f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green")
         model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
     elif model_file.suffix == ".tflite":
         click.secho(f"MDRNN Loading from .tflite file: {model_file}", fg="green")

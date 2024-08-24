@@ -395,11 +395,24 @@ class  KerasMDRNN(MDRNNInferenceModel):
 
 
     def prepare(self) -> None:
-        assert self.model_file.suffix == ".keras", "KerasMDRNN only works on .keras files."
-        self.model = tf.keras.saving.load_model(
-            str(self.model_file), 
-            custom_objects={"MDN": mdn.MDN}
-        )
+        assert self.model_file.suffix == ".keras" or self.model_file.suffix == ".h5", "KerasMDRNN only works on .keras or .h5 files."
+        if self.model_file.suffix == ".keras":
+            # Loading model for .keras files
+            self.model = tf.keras.saving.load_model(
+                str(self.model_file), 
+                custom_objects={"MDN": mdn.MDN}
+            )
+        elif self.model_file.suffix == ".h5":
+            # Loading model for .h5 files
+            mdrnn_builder = PredictiveMusicMDRNN(
+                mode=NET_MODE_RUN, 
+                dimension=self.dimension, 
+                n_hidden_units=self.n_hidden_units, 
+                n_mixtures=self.n_mixtures, 
+                layers=self.n_layers
+            )
+            self.model = mdrnn_builder.model
+            self.model.load_weights(self.model_file)
 
 
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
