@@ -5,10 +5,15 @@ from .utils import mdrnn_config, get_config_data
 from pathlib import Path
 
 
-def model_to_tflite(model, model_path: Path):
+def model_to_tflite(model, model_path: Path, save_path: Path = None):
+    """This actually converts a loaded Keras model to tflite format."""
     import tensorflow as tf
 
+    # Setup output path and name.
     output_file = model_path.with_suffix(".tflite")
+    if save_path is not None:
+        output_file = save_path / output_file.name
+
     click.secho("Setup converter.", fg="blue")
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.target_spec.supported_ops = [
@@ -48,7 +53,7 @@ def model_file_to_tflite(filename):
 
 
 
-def config_to_tflite(config_path):
+def config_to_tflite(config_path, save_path = None):
     """Converts the model specified in a config dictionary to tflite format."""
     import tensorflow as tf
     import impsy.mdrnn as mdrnn
@@ -69,7 +74,7 @@ def config_to_tflite(config_path):
     click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
     model_path = Path(config["model"]["file"])
     net.load_model(model_file=model_path)
-    tflite_file = model_to_tflite(net.model, model_path)
+    tflite_file = model_to_tflite(net.model, model_path, save_path)
     return tflite_file
 
 
