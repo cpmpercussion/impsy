@@ -7,7 +7,6 @@ University of Oslo, Norway.
 import numpy as np
 import tensorflow as tf
 import keras_mdn_layer as mdn
-import time
 import datetime
 from pathlib import Path
 import abc
@@ -53,6 +52,91 @@ def lstm_blank_states(layers: int, units: int):
     return states
 
 
+def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int) -> str:
+    """Returns the name of a model using it's parameters"""
+    name = f"musicMDRNN"
+    name += f"-dim{dimension}"
+    name += f"-layers{n_rnn_layers}"
+    name += f"-units{n_hidden_units}"
+    name += f"-mixtures{n_mixtures}"
+    name += f"-scale{SCALE_FACTOR}"
+    return name
+
+
+def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int, inference: bool, seq_length = 30):
+    """Builds a Keras MDRNN model with specified parameters.
+    Can either be a training model or inference model which affects the configured 
+    sequence length and whether a loss function is added.
+    """
+    # Set parameters for inference/training versions.
+    if inference:
+        state_input_output = True
+        sequence_length = 1
+        time_dist = False
+    else:
+        state_input_output = False
+        sequence_length = seq_length
+        time_dist = True
+    # inputs
+    data_input = tf.keras.layers.Input(
+        shape=(sequence_length, dimension), name="inputs"
+    )
+    lstm_in = data_input  # starter input for lstm
+    state_inputs = []  # storage for LSTM state inputs
+    state_outputs = []  # storage for LSTM state outputs
+
+    # lstm layers
+    for layer_i in range(n_layers):
+        return_sequences = True
+        if (layer_i == n_layers - 1) and not time_dist:
+            # return sequences false if last layer, and not time distributed.
+            return_sequences = False
+        state_input = None
+        if state_input_output:
+            state_h_input = tf.keras.layers.Input(
+                shape=(n_hidden_units,), name=f"state_h_{layer_i}"
+            )
+            state_c_input = tf.keras.layers.Input(
+                shape=(n_hidden_units,), name=f"state_c_{layer_i}"
+            )
+            state_input = [state_h_input, state_c_input]
+            state_inputs += state_input
+        lstm_out, state_h_output, state_c_output = tf.keras.layers.LSTM(
+            n_hidden_units,
+            name=f"lstm_{layer_i}",
+            return_sequences=return_sequences,
+            return_state=True,  # state_input_output # better to keep these outputs and just not use.
+        )(lstm_in, initial_state=state_input)
+        lstm_in = lstm_out
+        state_outputs += [state_h_output, state_c_output]
+
+    # mdn layer
+    mdn_layer = mdn.MDN(dimension, n_mixtures, name="mdn_outputs")
+    if time_dist:
+        mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name="td_mdn")
+    mdn_out = mdn_layer(lstm_out)  # apply mdn
+    if inference:
+        # for inference, need to track state of the model
+        inputs = [data_input] + state_inputs
+        outputs = [mdn_out] + state_outputs
+    else:
+        # for training we don't need to keep track of state in the model
+        inputs = data_input
+        outputs = mdn_out
+    name = mdrnn_model_name(dimension, n_layers, n_hidden_units, n_mixtures)
+    new_model = tf.keras.models.Model(
+        inputs=inputs, outputs=outputs, name=name
+    )
+
+    if not inference:
+        # only need loss function and compile when training
+        loss_func = mdn.get_mixture_loss_func(dimension, n_mixtures)
+        optimizer = tf.keras.optimizers.Adam()
+        new_model.compile(loss=loss_func, optimizer=optimizer)
+
+    return new_model
+
+
 class PredictiveMusicMDRNN(object):
     """Builds and operates a mixture density recurrent neural network model."""
 
@@ -75,7 +159,6 @@ class PredictiveMusicMDRNN(object):
         n_mixtures : number of mixture components (5-10 is good)
         layers : number of layers (2 is good)
         seq_len : sequence length to unroll
-        batch_size : size of batch for training (not used so far)
         """
         # network parameters
         self.dimension = dimension
@@ -83,118 +166,37 @@ class PredictiveMusicMDRNN(object):
         self.n_hidden_units = n_hidden_units
         self.n_rnn_layers = layers
         self.n_mixtures = n_mixtures  # number of mixtures
+        self.sequence_length = sequence_length # only needed for training.
+
         # Sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
-        if self.mode == NET_MODE_RUN:
-            self.sequence_length = 1
-            self.inference = True
-            self.time_dist = False
-        else:
-            self.sequence_length = sequence_length
-            self.inference = False
-            self.time_dist = True
 
-        self.model = self.build()
+        # setup model
+        if self.mode == NET_MODE_RUN:
+            self.inference = True
+            self.training = False
+        elif self.mode == NET_MODE_TRAIN:
+            self.inference = False
+            self.training = True
+        
+        self.model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_rnn_layers, self.inference, self.sequence_length)
+        self.model_name = mdrnn_model_name(self.dimension, self.n_rnn_layers, self.n_hidden_units, self.n_mixtures)
         self.model.summary()
-        self.run_name = self.get_run_name()
         self.reset_lstm_states()
 
-    def build(self):
-        """Builds the MDRNN model for training or inference."""
-        if self.inference:
-            state_input_output = True
-        else:
-            state_input_output = False
-        data_input = tf.keras.layers.Input(
-            shape=(self.sequence_length, self.dimension), name="inputs"
-        )
-        lstm_in = data_input  # starter input for lstm
-        state_inputs = []  # storage for LSTM state inputs
-        state_outputs = []  # storage for LSTM state outputs
-
-        for layer_i in range(self.n_rnn_layers):
-            return_sequences = True
-            if (layer_i == self.n_rnn_layers - 1) and not self.time_dist:
-                # return sequences false if last layer, and not time distributed.
-                return_sequences = False
-            state_input = None
-            if state_input_output:
-                state_h_input = tf.keras.layers.Input(
-                    shape=(self.n_hidden_units,), name=f"state_h_{layer_i}"
-                )
-                state_c_input = tf.keras.layers.Input(
-                    shape=(self.n_hidden_units,), name=f"state_c_{layer_i}"
-                )
-                state_input = [state_h_input, state_c_input]
-                state_inputs += state_input
-            lstm_out, state_h_output, state_c_output = tf.keras.layers.LSTM(
-                self.n_hidden_units,
-                name=f"lstm_{layer_i}",
-                return_sequences=return_sequences,
-                return_state=True,  # state_input_output # better to keep these outputs and just not use.
-            )(lstm_in, initial_state=state_input)
-            lstm_in = lstm_out
-            state_outputs += [state_h_output, state_c_output]
-
-        mdn_layer = mdn.MDN(self.dimension, self.n_mixtures, name="mdn_outputs")
-        if self.time_dist:
-            mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name="td_mdn")
-        mdn_out = mdn_layer(lstm_out)  # apply mdn
-        if self.inference:
-            # for inference, need to track state of the model
-            inputs = [data_input] + state_inputs
-            outputs = [mdn_out] + state_outputs
-        else:
-            # for training we don't need to keep track of state in the model
-            inputs = data_input
-            outputs = mdn_out
-        new_model = tf.keras.models.Model(
-            inputs=inputs, outputs=outputs, name=self.model_name()
-        )
-
-        if not self.inference:
-            # only need loss function and compile when training
-            loss_func = mdn.get_mixture_loss_func(self.dimension, self.n_mixtures)
-            optimizer = tf.keras.optimizers.Adam()
-            new_model.compile(loss=loss_func, optimizer=optimizer)
-
-        return new_model
 
     def reset_lstm_states(self):
         self.lstm_states = lstm_blank_states(self.n_rnn_layers, self.n_hidden_units)
 
-    def model_name(self):
-        """Returns the name of the present model for saving to disk"""
-        return (
-            "musicMDRNN"
-            + "-dim"
-            + str(self.dimension)
-            + "-layers"
-            + str(self.n_rnn_layers)
-            + "-units"
-            + str(self.n_hidden_units)
-            + "-mixtures"
-            + str(self.n_mixtures)
-            + "-scale"
-            + str(SCALE_FACTOR)
-        )
 
-    def load_model(self, model_file=None, model_dir="models"):
-        model_dir = Path(model_dir)
-        if model_file is None:
-            model_file = model_dir / f"{self.model_name()}.h5"
+    def load_model(self, model_file):
         try:
             self.model.load_weights(model_file)
         except OSError as err:
-            print("OS error: {0}".format(err))
-            print("MDRNN could not be loaded from file:", model_file)
-            print("MDRNN is untrained.")
+            click.secho(f"Error loading MDRNN from file: {err}", fg="red")
+            click.secho(f"Using untrained MDRNN", fg="red")
 
-    def get_run_name(self):
-        out = self.model_name() + "-"
-        out += time.strftime("%Y%m%d-%H%M%S")
-        return out
 
     def train(
         self,
@@ -213,7 +215,7 @@ class PredictiveMusicMDRNN(object):
         # Setup callbacks
         date_string = datetime.datetime.today().strftime("%Y%m%d-%H_%M_%S")
         save_location = Path(save_location)
-        checkpoint_path = save_location / f"{self.model_name()}-ckpt.keras"
+        checkpoint_path = save_location / f"{self.model_name}-ckpt.keras"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             str(checkpoint_path),
             monitor="val_loss",
@@ -226,7 +228,7 @@ class PredictiveMusicMDRNN(object):
             monitor="val_loss", mode="min", verbose=1, patience=patience
         )
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=save_location / f"{date_string}{self.model_name()}",
+            log_dir=save_location / f"{date_string}{self.model_name}",
             histogram_freq=0,
             write_graph=True,
             update_freq="epoch",
@@ -315,10 +317,11 @@ class MDRNNInferenceModel(abc.ABC):
         self.n_hidden_units = n_hidden_units
         self.n_mixtures = n_mixtures
         self.n_layers = n_layers
-        self.reset_lstm_states()
+        self.model_name = mdrnn_model_name(self.dimension, self.n_layers, self.n_hidden_units, self.n_mixtures)
         # sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
+        self.reset_lstm_states()
         self.prepare() # load the network files.
 
 
@@ -404,14 +407,7 @@ class  KerasMDRNN(MDRNNInferenceModel):
             )
         elif self.model_file.suffix == ".h5":
             # Loading model for .h5 files
-            mdrnn_builder = PredictiveMusicMDRNN(
-                mode=NET_MODE_RUN, 
-                dimension=self.dimension, 
-                n_hidden_units=self.n_hidden_units, 
-                n_mixtures=self.n_mixtures, 
-                layers=self.n_layers
-            )
-            self.model = mdrnn_builder.model
+            self.model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True, seq_length=1)
             self.model.load_weights(self.model_file)
 
 

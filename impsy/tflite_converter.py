@@ -71,7 +71,7 @@ def config_to_tflite(config_path, save_path = None):
         n_mixtures=model_config["mixes"],
         layers=model_config["layers"],
     )
-    click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
+    click.secho(f"MDRNN Loaded: {net.model_name}", fg="green")
     model_path = Path(config["model"]["file"])
     net.load_model(model_file=model_path)
     tflite_file = model_to_tflite(net.model, model_path, save_path)
@@ -91,7 +91,6 @@ def weights_file_to_model_file(weights_file, model_size, dimension):
         layers=model_config["layers"],
     )
     inference_model.load_model(model_file=weights_file)
-    model_name = inference_model.model_name()
     keras_file_path = Path(weights_file).with_suffix(".keras")
     inference_model.model.save(keras_file_path)
     return keras_file_path

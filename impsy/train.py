@@ -124,7 +124,7 @@ def train_mdrnn(
     )
 
     # Save final Model
-    model_name = mdrnn_manager.model_name()
+    model_name = mdrnn_manager.model_name
 
     # start preparing output dict output in case
     output = {
@@ -150,7 +150,7 @@ def train_mdrnn(
             sequence_length=1,
             layers=mdrnn_layers,
         )
-        model_name = inference_mdrnn.model_name()
+        model_name = inference_mdrnn.model_name
         model_keras_file = save_location / f"{model_name}.keras"
         inference_mdrnn.model.set_weights(trained_weights)
         inference_mdrnn.model.save(model_keras_file)
