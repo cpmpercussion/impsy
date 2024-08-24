@@ -86,7 +86,6 @@ class PredictiveMusicMDRNN(object):
         # Sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
-        # self.name="impsy-mdrnn"
         if self.mode == NET_MODE_RUN:
             self.sequence_length = 1
             self.inference = True
