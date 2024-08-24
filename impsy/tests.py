@@ -6,29 +6,17 @@ import pandas as pd
 pd.set_option("display.float_format", lambda x: "%.4f" % x)
 
 
-def build_network(dimension=4, units=64, mixes=5, layers=2):
-    """Build an MDRNN model."""
-    from . import mdrnn
-
-    net = mdrnn.PredictiveMusicMDRNN(
-        mode=mdrnn.NET_MODE_RUN,
-        dimension=dimension,
-        n_hidden_units=units,
-        n_mixtures=mixes,
-        layers=layers,
-    )
-    return net
-
-
 def time_network_build(dimension, size):
-    click.secho("Building MDRNN.")
-    start_build = time.time()
+    click.secho("Test: timing an MDRNN build...")
     model_config = mdrnn_config(size)
-    build_network(
-        dimension,
-        model_config["units"],
-        model_config["mixes"],
-        model_config["layers"],
+    start_build = time.time()
+    from . import mdrnn
+    mdrnn.build_mdrnn_model(
+        dimension=dimension, 
+        n_hidden_units=model_config["units"], 
+        n_mixtures=model_config["mixes"], 
+        n_layers=model_config["layers"],
+        inference=True,
     )
     click.secho(f"Done in {round(time.time() - start_build, 2)}s.")
 
@@ -37,50 +25,3 @@ def time_network_build(dimension, size):
 def test_mdrnn():
     """This command simply loads the MDRNN to test that it works and how long it takes."""
     time_network_build(4, "s")
-
-
-@click.command(name="test-speed")
-def prediction_speed_test():
-    """This command runs a speed test experiment with different sized MDRNN models. The output is written to a CSV file."""
-    from . import mdrnn
-
-    def request_rnn_prediction(input_value, net):
-        """Accesses a single prediction from the RNN."""
-        start = time.time()
-        output_value = net.generate(input_value)
-        time_delta = time.time() - start
-        return output_value, time_delta
-
-    def run_test(tests, config):
-        times = []
-        net = build_network(
-            config["dimension"],
-            config["units"],
-            config["mixes"],
-            config["layers"],
-        )
-        for i in range(tests):
-            ## Predictions.
-            item = mdrnn.random_sample(out_dim=config["dimension"])
-            rnn_output, t = request_rnn_prediction(item, net)
-            out_dict = {
-                "time": t,
-                "mixes": config["mixes"],
-                "layers": config["layers"],
-                "units": config["units"],
-                "dimension": config["dimension"],
-            }
-            times.append(out_dict)
-        return times
-
-    experiments = []
-    mdrnn_units = [64, 128, 256, 512]
-    dimensions = [2, 3, 4, 5, 6, 7, 8, 9]
-    for un in mdrnn_units:
-        for dim in dimensions:
-            net_config = {"mixes": 5, "layers": 2, "units": un, "dimension": dim}
-            times = run_test(100, net_config)
-            experiments.extend(times)
-    total_experiment = pd.DataFrame.from_records(experiments)
-    total_experiment.to_csv("total_exp.csv")
-    click.secho(total_experiment.describe())
