@@ -3,6 +3,8 @@ from impsy import train
 from impsy import utils
 import tensorflow as tf
 import pytest
+from pathlib import Path
+
 
 @pytest.fixture(scope="session")
 def dimension():
@@ -31,7 +33,7 @@ def test_inference():
     net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN, dimension=dimension)
     value = mdrnn.random_sample(out_dim=dimension)
     for i in range(num_test_steps):
-        value = net.generate_touch(value)
+        value = net.generate(value)
         proc_touch = mdrnn.proc_generated_touch(value, dimension)
     assert len(value) == dimension
     assert len(proc_touch == dimension)
@@ -79,3 +81,4 @@ def test_model_config():
     """Tests the model config function."""
     conf = utils.mdrnn_config("s")
     assert conf["units"] == 64
+

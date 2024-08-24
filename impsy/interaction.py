@@ -74,19 +74,44 @@ def build_network(config: dict):
     """Build the MDRNN, uses a high-level size parameter and dimension."""
     from . import mdrnn
 
-    click.secho(f"MDRNN: Using {config['model']['size']} model.", fg="green")
-    model_config = mdrnn_config(config["model"]["size"])
-    net = mdrnn.PredictiveMusicMDRNN(
-        mode=mdrnn.NET_MODE_RUN,
-        dimension=config["model"]["dimension"],
-        n_hidden_units=model_config["units"],
-        n_mixtures=model_config["mixes"],
-        layers=model_config["layers"],
-    )
-    net.pi_temp = config["model"]["pitemp"]
-    net.sigma_temp = config["model"]["sigmatemp"]
-    click.secho(f"MDRNN Loaded: {net.model_name()}", fg="green")
-    return net
+    try:
+        dimension = config["model"]["dimension"]
+    except Exception as e:
+        click.secho(f"MDRNN: Couldn't find a dimension in your config. Please add one!", fg="red")
+        raise
+
+    try:
+        model_size = config['model']['size']
+        click.secho(f"MDRNN: Using {model_size} model.", fg="green")
+    except Exception as e:
+        model_size = "s"
+        click.secho(f"MDRNN: Couldn't find a model size in your config, using {model_size}.", fg="red")
+
+    model_config = mdrnn_config(model_size)
+    units = model_config["units"]
+    mixtures = model_config["mixes"]
+    layers = model_config["layers"]
+
+    try:
+        model_file = Path(config["model"]["file"])
+    except Exception as e:
+        click.secho(f"MDRNN: Couldn't find a model file in your config. Loading dummy model.", fg="red")
+        model_file = Path(".")
+    
+    if model_file.suffix == ".keras" or model_file.suffix == ".h5":
+        click.secho(f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green")
+        model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
+    elif model_file.suffix == ".tflite":
+        click.secho(f"MDRNN Loading from .tflite file: {model_file}", fg="green")
+        model = mdrnn.TfliteMDRNN(model_file, dimension, units, mixtures, layers)
+    else:
+        click.secho(f"MDRNN Loading dummy model: {model_file}", fg="yellow")
+        model = mdrnn.DummyMDRNN(model_file, dimension, units, mixtures, layers)
+
+    model.pi_temp = config["model"]["pitemp"]
+    model.sigma_temp = config["model"]["sigmatemp"]
+    click.secho(f"MDRNN Loaded.", fg="green")
+    return model
 
 
 class InteractionServer(object):
@@ -230,7 +255,7 @@ class InteractionServer(object):
         # First deal with user --> MDRNN prediction
         if self.user_to_rnn and not self.interface_input_queue.empty():
             item = self.interface_input_queue.get(block=True, timeout=None)
-            rnn_output = neural_net.generate_touch(item)
+            rnn_output = neural_net.generate(item)
             if self.rnn_to_sound:
                 self.rnn_output_buffer.put_nowait(rnn_output)
             self.interface_input_queue.task_done()
@@ -242,7 +267,7 @@ class InteractionServer(object):
             and not self.rnn_prediction_queue.empty()
         ):
             item = self.rnn_prediction_queue.get(block=True, timeout=None)
-            rnn_output = neural_net.generate_touch(item)
+            rnn_output = neural_net.generate(item)
             self.rnn_output_buffer.put_nowait(
                 rnn_output
             )  # put it in the playback queue.
@@ -320,12 +345,6 @@ class InteractionServer(object):
         """Run the interaction server opening required IO."""
         click.secho("Preparing MDRNN.", fg="yellow")
         net = build_network(self.config)
-        if "file" in self.config["model"] and self.config["model"]["file"] != "":
-            net.load_model(
-                model_file=self.config["model"]["file"]
-            )  # load custom model.
-        else:
-            net.load_model()  # try loading from default file location.
 
         # Threads
         click.secho("Preparing MDRNN thread.", fg="yellow")

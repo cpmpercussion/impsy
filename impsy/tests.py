@@ -47,7 +47,7 @@ def prediction_speed_test():
     def request_rnn_prediction(input_value, net):
         """Accesses a single prediction from the RNN."""
         start = time.time()
-        output_value = net.generate_touch(input_value)
+        output_value = net.generate(input_value)
         time_delta = time.time() - start
         return output_value, time_delta
 

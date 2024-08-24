@@ -19,7 +19,7 @@ input_thru = true # sends inputs directly to outputs (e.g., if input interface i
 # Model configuration
 [model]
 dimension = 9
-file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.h5"
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.keras"
 size = "s" # Can be one of: xs, s, m, l, xl
 sigmatemp = 0.01
 pitemp = 1
