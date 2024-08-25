@@ -25,11 +25,18 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
     """Builds a network and saves weights, model file, and tflite file."""
     model = mdrnn.build_mdrnn_model(dimension, units, mixes, layers, inference=True, seq_length=1)
     model_name = mdrnn.mdrnn_model_name(dimension, layers, units, mixes)
+
     # weights_file = location / f"{model_name}.h5"
-    model_file = location / f"{model_name}.keras"
     # model.save_weights(weights_file)
-    model.save(model_file)
-    tflite_file = tflite_converter.model_to_tflite(model, model_file)
+    model_path = location / f"{model_name}.keras"
+    tflite_path = location / f"{model_name}.tflite"
+
+    ## Only bother creating if the files don't exist.
+    if not model_path.exists():
+        model.save(model_path)
+    
+    if not tflite_path.exists():
+        tflite_path = tflite_converter.model_to_tflite(model, model_path)
 
     output = {
         "dimension": dimension,
@@ -38,8 +45,8 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
         "layers": layers,
         "model": model,
         # "weights": weights_file,
-        "keras": model_file,
-        "tflite": tflite_file
+        "keras": model_path,
+        "tflite": tflite_path
     }
 
     return output
@@ -120,5 +127,5 @@ click.secho("tflite experiment data:", fg="green")
 click.secho(total_experiment[total_experiment['model_type'] == 'tflite'].describe())
 
 ## delete all the model files created.
-for model_file in model_files:
-    os.remove(model_file)
+# for model_file in model_files:
+#     os.remove(model_file)
