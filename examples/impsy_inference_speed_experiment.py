@@ -23,8 +23,12 @@ os.makedirs(location, exist_ok=True)
 
 def create_models(dimension=4, units=64, mixes=5, layers=2):
     """Builds a network and saves weights, model file, and tflite file."""
+    start_model_build = time.time()
     model = mdrnn.build_mdrnn_model(dimension, units, mixes, layers, inference=True, seq_length=1)
+    model_build_time = time.time() - start_model_build
     model_name = mdrnn.mdrnn_model_name(dimension, layers, units, mixes)
+
+    click.secho(f"Built {model_name} in {model_build_time:.3f}s")
 
     # weights_file = location / f"{model_name}.h5"
     # model.save_weights(weights_file)
@@ -43,10 +47,11 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
         "units": units,
         "mixes": mixes,
         "layers": layers,
+        "name": model_name,
         "model": model,
         # "weights": weights_file,
         "keras": model_path,
-        "tflite": tflite_path
+        "tflite": tflite_path,
     }
 
     return output
@@ -83,9 +88,18 @@ def run_test(num_tests, config):
     layers = config["layers"]
 
     models = create_models(dim, units, mixes, layers)
+    start_model_load = time.time()
     keras_model = mdrnn.KerasMDRNN(models["keras"],dim, units, mixes, layers)
-    times +=experiment(keras_model, "keras", config, num_tests)
+    model_load_time = time.time() - start_model_load
+    click.secho(f"Loaded keras {models['name']} in {model_load_time:.3f}s")
+
+    times += experiment(keras_model, "keras", config, num_tests)
+
+    start_model_load = time.time()
     tflite_model = mdrnn.TfliteMDRNN(models["tflite"],dim, units, mixes, layers)
+    model_load_time = time.time() - start_model_load
+    click.secho(f"Loaded tflite {models['name']} in {model_load_time:.3f}s")
+
     times += experiment(tflite_model, "tflite", config, num_tests)
 
     # times += experiment(h5_model, "h5", config, num_tests)
