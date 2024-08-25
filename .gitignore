@@ -164,9 +164,10 @@ output-logs
 models
 logs
 datasets
-./tests
 
 *.hdf5
 *.no
 *.npz
 *.csv
+
+experiment_data
