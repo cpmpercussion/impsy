@@ -30,8 +30,6 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
 
     click.secho(f"Built {model_name} in {model_build_time:.3f}s")
 
-    # weights_file = location / f"{model_name}.h5"
-    # model.save_weights(weights_file)
     model_path = location / f"{model_name}.keras"
     tflite_path = location / f"{model_name}.tflite"
 
@@ -49,7 +47,6 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
         "layers": layers,
         "name": model_name,
         "model": model,
-        # "weights": weights_file,
         "keras": model_path,
         "tflite": tflite_path,
     }
@@ -92,14 +89,12 @@ def run_test(num_tests, config):
     start_model_load = time.time()
     keras_model = mdrnn.KerasMDRNN(models["keras"],dim, units, mixes, layers)
     keras_load_time = time.time() - start_model_load
-    # click.secho(f"Loaded keras {models['name']} in {keras_load_time:.3f}s")
 
     inference_times += experiment(keras_model, "keras", config, num_tests)
 
     start_model_load = time.time()
     tflite_model = mdrnn.TfliteMDRNN(models["tflite"],dim, units, mixes, layers)
     tflite_load_time = time.time() - start_model_load
-    # click.secho(f"Loaded tflite {models['name']} in {tflite_load_time:.3f}s")
 
     inference_times += experiment(tflite_model, "tflite", config, num_tests)
 
@@ -110,13 +105,7 @@ def run_test(num_tests, config):
         "layers": layers,
         "units": units,
         "dimension": dim,
-        "model_type": "tflite",
     })
-
-    # times += experiment(h5_model, "h5", config, num_tests)
-    # h5_model = mdrnn.KerasMDRNN(models["weights"],dim, units, mixes, layers)
-    # times += experiment(dummy_model, "dummy", config, num_tests)
-    # dummy_model = mdrnn.DummyMDRNN(location, dim, units, mixes, layers)
 
     model_files = [models["keras"], models["tflite"]]
     return inference_times, model_files, load_times
@@ -142,12 +131,6 @@ inference_experiment = pd.DataFrame.from_records(exp_inference_times)
 inference_experiment.to_csv(location / "impsy_experiment_inference.csv")
 load_experiment = pd.DataFrame.from_records(exp_load_times)
 load_experiment.to_csv(location / "impsy_experiment_loads.csv")
-
-# click.secho("All experiment data:", fg="green")
-# click.secho(inference_experiment.describe())
-
-# click.secho("h5 experiment data:", fg="green")
-# click.secho(inference_experiment[inference_experiment['model_type'] == 'h5'].describe())
 
 click.secho("keras experiment data:", fg="green")
 click.secho(inference_experiment[inference_experiment['model_type'] == 'keras'].describe())
