@@ -14,7 +14,7 @@ import os
 
 
 np.set_printoptions(precision=2)
-pd.set_option("display.float_format", lambda x: "%.2f" % x)
+pd.set_option("display.float_format", lambda x: "%.3f" % x)
 
 
 location = Path("experiment_data")
@@ -81,7 +81,8 @@ def experiment(inference_model, model_type, config, num_tests):
 
 def run_test(num_tests, config):
     """runs the experiment for each model under test"""
-    times = []
+    inference_times = []
+    load_times = []
     dim = config["dimension"]
     units = config["units"]
     mixes = config["mixes"]
@@ -90,17 +91,27 @@ def run_test(num_tests, config):
     models = create_models(dim, units, mixes, layers)
     start_model_load = time.time()
     keras_model = mdrnn.KerasMDRNN(models["keras"],dim, units, mixes, layers)
-    model_load_time = time.time() - start_model_load
-    click.secho(f"Loaded keras {models['name']} in {model_load_time:.3f}s")
+    keras_load_time = time.time() - start_model_load
+    # click.secho(f"Loaded keras {models['name']} in {keras_load_time:.3f}s")
 
-    times += experiment(keras_model, "keras", config, num_tests)
+    inference_times += experiment(keras_model, "keras", config, num_tests)
 
     start_model_load = time.time()
     tflite_model = mdrnn.TfliteMDRNN(models["tflite"],dim, units, mixes, layers)
-    model_load_time = time.time() - start_model_load
-    click.secho(f"Loaded tflite {models['name']} in {model_load_time:.3f}s")
+    tflite_load_time = time.time() - start_model_load
+    # click.secho(f"Loaded tflite {models['name']} in {tflite_load_time:.3f}s")
 
-    times += experiment(tflite_model, "tflite", config, num_tests)
+    inference_times += experiment(tflite_model, "tflite", config, num_tests)
+
+    load_times.append({
+        "keras_load": keras_load_time, # use s
+        "tflite_load": tflite_load_time, # use s
+        "mixes": mixes,
+        "layers": layers,
+        "units": units,
+        "dimension": dim,
+        "model_type": "tflite",
+    })
 
     # times += experiment(h5_model, "h5", config, num_tests)
     # h5_model = mdrnn.KerasMDRNN(models["weights"],dim, units, mixes, layers)
@@ -108,7 +119,7 @@ def run_test(num_tests, config):
     # dummy_model = mdrnn.DummyMDRNN(location, dim, units, mixes, layers)
 
     model_files = [models["keras"], models["tflite"]]
-    return times, model_files
+    return inference_times, model_files, load_times
 
 ### Setup and start the experiment.
 # parameter combinations
@@ -117,28 +128,35 @@ dimensions = [2, 4, 6, 8, 10]
 number_of_tests = 100
 
 model_files = []
-experiments = []
+exp_inference_times = []
+exp_load_times = []
 
 for un in mdrnn_units:
     for dim in dimensions:
         net_config = {"mixes": 5, "layers": 2, "units": un, "dimension": dim}
-        times, files = run_test(number_of_tests + 1, net_config)
-        experiments.extend(times)
+        inference_times, files, load_times = run_test(number_of_tests + 1, net_config)
+        exp_inference_times.extend(inference_times)
+        exp_load_times.extend(load_times)
         model_files.extend(files)
-total_experiment = pd.DataFrame.from_records(experiments)
-total_experiment.to_csv(location / "total_exp.csv")
+inference_experiment = pd.DataFrame.from_records(exp_inference_times)
+inference_experiment.to_csv(location / "impsy_experiment_inference.csv")
+load_experiment = pd.DataFrame.from_records(exp_load_times)
+load_experiment.to_csv(location / "impsy_experiment_loads.csv")
 
 # click.secho("All experiment data:", fg="green")
-# click.secho(total_experiment.describe())
+# click.secho(inference_experiment.describe())
 
 # click.secho("h5 experiment data:", fg="green")
-# click.secho(total_experiment[total_experiment['model_type'] == 'h5'].describe())
+# click.secho(inference_experiment[inference_experiment['model_type'] == 'h5'].describe())
 
 click.secho("keras experiment data:", fg="green")
-click.secho(total_experiment[total_experiment['model_type'] == 'keras'].describe())
+click.secho(inference_experiment[inference_experiment['model_type'] == 'keras'].describe())
 
 click.secho("tflite experiment data:", fg="green")
-click.secho(total_experiment[total_experiment['model_type'] == 'tflite'].describe())
+click.secho(inference_experiment[inference_experiment['model_type'] == 'tflite'].describe())
+
+click.secho("model load data:", fg="green")
+click.secho(load_experiment.describe())
 
 ## delete all the model files created.
 # for model_file in model_files:
