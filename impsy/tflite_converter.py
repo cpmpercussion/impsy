@@ -38,7 +38,7 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None):
     return output_file
 
 
-def model_file_to_tflite(filename):
+def model_file_to_tflite(filename, save_path = None):
     """Converts a given model"""
     import tensorflow as tf
     import keras_mdn_layer as mdn_layer
@@ -48,7 +48,7 @@ def model_file_to_tflite(filename):
     loaded_model = tf.keras.saving.load_model(
         filename, custom_objects={"MDN": mdn_layer.MDN}
     )
-    tflite_file = model_to_tflite(loaded_model, model_file)
+    tflite_file = model_to_tflite(loaded_model, model_file, save_path=save_path)
     return tflite_file
 
 
@@ -78,7 +78,7 @@ def config_to_tflite(config_path, save_path = None):
     return tflite_file
 
 
-def weights_file_to_model_file(weights_file, model_size, dimension):
+def weights_file_to_model_file(weights_file, model_size, dimension, save_path = None):
     """Constructs a model from a given weights file and saves as a .keras inference model."""
     import impsy.mdrnn as mdrnn
 
@@ -92,6 +92,8 @@ def weights_file_to_model_file(weights_file, model_size, dimension):
     )
     inference_model.load_model(model_file=weights_file)
     keras_file_path = Path(weights_file).with_suffix(".keras")
+    if save_path is not None:
+        keras_file_path = Path(save_path) / keras_file_path.name
     inference_model.model.save(keras_file_path)
     return keras_file_path
 
@@ -100,17 +102,18 @@ def weights_file_to_model_file(weights_file, model_size, dimension):
 @click.option('--model', '-m', help='Path to a .keras model or .h5 weights')
 @click.option('--dimension', '-d', type=int, help='Dimension (only needed for h5 files)')
 @click.option('--size', '-s', help="Size, one of xs, s, m, l, (only needed for h5 files)")
-def convert_tflite(model, dimension, size):
+@click.option('--out_dir', '-o', help="Output location for tflite file.")
+def convert_tflite(model, dimension, size, out_dir):
     """Convert existing IMPSY model to tflite format."""
     if model is None:
-        config_to_tflite("config.toml")
+        config_to_tflite("config.toml", save_path=out_dir)
     elif Path(model).suffix == ".keras":
         # it's a keras file
-        model_file_to_tflite(model)
+        model_file_to_tflite(model, save_path=out_dir)
     elif Path(model).suffix == ".h5":
         # it's an h5 file
         if dimension is not None and size is not None:
-            model_file = weights_file_to_model_file(model, size, dimension)
-            model_file_to_tflite(model_file)
+            model_file = weights_file_to_model_file(model, size, dimension, save_path=out_dir)
+            model_file_to_tflite(model_file, save_path=out_dir)
         else:
             click.secho("You need to specify a dimension and size to convert an h5 file.")
