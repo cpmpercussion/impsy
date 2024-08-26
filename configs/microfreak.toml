@@ -13,12 +13,12 @@ verbose = true
 [interaction]
 mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
 threshold = 0.1 # number of seconds before switching in call-response mode
-input_thru = true # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
 
 # Model configuration
 [model]
 dimension = 9
-file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.keras"
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
 size = "s" # Can be one of: xs, s, m, l, xl
 sigmatemp = 0.01
 pitemp = 1
