@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "impsy"
-version = "0.5.5"
+version = "0.5.6"
 description = "IMPSY is the Interactive Musical Prediction SYstem, a tool for creative interactive intelligent musical instruments using a recurrent mixture density neural network."
 authors = ["Charles Martin <cpm@charlesmartin.au>"]
 license = "MIT"
