@@ -37,24 +37,22 @@ Finally, you can test that IMPSY works:
 
 There are four steps for using IMPSY. First, you'll need to setup your musical interface to send it OSC data and receive predictions the same way. Then you can log data, train the MDRNN, and make predictions using our provided scripts.
 
-### 1. Connect music interface and synthesis software
+### 1. Connect music interface and synthesis software and configure IMPSY
 
-You'll need:
+IMPSY doesn't make any sound, it communicates with other sound making hardware or software and controller hardware or software via MIDI, OSC, WebSockets or serial. You could send and receive predictions from the same sofware (e.g., Pd with OSC input and output) or hardware (e.g., Arturia Microfreak with MIDI in and out). You can also have separate sources for input and output (input from an X-Touch controller with output to Max via OSC) and multiple sources at the same time.
 
-- A music interface that can output data as OSC.
-- Some synthesiser software that can take OSC as input.
+You need to decide on a fixed number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9. 
 
-These could be the same piece of software or hardware!
+Your impsy configuration goes in a `.toml` file which by default is called `config.toml`. You can look in the `configs` directory to see many options including `default.toml` which has every possible section filled in.
 
-You need to decide on the number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9.
+For MIDI communication, IMPSY receives and sends message for one different note channel or CC for each dimension. Have a look at the `midi` block in `default.toml` for an example.
 
-Now you need your music interface to send messages to IMPSY over OSC. The default address for IMPSY is: localhost:5001. The messages to IMPSY should have the OSC address `/interface`, and then a float between 0 and 1 for each continuous output on your interface, e.g.:
+For OSC and Serial communication, IMPSY receives and sends on every dimension together in single dense messages. The messages to IMPSY should have the OSC address `/interface`, and then a float between 0 and 1 for each continuous output on your interface, e.g.:
 
     /interface 0 0.5 0.23 0.87 0.9 0.7 0.45 0.654
 
-For an 8-dimensional interface.
-
 Your synthesiser software or interface needs to listen for messages from the IMPSY system as well. These have the same format with the OSC address `/prediction`. You can interpret these as interactions predicted to occur right when the message is sent.
+The address and port of IMPSY's OSC server is configurable in the `osc` block, see `default.toml`.
 
 Here's an example diagram for our 8-controller example, the [xtouch mini controller](https://www.musictribe.com/Categories/Behringer/Computer-Audio/Desktop-Controllers/X-TOUCH-MINI/p/P0B3M).
 
@@ -68,7 +66,7 @@ So what happens if IMPSY and the performer play at the same time? In this exampl
 
 You use the `run` command to log training data. If your interface has N inputs the dimension is N+1:
 
-    poetry run ./start_impsy run --dimension (N+1) --log
+    poetry run ./start_impsy run
 
 This command creates files in the `logs` directory with data like this:
 
@@ -78,9 +76,11 @@ This command creates files in the `logs` directory with data like this:
 
 These CSV files have the format: timestamp, source of message (interface or rnn), x_1, x_2, ...,  x_N.
 
-You can log training data without using the RNN with the `mode` option to select "user" if you like, or use a partially trained RNN and then collect more data.
-
-    poetry run ./start_impsy run --dimension (N+1) --log -mode user
+You can log training data without using the RNN with the `useronly` mode in `config.toml`, make sure the `interaction` block has:
+```
+mode = "useronly"
+```
+Look at `configs/user-only-example.toml` for an example.
 
 Every time you use IMPS' "run" command, a new log file is created so that you can build up a significant dataset!
 
@@ -95,19 +95,27 @@ Use the `dataset` command:
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
 To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
-It's a good idea to start with an `xs` or `s` model, and the larger models are more relevant for quite large datasets (e.g., >1M individual interactions).
+It's a good idea to start with an `xs` or `s` model, and the larger models may work better for quite large datasets (e.g., >1M individual interactions).
 
     poetry run ./start_impsy train --dimension (N+1) --modelsize s
 
 It's a good idea to use the `earlystopping` option to stop training after the model stops improving for 10 epochs.
 
+By default, your trained model will be saved in the `models` directory in `.keras` and `.tflite` format.
+
+> WHat's with `.keras` and `.tflite` files? Both Keras and TFLite files have all the information needed to reconstruct a trained IMPSY neural network. `.keras` is the Keras machine learning framework's native format and `.tflite` is TensorFlow Lite's optimised model format. Until 2024 we used Keras' native model storage but Tensorflow Lite turns out to be more than 20x faster so it's almost always a better idea to use the `.tflite` file.
+
 ### 4. Perform with your predictive model
 
-Now that you have a trained model, you can run this command to start making predictions:
+Now that you have a trained model, make sure that it is listed in your `config.toml` file, for example under `model` you might list:
+```
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+size = "s"
+```
+Which will load a 9d TFLite model of the "small" size. You can run this command to start making predictions:
 
-    poetry run ./start_impsy run --dimension (N+1) --modelsize xs --log
-
-The `--log` switch logs all of your interactions as well as predictions for later re-training. (The dataset generator filters out RNN records so that you only train on human sourced data).
+    poetry run ./start_impsy run 
 
 PS: all the IMPSY commands respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know.
 
@@ -122,19 +130,19 @@ We also have a docker compose file to start IMPSY as well as the web user interf
 #### Docker compose configuration
 
 From the IMPSY main directory run:
-
 ```
 docker compose -f docker-compose.yml up
 ```
+Then you can navigate to `http://127.0.0.1:4000` to view the web interface. OSC communication happens through ports 6000 and 6001. The local `config.toml`, and `datasets`, `logs` and `models` directories are mapped into the docker containers.
 
-Then you can navigate to `http://127.0.0.1:4000` to view the web interface. OSC communication happens through ports 5000 and 5000. The local `config.toml`, and `datasets`, `logs` and `models` directories are mapped into the docker containers.
+You will need a special client address, `host.docker.internal` to send messages out of the docker containers to your host computer. Make sure this is listed under `client_ip` in `config.toml`. See `examples/pd-workshop-example.toml` for an example.
 
 #### Using docker to create datasets or train models
 
 You can run a docker container and use different impsy commands from the command line as well:
 
 ```
-docker run -d -v $(pwd)/datasets:/code/datasets -v $(pwd)/logs:/code/logs -v $(pwd)/models:/code/models -v $(pwd)/config.toml:/code/config.toml charlepm/impsy:0.5.3 poetry run ./start_impsy.py --help
+docker run -d -v $(pwd)/datasets:/code/datasets -v $(pwd)/logs:/code/logs -v $(pwd)/models:/code/models -v $(pwd)/config.toml:/code/config.toml charlepm/impsy poetry run ./start_impsy.py --help
 ```
 This can be useful to use the `dataset` or `train` commands to generate new datasets and models.
 
