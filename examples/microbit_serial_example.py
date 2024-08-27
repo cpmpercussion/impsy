@@ -1,3 +1,12 @@
+"""
+A micropython program to run on a microbit v2
+This program is a basic NIME that communicates with 
+IMPSY over serial. The program sonifies 3
+dimensional data from the microbit accelerometer OR
+from IMPSY.
+The present state of the data is displayed on the microbit
+LED display.
+"""
 from microbit import *
 import utime
 import math
@@ -10,6 +19,7 @@ def norm_acc(x):
 last_acc_msg = ""
 last_values = [0, 0, 0]
 last_played_freqs = [0, 0, 0]
+last_displayed_values = [0, 0, 0]
 
 def send_accelerometer_data():
     global last_acc_msg
@@ -24,7 +34,7 @@ def send_accelerometer_data():
             print(out)
             last_acc_msg = out
 
-def receive_and_display():
+def receive_data():
     global last_values
     if uart.any():
         data = uart.readline()
@@ -38,13 +48,25 @@ def receive_and_display():
         if len(data) == 3:
             try: 
                 x, y, z = map(float, data)
-                display.clear()
-                display.set_pixel(0, 4 - min(math.floor((x + 0.2) * 4), 4), 9)
-                display.set_pixel(2, 4 - min(math.floor((y + 0.2) * 4), 4), 9)
-                display.set_pixel(4, 4 - min(math.floor((z + 0.2) * 4), 4), 9)
                 last_values = [x, y, z]
             except Exception as e:
                 pass
+
+def display_values():
+    global last_displayed_values
+    global last_values
+    if len(last_values) == 3:
+        display_values = [display_pixel_mapping(x) for x in last_values]
+        if display_values != last_displayed_values:
+            display.clear()
+            display.set_pixel(0, display_values[0], 9)
+            display.set_pixel(2, display_values[1], 9)
+            display.set_pixel(4, display_values[2], 9)
+            last_displayed_values = display_values
+
+def display_pixel_mapping(x):
+    """returns an index mapping of the pixel from input between 0-1"""
+    return 4 - min(math.floor((x + 0.2) * 4), 4)
 
 def float_to_freq(value_in):
     """maps a float 0-1 to a frequency."""
@@ -62,7 +84,10 @@ def play_freqs(freqs):
             freq_end=freqs[1], 
             duration=freqs[2],
             vol_start=255,
-            vol_end=255
+            vol_end=255,
+            waveform=audio.SoundEffect.WAVEFORM_SAWTOOTH,
+            fx=audio.SoundEffect.FX_WARBLE,
+            shape=audio.SoundEffect.SHAPE_LINEAR,
         )
         audio.play(eff, wait=False)
         last_played_freqs = freqs
@@ -76,13 +101,12 @@ def play_values():
         freqs = [float_to_freq(x) for x in last_values]
         play_freqs(freqs)
 
-
-
 speaker.on()
-# audio.play(Sound.MYSTERIOUS)
+set_volume(255)
 uart.init(baudrate=115200)
 
 while True:
     send_accelerometer_data()
-    receive_and_display()
+    receive_data()
+    display_values()
     play_values()
