@@ -31,26 +31,27 @@ timescale = 1
 in_device = "S-1"
 out_device = "S-1"
 input = [
-  # ["note_on", 3], # notes input
-  ["control_change", 3, 3], # lfo rate
   ["control_change", 3, 13], # osc lfo
   ["control_change", 3, 19], # osc square level
-  # ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 20], # osc tri level
   ["control_change", 3, 21], # osc sub level
   ["control_change", 3, 23], # osc noise level
   ["control_change", 3, 24], # filter env knob
-  ["control_change", 3, 25], # filter lvo knob
+  ["control_change", 3, 25], # filter lfo knob
   ["control_change", 3, 71], # filter reso knob
 ]
 output = [
   ["note_on", 3], # notes input
-  ["control_change", 3, 3], # lfo rate
-  ["control_change", 3, 13], # osc lfo
   ["control_change", 3, 19], # osc square level
-  # ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 20], # osc tri level
   ["control_change", 3, 21], # osc sub level
   ["control_change", 3, 23], # osc noise level
   ["control_change", 3, 24], # filter env knob
-  ["control_change", 3, 25], # filter lvo knob
+  ["control_change", 3, 25], # filter lfo knob
   ["control_change", 3, 71], # filter reso knob
 ]
+
+  # ["control_change", 3, 3], # lfo rate
+  # ["control_change", 3, 13], # osc lfo
+  # ["control_change", 3, 3], # lfo rate
+  # ["note_on", 3], # notes input
