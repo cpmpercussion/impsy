@@ -413,7 +413,7 @@ class MIDIServer(IOServer):
     """Handles MIDI IO for IMPSY."""
 
 
-    def __init__(self, config, callback, dense_callback) -> None:
+    def __init__(self, config, callback, dense_callback, feedback_protection=False, feedback_threshold=0.02) -> None:
         super().__init__(config, callback, dense_callback)
         self.dimension = self.config["model"][
             "dimension"
@@ -423,7 +423,14 @@ class MIDIServer(IOServer):
         self.midi_output_mapping = self.config["midi"]["output"]
         self.midi_input_mapping = self.config["midi"]["input"]
         # self.websocket_send_midi = None  # TODO implement some kind generic MIDI callback for other output channels.
-
+        self.feedback_protection = feedback_protection
+        self.feedback_threshold = feedback_threshold # default is 0.02s
+        # Load feedback protection from config
+        if "feedback_protection" in self.config["midi"]:
+            self.feedback_protection = self.config["midi"]["feedback_protection"]
+        if "feedback_threshold" in self.config["midi"]:
+            self.feedback_threshold = self.config["midi"]["feedback_threshold"]
+        self.last_midi_message_time = datetime.datetime.now()
 
     def send(self, output_values) -> None:
         """Sends sound commands via MIDI"""
@@ -442,6 +449,7 @@ class MIDIServer(IOServer):
             # store last midi note if it was a note_on.
             if msg.type == 'note_on':
                 self.last_midi_notes[msg.channel] = msg.note
+            self.last_midi_message_time = datetime.datetime.now()
     
 
     def handle(self) -> None:
@@ -449,6 +457,17 @@ class MIDIServer(IOServer):
         if self.midi_in_port is None:
             return  # fail early if MIDI not open.
         for message in self.midi_in_port.iter_pending():
+            if message.type in ["clock", "sysex"]:
+                # ignore these message types.
+                continue
+            if self.feedback_protection:
+                time_since_last_output = (datetime.datetime.now() - self.last_midi_message_time).total_seconds()
+                if time_since_last_output < self.feedback_threshold:
+                    if message.type == "note_on" and message.note == self.last_midi_notes[message.channel]:
+                        # click.secho(f"MIDI feedback detected: {time_since_last_output}s, {message}", fg="red")
+                        # detected a feedback message (same note as last output in a short time) so skip this message
+                        continue
+
             try:
                 index, value = midi_message_to_index_value(message, self.midi_input_mapping)
                 self.callback(index, value)
