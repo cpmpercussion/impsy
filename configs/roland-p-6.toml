@@ -1,0 +1,65 @@
+# The configuration file for IMPSY: Interactive Musical Prediction System
+
+# Metadata about this configuration
+title = "Roland P-6 to P-6"
+owner = "Charles Martin"
+description = "A self-contained config for the Roland P-6"
+
+# Basic config
+log_input = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+# MIDI Mapping
+[midi]
+in_device = "P-6"
+out_device = "P-6"
+feedback_protection = true
+input = [
+  ["note_on", 4], # notes input
+  ["control_change", 3, 19], # osc square level
+  ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 21], # osc sub level
+  # ["control_change", 3, 23], # osc noise level
+  ["control_change", 3, 3], # lfo rate
+  ["control_change", 3, 13], # osc lfo
+  ["control_change", 3, 24], # filter env knob
+  ["control_change", 3, 25], # filter lfo knob
+  # ["control_change", 3, 71], # filter reso knob
+]
+output = [
+  ["note_on", 4], # granular sample notes
+  ["control_change", 4, 21], # osc square level
+  ["control_change", 4, 9], # osc tri level
+  ["control_change", 4, 12], # osc sub level
+  # ["control_change", 4, 23], # osc noise level
+  ["control_change", 4, 13], # lfo rate
+  ["control_change", 4, 20], # osc lfo
+  ["control_change", 4, 15], # filter env knob
+  ["control_change", 4, 19], # filter lfo knob
+  # ["control_change", 3, 71], # filter reso knob
+]
+
+  # ["control_change", 3, 3], # lfo rate
+  # ["control_change", 3, 13], # osc lfo
+  # ["control_change", 3, 3], # lfo rate
+  # ["note_on", 3], # notes input
+
+  # ["control_change", 3, 13], # osc lfo
+
