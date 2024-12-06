@@ -3,7 +3,7 @@
 # Metadata about this configuration
 title = "RPi U6MIDI Pro: nanoKontrol Studio to notes and CCs"
 owner = "Charles Martin"
-description = "Uses x-touch over it's own USB connector and Volca FM over the Studio 1824c"
+description = "Uses nanoKontrol panning inputs and outputs to CCs for controlling a DAW"
 
 # Basic config
 log_input = true
@@ -27,8 +27,8 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "U6MIDI Pro MIDI 1"
-out_device = "U6MIDI Pro MIDI 1"
+in_device = "U2MIDI Pro"
+out_device = "U2MIDI Pro"
 input = [ # nanoKONTROL Studio knobs
   ["control_change", 1, 13], # nanoKONTROL Studio knob controller 1
   ["control_change", 1, 14], # nanoKONTROL Studio knob controller 2
@@ -49,7 +49,3 @@ output = [ # Collection of Useful Mappings
   ["note_on", 4], # note
   ["control_change", 11, 4], # 
 ]
-
-[websocket]
-server_ip = "0.0.0.0" # The address of this server
-server_port = 5001 # The port this server should listen on.
