@@ -117,96 +117,94 @@ class SerialServer(IOServer):
             pass
     
 
-# class SerialMIDIServer(IOServer):
-#     """Handles MIDI IO over serial."""
+class SerialMIDIServer(IOServer):
+    """Handles MIDI IO over serial."""
 
-#     def __init__(
-#         self,
-#         config: dict,
-#         callback: Callable[[int, float], None],
-#         dense_callback: Callable[[List[int]], None],
-#     ) -> None:
-#         super().__init__(config, callback, dense_callback)
-#         self.parser = mido.parser.Parser()
-#         self.serial_port = config["serial"]["port"]
-#         self.baudrate = 31250 # midi baudrate
-#         self.serial = None
-#         self.buffer = "" # used for storing serial data after reading
-#         self.last_midi_notes = {}  # dict to store last played notes via midi
-#         self.midi_output_mapping = self.config["serialmidi"]["output"]
-#         self.midi_input_mapping = self.config["serialmidi"]["input"]
+    def __init__(
+        self,
+        config: dict,
+        callback: Callable[[int, float], None],
+        dense_callback: Callable[[List[int]], None],
+    ) -> None:
+        super().__init__(config, callback, dense_callback)
+        self.parser = mido.parser.Parser()
+        self.serial_port = config["serial"]["port"]
+        self.baudrate = 31250 # midi baudrate
+        self.serial = None
+        self.buffer = "" # used for storing serial data after reading
+        self.last_midi_notes = {}  # dict to store last played notes via midi
+        self.midi_output_mapping = self.config["serialmidi"]["output"]
+        self.midi_input_mapping = self.config["serialmidi"]["input"]
 
 
-#     def send(self, output_values) -> None:
-#         """Sends sound commands via MIDI"""
-#         start_time = datetime.datetime.now()
+    def send(self, output_values) -> None:
+        """Sends sound commands via MIDI"""
+        start_time = datetime.datetime.now()
         
-#         outputs = output_values_to_midi_messages(output_values, self.midi_output_mapping)
-#         for o_port in outputs:
-#             output_midi_messages = outputs[o_port]
-#             for msg in output_midi_messages:
-#                 # send note off if a previous note_on had been sent
-#                 if msg.type == 'note_on' and msg.channel in self.last_midi_notes[o_port]:
-#                     note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[o_port][msg.channel], velocity=0)
-#                     self.send_midi_message(note_off_msg)
-#                 self.send_midi_message(msg) # actually send the message.
-#                 if msg.type == 'note_on':
-#                     self.last_midi_notes[o_port][msg.channel] = msg.note # store last midi note if it was a note_on.
+        output_midi_messages = output_values_to_midi_messages(output_values, {"serial": self.midi_output_mapping})
+        for msg in output_midi_messages["serial"]:
+            # send note off if a previous note_on had been sent
+            if msg.type == 'note_on' and msg.channel in self.last_midi_notes:
+                note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[msg.channel], velocity=0)
+                self.send_midi_message(note_off_msg)
+            self.send_midi_message(msg) # actually send the message.
+            if msg.type == 'note_on':
+                self.last_midi_notes[msg.channel] = msg.note # store last midi note if it was a note_on.
 
-#             duration_time = (datetime.datetime.now() - start_time).total_seconds()
-#             if duration_time > 0.02:
-#                 click.secho(
-#                     f"Sound command sending took a long time: {duration_time:.3f}s",
-#                     fg="red",
-#                 )
+        duration_time = (datetime.datetime.now() - start_time).total_seconds()
+        if duration_time > 0.02:
+            click.secho(
+                f"Sound command sending took a long time: {duration_time:.3f}s",
+                fg="red",
+            )
 
-#     def handle(self) -> None:
-#         """Read in some bytes from the serial port and try to handle any found MIDI messages."""
-#         if self.serial is None:
-#             return
-#         if self.serial.in_waiting >= 3:
-#             midi_bytes = self.serial.read(3)
-#             self.parser.feed(midi_bytes)
-#         message = self.parser.get_message()
-#         if message is None:
-#             return
-#         else:
-#             try:
-#                 index, value = midi_message_to_index_value(message, self.midi_input_mapping)
-#                 self.callback(index, value)
-#             except ValueError as e:
-#                 # error when handling the MIDI message
-#                 # click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
-#                 pass
+    def handle(self) -> None:
+        """Read in some bytes from the serial port and try to handle any found MIDI messages."""
+        if self.serial is None:
+            return
+        if self.serial.in_waiting >= 3:
+            midi_bytes = self.serial.read(3)
+            self.parser.feed(midi_bytes)
+        message = self.parser.get_message()
+        if message is None:
+            return
+        else:
+            try:
+                index, value = midi_message_to_index_value(message, self.midi_input_mapping)
+                self.callback(index, value)
+            except ValueError as e:
+                # error when handling the MIDI message
+                # click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
+                pass
 
-#     def connect(self) -> None:
-#         """Tries to open a serial port for regular IO."""
-#         try:
-#             click.secho(f"Serial: Opening port {self.serial_port} at {self.baudrate} baud. (MIDI mode)", fg="yellow")
-#             self.serial = serial.Serial( self.serial_port, baudrate=self.baudrate, timeout=0)
-#         except:
-#             self.serial = None
-#             click.secho(f"Serial: Could not open {self.serial_port}.", fg="red")
+    def connect(self) -> None:
+        """Tries to open a serial port for regular IO."""
+        try:
+            click.secho(f"Serial: Opening port {self.serial_port} at {self.baudrate} baud. (MIDI mode)", fg="yellow")
+            self.serial = serial.Serial( self.serial_port, baudrate=self.baudrate, timeout=0)
+        except:
+            self.serial = None
+            click.secho(f"Serial: Could not open {self.serial_port}.", fg="red")
 
 
-#     def disconnect(self) -> None:
-#         try:
-#             self.serial.close()
-#         except:
-#             pass
+    def disconnect(self) -> None:
+        try:
+            self.serial.close()
+        except:
+            pass
 
 
-#     def send_midi_message(self, message):
-#         """Sends a mido MIDI message via the connected serial port."""
-#         if self.serial is not None:
-#             self.serial.write(message.bin())
+    def send_midi_message(self, message):
+        """Sends a mido MIDI message via the connected serial port."""
+        if self.serial is not None:
+            self.serial.write(message.bin())
 
 
-#     def send_midi_note_offs(self):
-#         """Sends note offs on any MIDI channels that have been used for notes."""
-#         note_off_messages = get_midi_note_offs(self.midi_output_mapping, self.last_midi_notes)
-#         for msg in note_off_messages:
-#             self.send_midi_message(msg)
+    def send_midi_note_offs(self):
+        """Sends note offs on any MIDI channels that have been used for notes."""
+        note_off_messages = get_midi_note_offs(self.midi_output_mapping, self.last_midi_notes)
+        for msg in note_off_messages:
+            self.send_midi_message(msg)
 
 
 
