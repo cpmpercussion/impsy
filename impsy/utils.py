@@ -3,8 +3,7 @@ import pandas as pd
 import tomllib
 import click
 import mido
-from typing import List
-
+from typing import List, Dict
 
 # MDRNN config
 
@@ -81,36 +80,44 @@ def get_config_data(config_path: str):
 # MIDI mapping and message utilities
 
 
-def output_values_to_midi_messages(output_values: List[float], midi_mapping: dict) -> List[mido.Message]:
+def output_values_to_midi_messages(output_values: List[float], midi_mapping: dict) -> Dict[str, List[mido.Message]]:
     """Transforms a list of output values to a list of MIDI messages using a mapping."""
-    output_messages = []
+    output = {}
     output_midi = list(map(int, (np.ceil(output_values * 127)))) # transform output values to MIDI 0-127.
 
-    for i in range(len(output_values)):
-        if midi_mapping[i][0] == "note_on":
-            # note decremented channel (0-15)
-            # note velocity is maximum at 127
-            midi_msg = mido.Message("note_on", channel=midi_mapping[i][1] - 1, note=output_midi[i], velocity=127)
-            output_messages.append(midi_msg)
-        if midi_mapping[i][0] == "control_change":
-            # note decremented channel (0-15)
-            # note control number starts at 0
-            midi_msg = mido.Message("control_change", channel=midi_mapping[i][1] - 1, control=midi_mapping[i][2], value=output_midi[i])
-            output_messages.append(midi_msg)
+    for o_port in midi_mapping:
+        output_messages = []
+        for i in range(len(output_values)):
+            if midi_mapping[o_port][i][0] == "note_on":
+                # note decremented channel (0-15)
+                # note velocity is maximum at 127
+                midi_msg = mido.Message("note_on", channel=midi_mapping[o_port][i][1] - 1, note=output_midi[i], velocity=127)
+                output_messages.append(midi_msg)
+            if midi_mapping[o_port][i][0] == "control_change":
+                # note decremented channel (0-15)
+                # note control number starts at 0
+                midi_msg = mido.Message("control_change", channel=midi_mapping[o_port][i][1] - 1, control=midi_mapping[o_port][i][2], value=output_midi[i])
+                output_messages.append(midi_msg)
+        output[o_port] = output_messages
     # return the MIDI messages
-    return output_messages
+    return output
 
 
-def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> List[mido.Message]:
+def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> Dict[str, List[mido.Message]]:
     """Get a list of note_off messages for any MIDI channels that have been used for notes."""
-    output_messages = []
-    out_channels = [x[1] for x in midi_mapping if x[0] == "note_on"] # just get channels associated with note_on messages.
-    for i in out_channels:
-        channel = i - 1 # decrement to get channel value 0-15
-        if channel in last_midi_notes:
-            midi_msg = mido.Message("note_off", channel=i - 1,  note=last_midi_notes[channel], velocity=0)
-            output_messages.append(midi_msg)
-    return output_messages
+    output = {}
+    
+    for o_port in midi_mapping:
+        output_messages = []
+        out_channels = [x[1] for x in midi_mapping[o_port] if x[0] == "note_on"] # just get channels associated with note_on messages.
+        for i in out_channels:
+            channel = i - 1 # decrement to get channel value 0-15
+            if channel in last_midi_notes[o_port]:
+                midi_msg = mido.Message("note_off", channel=i - 1,  note=last_midi_notes[channel], velocity=0)
+                output_messages.append(midi_msg)
+        output[o_port] = output_messages
+
+    return output
 
 
 def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int, float):
@@ -130,11 +137,15 @@ def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int,
     return (index, value)
 
 
-def match_midi_port_to_list(port, port_list):
+def match_midi_port_to_list(port, port_list, verbose=True):
     """Return the closest actual MIDI port name given a partial match and a list."""
+    if verbose:
+        click.secho(f"Matching MIDI port '{port}' to available ports {port_list}", fg="blue")
     if port in port_list:
         return port
     contains_list = [x for x in port_list if port in x]
+    if verbose:
+        click.secho(f"Found matching ports: {contains_list}", fg="blue")
     if not contains_list:
         return False
     else:
