@@ -113,7 +113,7 @@ def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> Dict[str, L
         for i in out_channels:
             channel = i - 1 # decrement to get channel value 0-15
             if channel in last_midi_notes[o_port]:
-                midi_msg = mido.Message("note_off", channel=i - 1,  note=last_midi_notes[channel], velocity=0)
+                midi_msg = mido.Message("note_off", channel=i - 1,  note=last_midi_notes[o_port][channel], velocity=0)
                 output_messages.append(midi_msg)
         output[o_port] = output_messages
 
