@@ -42,14 +42,14 @@ input."X-TOUCH" = [ # XTOUCH-MINI knobs
   ["control_change", 11, 8], # XTOUCH-MINI knob controller 8
 ]
 output."X-TOUCH" = [ # XTOUCH-MINI knobs
-  ["control_change", 11, 9], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 10], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 11], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 12], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 14], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 15], # XTOUCH-MINI ring (0-13 light up the LEDs)
-  ["control_change", 11, 16], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 9, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 10, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 11, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 12, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 13, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 14, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 15, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 16, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
 ]
 
 input."S-1" = [
