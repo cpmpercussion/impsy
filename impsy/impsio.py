@@ -494,9 +494,6 @@ class MIDIServer(IOServer):
         potential_midi_inputs = []
         potential_midi_outputs = []
 
-        print(self.midi_in_port)
-        print(self.midi_out_port)
-
         for in_port in self.config["midi"]["in_device"]:
             click.secho(f"Connecting MIDI input: {in_port}", fg="blue")
             try:
