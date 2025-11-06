@@ -96,11 +96,21 @@ def output_values_to_midi_messages(output_values: List[float], midi_mapping: dic
             if midi_mapping[o_port][i][0] == "control_change":
                 # note decremented channel (0-15)
                 # note control number starts at 0
+                if len(midi_mapping[o_port][i]) == 5:
+                    # process min/max if provided
+                    output_midi[i] = process_midi_min_max(output_midi[i], midi_mapping[o_port][i][3], midi_mapping[o_port][i][4])
                 midi_msg = mido.Message("control_change", channel=midi_mapping[o_port][i][1] - 1, control=midi_mapping[o_port][i][2], value=output_midi[i])
                 output_messages.append(midi_msg)
         output[o_port] = output_messages
     # return the MIDI messages
     return output
+
+
+def process_midi_min_max(value: int, min_value: int, max_value: int) -> int:
+    """Process a MIDI control change value to fit within a min and max range."""
+    range = max_value - min_value
+    new_value = int(np.ceil(range * value / 127) + min_value)
+    return new_value
 
 
 def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> Dict[str, List[mido.Message]]:
