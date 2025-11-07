@@ -474,10 +474,13 @@ class MIDIServer(IOServer):
             if self.feedback_protection:
                 time_since_last_output = (datetime.datetime.now() - self.last_midi_message_time).total_seconds()
                 if time_since_last_output < self.feedback_threshold:
-                    if message.type == "note_on" and message.note == self.last_midi_notes[in_port][message.channel]:
-                        # click.secho(f"MIDI feedback detected: {time_since_last_output}s, {message}", fg="red")
-                        # detected a feedback message (same note as last output in a short time) so skip this message
-                        continue
+                    try:
+                        if message.type == "note_on" and message.note == self.last_midi_notes[in_port][message.channel]:
+                            # click.secho(f"MIDI feedback detected: {time_since_last_output}s, {message}", fg="red")
+                            # detected a feedback message (same note as last output in a short time) so skip this message
+                            continue
+                    except KeyError:
+                        pass # no last note stored, so can't be feedback.
 
             try:
                 index, value = midi_message_to_index_value(message, self.midi_input_mapping[in_port])
