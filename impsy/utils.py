@@ -84,14 +84,14 @@ def output_values_to_midi_messages(output_values: List[float], midi_mapping: dic
     """Transforms a list of output values to a list of MIDI messages using a mapping."""
     output = {}
     output_midi = list(map(int, (np.ceil(output_values * 127)))) # transform output values to MIDI 0-127.
-    print(output_midi)
+    # print(output_midi)
     for o_port in midi_mapping:
         output_messages = []
         for i in range(len(output_values)):
             if midi_mapping[o_port][i][0] == "note_on":
                 # note decremented channel (0-15)
                 # note velocity is maximum at 127
-                print(f"midi note {output_midi[i]}")
+                # print(f"midi note {output_midi[i]}, dest: {o_port}")
                 midi_msg = mido.Message("note_on", channel=midi_mapping[o_port][i][1] - 1, note=output_midi[i], velocity=127)
                 output_messages.append(midi_msg)
             elif midi_mapping[o_port][i][0] == "control_change":
@@ -101,6 +101,7 @@ def output_values_to_midi_messages(output_values: List[float], midi_mapping: dic
                 if len(midi_mapping[o_port][i]) == 5:
                     # process min/max if provided
                     output_val = process_midi_min_max(output_val, midi_mapping[o_port][i][3], midi_mapping[o_port][i][4])
+                # print(f"midi value {output_val}, dest {o_port}")
                 midi_msg = mido.Message("control_change", channel=midi_mapping[o_port][i][1] - 1, control=midi_mapping[o_port][i][2], value=output_val)
                 output_messages.append(midi_msg)
         output[o_port] = output_messages
