@@ -1,0 +1,89 @@
+# The configuration file for IMPSY: Interactive Musical Prediction System
+
+# Metadata about this configuration
+title = "Roland S-1 to S-1"
+owner = "Charles Martin"
+description = "A self-contained config for the Roland S-1"
+
+# Basic config
+log_input = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = false # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+# MIDI Mapping
+[midi]
+in_device = ["S-1", "QuNeo"]
+out_device = ["S-1", "QuNeo"]
+feedback_protection = true
+input."QuNeo" = [ # QuNeo pads
+  ["control_change", 1, 6], # XTOUCH-MINI knob controller 6
+  ["control_change", 1, 7], # XTOUCH-MINI knob controller 7
+  ["control_change", 1, 8], # XTOUCH-MINI knob controller 8
+  ["control_change", 1, 9], # XTOUCH-MINI knob controller 9
+  ["control_change", 1, 3], # XTOUCH-MINI knob controller 3 
+  ["control_change", 1, 2], # XTOUCH-MINI knob controller 2
+  ["control_change", 1, 1], # XTOUCH-MINI knob controller 1
+  ["control_change", 1, 0], # XTOUCH-MINI knob controller 0
+]
+output."QuNeo" = [ # QuNeo slider LEDs
+  ["control_change", 1, 1], # QuNeo slider LEDs
+  ["control_change", 1, 2], # QuNeo slider LEDs
+  ["control_change", 1, 3], # QuNeo slider LEDs
+  ["control_change", 1, 4], # QuNeo slider LEDs
+  ["control_change", 1, 8], # QuNeo slider LEDs
+  ["control_change", 1, 9], # QuNeo slider LEDs
+  ["control_change", 1, 10], # QuNeo slider LEDs
+  ["control_change", 1, 11], # QuNeo slider LEDs
+]
+
+input."S-1" = [
+  ["note_on", 3], # notes input
+  ["control_change", 3, 19], # osc square level
+  ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 21], # osc sub level
+  # ["control_change", 3, 23], # osc noise level
+  ["control_change", 3, 3], # lfo rate
+  ["control_change", 3, 13], # osc lfo
+  ["control_change", 3, 24], # filter env knob
+  ["control_change", 3, 25], # filter lfo knob
+  # ["control_change", 3, 71], # filter reso knob
+]
+
+output."S-1" = [
+  ["note_on", 3], # notes input
+  ["control_change", 3, 19], # osc square level
+  ["control_change", 3, 20], # osc tri level
+  ["control_change", 3, 21], # osc sub level
+  # ["control_change", 3, 23], # osc noise level
+  ["control_change", 3, 3], # lfo rate
+  ["control_change", 3, 13], # osc lfo
+  ["control_change", 3, 24], # filter env knob
+  ["control_change", 3, 25], # filter lfo knob
+  # ["control_change", 3, 71], # filter reso knob
+]
+
+
+
+  # ["control_change", 3, 3], # lfo rate
+  # ["control_change", 3, 13], # osc lfo
+  # ["control_change", 3, 3], # lfo rate
+  # ["note_on", 3], # notes input
+
+  # ["control_change", 3, 13], # osc lfo
+
