@@ -32,7 +32,8 @@ in_device = ["S-1", "QuNeo"]
 out_device = ["S-1", "QuNeo"]
 feedback_protection = true
 input."QuNeo" = [ # QuNeo pads
-  ["control_change", 1, 6], # XTOUCH-MINI knob controller 6
+  # ["control_change", 1, 6], # XTOUCH-MINI knob controller 6
+  ["note_on", 1], # notes input
   ["control_change", 1, 7], # XTOUCH-MINI knob controller 7
   ["control_change", 1, 8], # XTOUCH-MINI knob controller 8
   ["control_change", 1, 9], # XTOUCH-MINI knob controller 9
