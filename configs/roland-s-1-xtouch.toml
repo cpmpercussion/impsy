@@ -28,9 +28,29 @@ timescale = 1
 # MIDI Mapping
 # MIDI Mapping
 [midi]
-in_device = ["S-1"]
-out_device = ["S-1"]
+in_device = ["S-1", "X-TOUCH"]
+out_device = ["S-1", "X-TOUCH"]
 feedback_protection = true
+input."X-TOUCH" = [ # XTOUCH-MINI knobs
+  ["control_change", 11, 1], # XTOUCH-MINI knob controller 1
+  ["control_change", 11, 2], # XTOUCH-MINI knob controller 2
+  ["control_change", 11, 3], # XTOUCH-MINI knob controller 3
+  ["control_change", 11, 4], # XTOUCH-MINI knob controller 4
+  ["control_change", 11, 5], # XTOUCH-MINI knob controller 5 
+  ["control_change", 11, 6], # XTOUCH-MINI knob controller 6
+  ["control_change", 11, 7], # XTOUCH-MINI knob controller 7
+  ["control_change", 11, 8], # XTOUCH-MINI knob controller 8
+]
+output."X-TOUCH" = [ # XTOUCH-MINI knobs
+  ["control_change", 1, 9, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 10, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 11, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 12, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 13, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 14, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 15, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+  ["control_change", 1, 16, 0, 13], # XTOUCH-MINI ring (0-13 light up the LEDs)
+]
 
 input."S-1" = [
   ["note_on", 3], # notes input
@@ -57,6 +77,8 @@ output."S-1" = [
   ["control_change", 3, 25], # filter lfo knob
   # ["control_change", 3, 71], # filter reso knob
 ]
+
+
 
   # ["control_change", 3, 3], # lfo rate
   # ["control_change", 3, 13], # osc lfo

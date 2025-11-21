@@ -27,9 +27,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "Studio 24c"
-out_device = "Studio 24c"
-input = [ # XTOUCH-MINI knobs
+in_device = ["Studio 24c"]
+out_device = ["Studio 24c"]
+input."Studio 24c" = [ # XTOUCH-MINI knobs
   ["note_on", 1], # note
   ["note_on", 2], #  
   ["note_on", 3], # 
@@ -39,7 +39,7 @@ input = [ # XTOUCH-MINI knobs
   ["control_change", 1, 2], # LFO depth
   ["control_change", 1, 3], # Algorithm
 ]
-output = [ # Alec Ableton Setup
+output."Studio 24c" = [ # Alec Ableton Setup
   ["note_on", 1], # note
   ["note_on", 2], #  
   ["note_on", 3], # 

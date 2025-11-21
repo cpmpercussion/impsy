@@ -28,9 +28,9 @@ timescale = 1
 # MIDI Mapping
 # MIDI Mapping
 [midi]
-in_device = "S-1"
-out_device = "S-1"
-input = [
+in_device = ["S-1"]
+out_device = ["S-1"]
+input."S-1" = [
   # ["note_on", 3], # notes input
   ["control_change", 3, 3], # lfo rate
   ["control_change", 3, 13], # osc lfo
@@ -42,7 +42,7 @@ input = [
   ["control_change", 3, 25], # filter lvo knob
   ["control_change", 3, 71], # filter reso knob
 ]
-output = [
+output."S-1" = [
   ["note_on", 3], # notes input
   ["control_change", 3, 3], # lfo rate
   ["control_change", 3, 13], # osc lfo

@@ -27,9 +27,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "OP-1"
-out_device = "MIDI Through"
-input = [ # XTOUCH-MINI knobs
+in_device = ["OP-1"]
+out_device = ["MIDI Through"]
+input."OP-1" = [ # XTOUCH-MINI knobs
   ["note_on", 1], # note
   ["control_change", 11, 2], # XTOUCH-MINI knob controller 2
   ["note_on", 1], # note
@@ -39,7 +39,7 @@ input = [ # XTOUCH-MINI knobs
   ["note_on", 1], # note
   ["control_change", 11, 7], # XTOUCH-MINI knob controller 7
 ]
-output = [ # Volca FM
+output."MIDI Through" = [ # Volca FM
   ["note_on", 1], # note
   ["control_change", 1, 42], # Modulator Attack
   ["control_change", 1, 43], # Modulator Decay

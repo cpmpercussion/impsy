@@ -28,10 +28,10 @@ timescale = 1
 # MIDI Mapping
 # MIDI Mapping
 [midi]
-in_device = "P-6"
-out_device = "P-6"
+in_device = ["P-6"]
+out_device = ["P-6"]
 feedback_protection = true
-input = [
+input."P-6" = [
   ["note_on", 4], # notes input
   ["control_change", 3, 19], # osc square level
   ["control_change", 3, 20], # osc tri level
@@ -43,7 +43,7 @@ input = [
   ["control_change", 3, 25], # filter lfo knob
   # ["control_change", 3, 71], # filter reso knob
 ]
-output = [
+output."P-6" = [
   ["note_on", 4], # granular sample notes
   ["control_change", 4, 21], # osc square level
   ["control_change", 4, 9], # osc tri level

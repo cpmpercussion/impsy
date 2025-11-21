@@ -25,9 +25,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "Minilab3 MIDI"
-out_device = "IAC Driver Bus 1"
-input = [
+in_device = ["Minilab3 MIDI"]
+out_device = ["IAC Driver Bus 1"]
+input."Minilab3 MIDI" = [
   ["note_on", 1],
   ["control_change", 1, 74], # bright
   ["control_change", 1, 71], # drive
@@ -37,7 +37,7 @@ input = [
   ["control_change", 1, 18], # general
   ["control_change", 1, 19], # general
   ]
-output = [
+output."IAC Driver Bus 1" = [
   ["note_on", 1],
   ["control_change", 1, 74], # bright
   ["control_change", 1, 71], # drive
