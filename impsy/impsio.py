@@ -499,7 +499,6 @@ class MIDIServer(IOServer):
 
     def process_midi_through_sending(self, input_port: str, values_list: list) -> None:
         """Processes MIDI through sending according to the thru matrix in the config."""
-        click.secho(f"MIDI Thru processing for input port {input_port}", fg="blue")
         if "thru_matrix" not in self.config["midi"]:
             return
         if input_port in self.config["midi"]["thru_matrix"]:
