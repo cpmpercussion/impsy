@@ -28,10 +28,11 @@ timescale = 1
 # MIDI Mapping
 # MIDI Mapping
 [midi]
-in_device = "S-1"
-out_device = "S-1"
+in_device = ["S-1"]
+out_device = ["S-1"]
 feedback_protection = true
-input = [
+
+input."S-1" = [
   ["note_on", 3], # notes input
   ["control_change", 3, 19], # osc square level
   ["control_change", 3, 20], # osc tri level
@@ -43,7 +44,8 @@ input = [
   ["control_change", 3, 25], # filter lfo knob
   # ["control_change", 3, 71], # filter reso knob
 ]
-output = [
+
+output."S-1" = [
   ["note_on", 3], # notes input
   ["control_change", 3, 19], # osc square level
   ["control_change", 3, 20], # osc tri level

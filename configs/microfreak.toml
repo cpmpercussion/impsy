@@ -26,9 +26,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "MicroFreak"
-out_device = "MicroFreak"
-input = [
+in_device = ["MicroFreak"]
+out_device = ["MicroFreak"]
+input."MicroFreak" = [
   ["note_on", 1],
   ["control_change", 1, 2],
   ["control_change", 1, 5],
@@ -38,7 +38,7 @@ input = [
   ["control_change", 1, 13],
   ["control_change", 1, 23],
   ]
-output = [
+output."MicroFreak" = [
   ["note_on", 1],
   ["control_change", 1, 2],
   ["control_change", 1, 5],

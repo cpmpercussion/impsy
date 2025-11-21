@@ -27,9 +27,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "X-TOUCH"
-out_device = "Studio 1824c"
-input = [ # XTOUCH-MINI knobs
+in_device = ["X-TOUCH"]
+out_device = ["Studio 1824c"]
+input."X-TOUCH" = [ # XTOUCH-MINI knobs
   ["control_change", 11, 1], # XTOUCH-MINI knob controller 1
   ["control_change", 11, 2], # XTOUCH-MINI knob controller 2
   ["control_change", 11, 3], # XTOUCH-MINI knob controller 3
@@ -39,7 +39,7 @@ input = [ # XTOUCH-MINI knobs
   ["control_change", 11, 7], # XTOUCH-MINI knob controller 7
   ["control_change", 11, 8], # XTOUCH-MINI knob controller 8
 ]
-output = [ # Volca Keys: http://i.korg.com/uploads/Support/USA_volcakeys_MIDI_Chart_E.pdf
+output."Studio 1824c" = [ # Volca Keys: http://i.korg.com/uploads/Support/USA_volcakeys_MIDI_Chart_E.pdf
   ["note_on", 1], # note
   ["control_change", 1, 5], # Portamento
   ["control_change", 1, 40], # Voice

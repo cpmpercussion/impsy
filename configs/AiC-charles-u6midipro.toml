@@ -27,9 +27,9 @@ timescale = 1
 
 # MIDI Mapping
 [midi]
-in_device = "U2MIDI Pro"
-out_device = "U2MIDI Pro"
-input = [ # nanoKONTROL Studio knobs
+in_device = ["U2MIDI Pro"]
+out_device = ["U2MIDI Pro"]
+input."U2MIDI Pro" = [ # nanoKONTROL Studio knobs
   ["control_change", 1, 13], # nanoKONTROL Studio knob controller 1
   ["control_change", 1, 14], # nanoKONTROL Studio knob controller 2
   ["control_change", 1, 15], # nanoKONTROL Studio knob controller 3
@@ -39,7 +39,7 @@ input = [ # nanoKONTROL Studio knobs
   ["control_change", 1, 19], # nanoKONTROL Studio knob controller 7
   ["control_change", 1, 20], # nanoKONTROL Studio knob controller 8
 ]
-output = [ # Collection of Useful Mappings
+output."U2MIDI Pro" = [ # Collection of Useful Mappings
   ["note_on", 1], # note
   ["control_change", 11, 1], # 
   ["note_on", 2], # note
