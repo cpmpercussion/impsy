@@ -79,6 +79,10 @@ output."S-1" = [
   # ["control_change", 3, 71], # filter reso knob
 ]
 
+thru_matrix = [
+  ["QuNeo", "S-1"]
+]
+
 
 
   # ["control_change", 3, 3], # lfo rate
