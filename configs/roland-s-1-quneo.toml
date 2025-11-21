@@ -43,7 +43,7 @@ input."QuNeo" = [ # QuNeo pads
   ["control_change", 1, 0], # XTOUCH-MINI knob controller 0
 ]
 output."QuNeo" = [ # QuNeo slider LEDs
-  ["control_change", 1, 1], # QuNeo slider LEDs
+  ["control_change", 1, 5], # QuNeo big horiz slider LEDs
   ["control_change", 1, 2], # QuNeo slider LEDs
   ["control_change", 1, 3], # QuNeo slider LEDs
   ["control_change", 1, 4], # QuNeo slider LEDs
@@ -80,6 +80,7 @@ output."S-1" = [
 ]
 
 thru_matrix."QuNeo" = ["S-1"]
+thru_matrix."S-1" = ["QuNeo"]
 
   # ["control_change", 3, 3], # lfo rate
   # ["control_change", 3, 13], # osc lfo
