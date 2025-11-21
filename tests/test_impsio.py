@@ -32,11 +32,12 @@ def output_values(default_config):
 def last_midi_notes_dict(midi_output_mapping):
     """produce a dict of previous played midi notes"""
     last_midi_notes = {}
-    out_channels = [x[1] for x in midi_output_mapping if x[0] == "note_on"] # just get channels associated with note_on messages.
-    for chan in out_channels:
-        last_midi_notes[chan] = 60 # played middle c on each output channel.
+    for o_port in midi_output_mapping:
+        last_midi_notes[o_port] = {}
+        out_channels = [x[1] for x in midi_output_mapping[o_port] if x[0] == "note_on"] # just get channels associated with note_on messages.
+        for chan in out_channels:
+            last_midi_notes[o_port][chan] = 60 # played middle c on each output channel.
     return last_midi_notes
-
 
 @pytest.fixture(scope="session")
 def sparse_callback():
@@ -76,17 +77,21 @@ def test_midi_message_handling():
 
 
 def test_midi_mapping_to_output(output_values, midi_output_mapping):
-    output_messages = utils.output_values_to_midi_messages(output_values, midi_output_mapping)
-    assert len(output_messages) == len(output_values), "Number of output messages does not match number of output values"
-    for msg in output_messages:
-        assert isinstance(msg, mido.Message), "msg is not a mido.Message object"
+    output_messages_dict = utils.output_values_to_midi_messages(output_values, midi_output_mapping)
+    for output_port in midi_output_mapping:
+        output_messages = output_messages_dict[output_port]
+        assert len(output_messages) == len(output_values), "Number of output messages does not match number of output values"
+        for msg in output_messages:
+            assert isinstance(msg, mido.Message), "msg is not a mido.Message object"
 
 
 def test_midi_note_off_generation(midi_output_mapping, last_midi_notes_dict):
-    output_messages = utils.get_midi_note_offs(midi_output_mapping, last_midi_notes_dict)
-    for msg in output_messages:
-        assert isinstance(msg, mido.Message), "msg is not a mido.Message object"
-        assert msg.type == "note_off", "msg is not a note_off"    
+    output_messages_dict = utils.get_midi_note_offs(midi_output_mapping, last_midi_notes_dict)
+    for output_port in midi_output_mapping:
+        output_messages = output_messages_dict[output_port]
+        for msg in output_messages:
+            assert isinstance(msg, mido.Message), "msg is not a mido.Message object"
+            assert msg.type == "note_off", "msg is not a note_off"    
 
 
 # test IOServers
