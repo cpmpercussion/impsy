@@ -221,8 +221,8 @@ class WebSocketServer(IOServer):
         self.midi_input_mapping = self.config["websocket"]["input"]
 
     def send(self, output_values) -> None:
-        output_midi_messages = output_values_to_midi_messages(output_values, self.midi_output_mapping)
-        for msg in output_midi_messages:
+        output_midi_messages = output_values_to_midi_messages(output_values, {"ws": self.midi_output_mapping})
+        for msg in output_midi_messages["ws"]:
             # send note off if a previous note_on had been sent
             if msg.type == 'note_on' and msg.channel in self.last_midi_notes:
                 note_off_msg = mido.Message("note_off", channel = msg.channel, note=self.last_midi_notes[msg.channel], velocity=0)
