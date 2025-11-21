@@ -222,7 +222,7 @@ class InteractionServer(object):
         self.interface_input_queue.put_nowait(self.last_user_interaction_data)
 
     # Todo this is the "callback" for our IO functions.
-    def construct_input_list(self, index: int, value: float) -> None:
+    def construct_input_list(self, index: int, value: float) -> list:
         """constructs a dense input list from a sparse format (e.g., when receiving MIDI)"""
         # set up dense interaction list
         values = self.last_user_interaction_data[1:]
@@ -242,13 +242,12 @@ class InteractionServer(object):
         )
         # These values are accessed by the RNN in the interaction loop function.
         self.interface_input_queue.put_nowait(self.last_user_interaction_data)
-        # Send values to output if in config
+        # Return new values
+        output_values = np.minimum(np.maximum(values, 0), 1)
         if self.config["interaction"]["input_thru"]:
             # This is where outputs are sent via impsio objects.
-            output_values = np.minimum(
-                np.maximum(self.last_user_interaction_data[1:], 0), 1
-            )
             self.send_back_values(output_values)
+        return output_values
 
     def make_prediction(self, neural_net):
         """Part of the interaction loop: reads input, makes predictions, outputs results"""

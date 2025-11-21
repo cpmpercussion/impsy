@@ -435,7 +435,7 @@ class MIDIServer(IOServer):
         self.last_midi_message_time = datetime.datetime.now()
 
 
-    def send(self, output_values) -> None:
+    def send(self, output_values, send_ports = None) -> None:
         """Sends sound commands via MIDI"""
         assert (
             len(output_values) + 1 == self.dimension
@@ -444,6 +444,11 @@ class MIDIServer(IOServer):
         outputs = output_values_to_midi_messages(output_values, self.midi_output_mapping)
 
         for o_port in outputs:
+            # only send to specified ports if given.
+            if send_ports is not None:
+                if o_port not in send_ports:
+                    continue
+            # send the messages for this output port.
             output_midi_messages = outputs[o_port]
             for msg in output_midi_messages:
                 # send note off if a previous note_on had been sent
@@ -456,7 +461,7 @@ class MIDIServer(IOServer):
                 if msg.type == 'note_on':
                     self.last_midi_notes[o_port][msg.channel] = msg.note
                 self.last_midi_message_time = datetime.datetime.now()
-    
+
 
     def handle(self) -> None:
         """Handle MIDI input messages that might come from mido"""
@@ -484,11 +489,23 @@ class MIDIServer(IOServer):
 
             try:
                 index, value = midi_message_to_index_value(message, self.midi_input_mapping[in_port])
-                self.callback(index, value)
+                return_values_list = self.callback(index, value)
+                self.process_midi_through_sending(in_port, return_values_list)
             except ValueError as e:
                 # error when handling the MIDI message
                 # click.secho(f"MIDI Handling failed for a message: {e}", fg="red")
                 pass
+
+
+    def process_midi_through_sending(self, input_port: str, values_list: list) -> None:
+        """Processes MIDI through sending according to the thru matrix in the config."""
+        click.secho(f"MIDI Thru processing for input port {input_port}", fg="blue")
+        if "thru_matrix" not in self.config["midi"]:
+            return
+        if input_port in self.config["midi"]["thru_matrix"]:
+            outputs = self.config["midi"]["thru_matrix"][input_port]
+            click.secho(f"MIDI Thru sending to outputs: {outputs}", fg="blue")
+            self.send(values_list, send_ports=outputs)
 
 
     def connect(self) -> None:

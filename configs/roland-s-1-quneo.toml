@@ -79,11 +79,7 @@ output."S-1" = [
   # ["control_change", 3, 71], # filter reso knob
 ]
 
-thru_matrix = [
-  ["QuNeo", "S-1"]
-]
-
-
+thru_matrix."QuNeo" = ["S-1"]
 
   # ["control_change", 3, 3], # lfo rate
   # ["control_change", 3, 13], # osc lfo
