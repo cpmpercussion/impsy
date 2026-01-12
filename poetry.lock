@@ -765,7 +765,7 @@ tf-keras = "^2.16.0"
 type = "git"
 url = "https://github.com/cpmpercussion/keras-mdn-layer.git"
 reference = "HEAD"
-resolved_reference = "ab318634427706959e18ac418c9e2d1127eb4eb1"
+resolved_reference = "45db215bebad2e549927a4af9ca5e1bc8b23044a"
 
 [[package]]
 name = "libclang"
