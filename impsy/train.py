@@ -139,7 +139,7 @@ def train_mdrnn(
     # Don't save h5 weights anymore, only using .keras and .tflite files.
     if save_weights:
         # Save .h5 file
-        model_weights_file = save_location / f"{model_name}.h5"
+        model_weights_file = save_location / f"{model_name}.weights.h5"
         mdrnn_manager.model.save_weights(model_weights_file)
         output["weights_file"] = model_weights_file
     
