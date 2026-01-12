@@ -44,8 +44,8 @@ def lstm_blank_states(layers: int, units: int):
     states = []
     for i in range(layers):
         states += [
-            np.zeros((1, units), dtype=np.float32),
-            np.zeros((1, units), dtype=np.float32),
+            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
+            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
         ]
     assert (
         len(states) == layers * 2
@@ -269,9 +269,8 @@ class PredictiveMusicMDRNN(object):
             len(prev_sample) == self.dimension
         ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_sample)
-        input_list = [
-            prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
-        ] + self.lstm_states
+        prev_sample_tensor = tf.convert_to_tensor(prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR)
+        input_list = [prev_sample_tensor] + self.lstm_states
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
         # model_output = self.model.predict(input_list)
