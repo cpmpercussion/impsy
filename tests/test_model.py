@@ -35,7 +35,7 @@ def test_training(sequence_length, batch_size, dimension, sequence_slices):
     )
     Xs, ys = train.seq_to_overlapping_format(sequence_slices)
     history = net.train(Xs, ys, batch_size=batch_size, epochs=num_epochs, logging=False)
-    assert isinstance(history, tf.keras.callbacks.History)
+    assert len(history.history["loss"]) == num_epochs
 
 
 def test_model_config():
