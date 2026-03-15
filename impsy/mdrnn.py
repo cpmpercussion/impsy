@@ -4,9 +4,9 @@ Charles P. Martin, 2018
 University of Oslo, Norway.
 """
 
-import numpy as np
 import tensorflow as tf
 import keras_mdn_layer as mdn
+import numpy as np
 import datetime
 from pathlib import Path
 import abc
@@ -54,7 +54,7 @@ def lstm_blank_states(layers: int, units: int):
 
 
 def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int) -> str:
-    """Returns the name of a model using it's parameters"""
+    """Returns the name of a model using its parameters"""
     name = f"musicMDRNN"
     name += f"-dim{dimension}"
     name += f"-layers{n_rnn_layers}"
@@ -113,6 +113,9 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
 
     # mdn layer
     mdn_layer = mdn.MDN(dimension, n_mixtures, name="mdn_outputs")
+    click.secho(f"MDN layer type is: {type(mdn_layer)}", fg="blue")
+    click.secho(f"Is MDN a tf.keras.layer.Layer? {isinstance(mdn_layer, tf.keras.layers.Layer)}", fg="blue")
+    click.secho(f"MDN layer shape: {mdn_layer.compute_output_shape(lstm_out.shape)}", fg="blue")
     if time_dist:
         mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name="td_mdn")
     mdn_out = mdn_layer(lstm_out)  # apply mdn
@@ -135,6 +138,7 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
         optimizer = tf.keras.optimizers.Adam()
         new_model.compile(loss=loss_func, optimizer=optimizer)
 
+    click.secho(f"Built MDRNN {"inference" if inference else "training"} model: {name}", fg="green")
     return new_model
 
 
