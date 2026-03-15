@@ -2,10 +2,11 @@
 Tests to start working with a tflite interpreter.
 """
 
-import numpy as np
+
 import tensorflow as tf
-from impsy import mdrnn
 import keras_mdn_layer as mdn
+import numpy as np
+from impsy import mdrnn
 import time
 from pathlib import Path
 import click
