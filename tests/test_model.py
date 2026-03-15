@@ -1,16 +1,17 @@
+import tensorflow as tf
 from impsy import mdrnn
 from impsy import train
 from impsy import utils
-import tensorflow as tf
 import pytest
 from pathlib import Path
-
+import click
 
 ## PredictiveMusicMDRNN testing.
 
 
 def test_inference():
     """Test inference from a PredictiveMusicMDRNN model"""
+    tf.keras.backend.clear_session()
     dimension = 8
     num_test_steps = 5
     net = mdrnn.PredictiveMusicMDRNN(mode=mdrnn.NET_MODE_RUN, dimension=dimension)
@@ -24,6 +25,7 @@ def test_inference():
 
 def test_training(sequence_length, batch_size, dimension, sequence_slices):
     """Test training on a PredictiveMusicMDRNN model"""
+    tf.keras.backend.clear_session()
     num_epochs = 1
     net = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_TRAIN,
