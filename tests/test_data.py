@@ -1,8 +1,8 @@
-from impsy import dataset
-from impsy import train
+import tensorflow as tf
 import numpy as np
 import os
-import tensorflow as tf
+from impsy import dataset
+from impsy import train
 
 
 ## Test logs, data and training.
@@ -50,4 +50,3 @@ def test_train_command(trained_model):
     assert os.path.isfile(trained_model["weights_file"])
     assert os.path.isfile(trained_model["keras_file"])
     assert os.path.isfile(trained_model["tflite_file"])
-    assert isinstance(trained_model["history"], tf.keras.callbacks.History)

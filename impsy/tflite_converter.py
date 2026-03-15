@@ -1,8 +1,8 @@
 """impsy.tflite_converter: Functions for converting a model to tflite format."""
 
-import click
 from .utils import mdrnn_config, get_config_data
 from pathlib import Path
+import click
 
 
 def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=False):
@@ -54,7 +54,6 @@ def model_file_to_tflite(filename, save_path = None, optimise=False):
     )
     tflite_file = model_to_tflite(loaded_model, model_file, save_path=save_path, optimise=optimise)
     return tflite_file
-
 
 
 def config_to_tflite(config_path, save_path = None, optimise=False):
