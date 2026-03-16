@@ -16,7 +16,8 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
+        # temporarily testing on ubuntu and macos but not windows-latest as tf2.16 doesn't have a wheel for python 3.12 on windows. Return when testing with tf2.18.
+        platform: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.platform }}
 
