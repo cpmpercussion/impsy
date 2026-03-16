@@ -1,5 +1,4 @@
-FROM python:3.11.5-slim-bookworm
-# FROM tensorflow/tensorflow:2.15.0
+FROM python:3.12-slim-bookworm
 
 ARG YOUR_ENV
 
@@ -15,7 +14,7 @@ ENV YOUR_ENV=${YOUR_ENV} \
   POETRY_VIRTUALENVS_CREATE=false \
   POETRY_CACHE_DIR='/var/cache/pypoetry' \
   POETRY_HOME='/usr/local' \
-  POETRY_VERSION=1.8.3
+  POETRY_VERSION=2.0.1
 
 # ensure curl
 RUN apt-get update \

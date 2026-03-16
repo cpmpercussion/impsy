@@ -8,15 +8,15 @@
 
 ![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/predictive_interaction.png)
 
-IMPSY is a system for predicting musical control data in live performance. It uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. It provides an input and output interface over OSC and can work with musical interfaces with any number of real valued inputs (we've tried from 1-8). Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. Whenever you use IMPSY, your input data is logged to build up a training corpus and a script is provided to train new versions of your model.
+IMPSY is a system for predicting musical control data in live performance. It uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. It provides input and output interfaces over MIDI, OSC, WebSockets, and serial and can work with musical interfaces with any number of real valued inputs (we've tried from 1-8). Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. Whenever you use IMPSY, your input data is logged to build up a training corpus and a script is provided to train new versions of your model.
 
 Here's a [demonstration video showing how IMPSY can be used with different musical interfaces:](https://www.youtube.com/embed/Kdmhrp2dfHw)
 
 ## Installation
 
-IMPSY is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently relies on Python 3.11, TensorFlow 2.15.0, TensorFlow Probability 0.23.0, and keras-mdn-layer 0.3.0. You can see the dependencies in `pyproject.toml`.
+IMPSY is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently relies on Python 3.12, TensorFlow 2.16.2, TensorFlow Probability 0.24.0, and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
 
-To install IMPSY, first **ensure that you have a Python 3.11** installation available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
+To install IMPSY, first **ensure that you have a Python 3.12** installation available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
 
     curl -sSL https://install.python-poetry.org | python3 -
 
@@ -94,12 +94,12 @@ Use the `dataset` command:
 
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
-To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
+To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xxs`, `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
 It's a good idea to start with an `xs` or `s` model, and the larger models may work better for quite large datasets (e.g., >1M individual interactions).
 
     poetry run ./start_impsy train --dimension (N+1) --modelsize s
 
-It's a good idea to use the `earlystopping` option to stop training after the model stops improving for 10 epochs.
+Early stopping is enabled by default and will stop training after the model stops improving for 10 epochs (configurable with `--patience`). You can disable it with `--no-earlystopping`.
 
 By default, your trained model will be saved in the `models` directory in `.keras` and `.tflite` format.
 
@@ -142,7 +142,7 @@ You will need a special client address, `host.docker.internal` to send messages 
 You can run a docker container and use different impsy commands from the command line as well:
 
 ```
-docker run -d -v $(pwd)/datasets:/code/datasets -v $(pwd)/logs:/code/logs -v $(pwd)/models:/code/models -v $(pwd)/config.toml:/code/config.toml charlepm/impsy poetry run ./start_impsy.py --help
+docker run -d -v $(pwd)/datasets:/impsy/datasets -v $(pwd)/logs:/impsy/logs -v $(pwd)/models:/impsy/models -v $(pwd)/config.toml:/impsy/config.toml charlepm/impsy poetry run ./start_impsy.py --help
 ```
 This can be useful to use the `dataset` or `train` commands to generate new datasets and models.
 
