@@ -4,9 +4,11 @@ Charles P. Martin, 2018
 University of Oslo, Norway.
 """
 
-import numpy as np
+import os
 import tensorflow as tf
 import keras_mdn_layer as mdn
+os.environ.pop("TF_USE_LEGACY_KERAS", None)
+import numpy as np
 import datetime
 from pathlib import Path
 import abc
@@ -44,8 +46,8 @@ def lstm_blank_states(layers: int, units: int):
     states = []
     for i in range(layers):
         states += [
-            np.zeros((1, units), dtype=np.float32),
-            np.zeros((1, units), dtype=np.float32),
+            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
+            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
         ]
     assert (
         len(states) == layers * 2
@@ -54,7 +56,7 @@ def lstm_blank_states(layers: int, units: int):
 
 
 def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int) -> str:
-    """Returns the name of a model using it's parameters"""
+    """Returns the name of a model using its parameters"""
     name = f"musicMDRNN"
     name += f"-dim{dimension}"
     name += f"-layers{n_rnn_layers}"
@@ -135,6 +137,7 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
         optimizer = tf.keras.optimizers.Adam()
         new_model.compile(loss=loss_func, optimizer=optimizer)
 
+    click.secho(f"Built MDRNN {"inference" if inference else "training"} model: {name}", fg="green")
     return new_model
 
 
@@ -269,9 +272,8 @@ class PredictiveMusicMDRNN(object):
             len(prev_sample) == self.dimension
         ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_sample)
-        input_list = [
-            prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
-        ] + self.lstm_states
+        prev_sample_tensor = tf.convert_to_tensor(prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR)
+        input_list = [prev_sample_tensor] + self.lstm_states
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
         # model_output = self.model.predict(input_list)
@@ -354,7 +356,20 @@ class TfliteMDRNN(MDRNNInferenceModel):
         assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
         self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
         self.signatures = self.interpreter.get_signature_list()
-        self.runner = self.interpreter.get_signature_runner()
+        if self.signatures:
+            self.runner = self.interpreter.get_signature_runner()
+        else:
+            self.runner = None
+            self.interpreter.allocate_tensors()
+            self._input_index = {d['name']: d['index'] for d in self.interpreter.get_input_details()}
+            self._output_details = self.interpreter.get_output_details()
+
+
+    def _to_numpy(self, x):
+        """Convert a value to a numpy float32 array."""
+        if hasattr(x, 'numpy'):
+            return x.numpy()
+        return np.asarray(x, dtype=np.float32)
 
 
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
@@ -366,13 +381,24 @@ class TfliteMDRNN(MDRNNInferenceModel):
         for i in range(self.n_layers):
             runner_input[f'state_h_{i}'] = self.lstm_states[2 * i] # h
             runner_input[f'state_c_{i}'] = self.lstm_states[2 * i + 1] # c
-        ## Run inference
-        raw_out = self.runner(**runner_input)
-        ## Extract the lstm states and mdn parameters
-        for i in range(self.n_layers):
-            self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
-            self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
-        mdn_params = raw_out['mdn_outputs'].squeeze()
+        if self.runner is not None:
+            ## Run inference via signature runner
+            raw_out = self.runner(**runner_input)
+            ## Extract the lstm states and mdn parameters
+            for i in range(self.n_layers):
+                self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
+                self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
+            mdn_params = raw_out['mdn_outputs'].squeeze()
+        else:
+            ## Run inference via standard interpreter API
+            for name, value in runner_input.items():
+                self.interpreter.set_tensor(self._input_index[name], self._to_numpy(value))
+            self.interpreter.invoke()
+            ## Outputs ordered: [mdn_out, state_h_0, state_c_0, ...]
+            mdn_params = self.interpreter.get_tensor(self._output_details[0]['index']).squeeze()
+            for i in range(self.n_layers):
+                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._output_details[1 + 2 * i]['index'])
+                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._output_details[2 + 2 * i]['index'])
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(
@@ -402,14 +428,17 @@ class  KerasMDRNN(MDRNNInferenceModel):
         assert self.model_file.suffix == ".keras" or self.model_file.suffix == ".h5", "KerasMDRNN only works on .keras or .h5 files."
         if self.model_file.suffix == ".keras":
             # Loading model for .keras files
-            self.model = tf.keras.saving.load_model(
-                str(self.model_file), 
+            self.model = tf.keras.models.load_model(
+                str(self.model_file),
                 custom_objects={"MDN": mdn.MDN}
             )
         elif self.model_file.suffix == ".h5":
-            # Loading model for .h5 files
+            # .h5 weights are saved from training models (with TimeDistributed),
+            # so load into a training model first, then transfer to inference model.
+            training_model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=False)
+            training_model.load_weights(self.model_file)
             self.model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True, seq_length=1)
-            self.model.load_weights(self.model_file)
+            self.model.set_weights(training_model.get_weights())
 
 
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
@@ -420,7 +449,7 @@ class  KerasMDRNN(MDRNNInferenceModel):
         ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_value)
         input_list = [
-            prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
+            tf.convert_to_tensor(prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR)
         ] + self.lstm_states
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().

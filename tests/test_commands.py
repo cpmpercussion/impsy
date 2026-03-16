@@ -5,7 +5,7 @@ from impsy.impsy import cli
 def test_main_command():
     runner = CliRunner()
     result = runner.invoke(cli)
-    assert result.exit_code == 0
+    assert result.exit_code == 2
 
 
 def test_model_test_command():

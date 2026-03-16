@@ -1,9 +1,9 @@
 """impsy.train: Functions for training an impsy mdrnn model."""
 
-import random
-import numpy as np
-import click
 from .utils import mdrnn_config
+import numpy as np
+import random
+import click
 from pathlib import Path
 
 
@@ -61,9 +61,7 @@ def train_mdrnn(
     save_tflite: bool = True, 
 ):
     """Loads a dataset, creates a model and runs the training procedure."""
-    import impsy.mdrnn as mdrnn
-    from tensorflow import keras
-    from .tflite_converter import model_to_tflite
+    from . import mdrnn
 
 
     model_config = mdrnn_config(model_size)
@@ -105,7 +103,7 @@ def train_mdrnn(
     X, y = seq_to_overlapping_format(slices)
 
     # Setup Training Model
-    mdrnn_manager = mdrnn.PredictiveMusicMDRNN(
+    training_mdrnn = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_TRAIN,
         dimension=dimension,
         n_hidden_units=mdrnn_units,
@@ -114,8 +112,18 @@ def train_mdrnn(
         layers=mdrnn_layers,
     )
 
+    # Setup Inference Model
+    inference_mdrnn = mdrnn.PredictiveMusicMDRNN(
+        mode=mdrnn.NET_MODE_RUN,
+        dimension=dimension,
+        n_hidden_units=mdrnn_units,
+        n_mixtures=mdrnn_mixes,
+        sequence_length=1,
+        layers=mdrnn_layers,
+    )
+
     validation_split = 0.10
-    history = mdrnn_manager.train(
+    history = training_mdrnn.train(
         X,
         y,
         batch_size=batch_size,
@@ -128,7 +136,7 @@ def train_mdrnn(
     )
 
     # Save final Model
-    model_name = mdrnn_manager.model_name
+    model_name = training_mdrnn.model_name
 
     # start preparing output dict output in case
     output = {
@@ -139,21 +147,13 @@ def train_mdrnn(
     # Don't save h5 weights anymore, only using .keras and .tflite files.
     if save_weights:
         # Save .h5 file
-        model_weights_file = save_location / f"{model_name}.h5"
-        mdrnn_manager.model.save_weights(model_weights_file)
+        model_weights_file = save_location / f"{model_name}.weights.h5"
+        training_mdrnn.model.save_weights(model_weights_file)
         output["weights_file"] = model_weights_file
     
     if save_model:
         # Save .keras file
-        trained_weights = mdrnn_manager.model.get_weights()
-        inference_mdrnn = mdrnn.PredictiveMusicMDRNN(
-            mode=mdrnn.NET_MODE_RUN,
-            dimension=dimension,
-            n_hidden_units=mdrnn_units,
-            n_mixtures=mdrnn_mixes,
-            sequence_length=1,
-            layers=mdrnn_layers,
-        )
+        trained_weights = training_mdrnn.model.get_weights()
         model_name = inference_mdrnn.model_name
         model_keras_file = save_location / f"{model_name}.keras"
         inference_mdrnn.model.set_weights(trained_weights)
@@ -162,6 +162,7 @@ def train_mdrnn(
 
     if save_tflite:
         # Save .tflite file
+        from .tflite_converter import model_to_tflite
         tflite_file = model_to_tflite(inference_mdrnn.model, model_keras_file)
         output["tflite_file"] = tflite_file
 
