@@ -49,7 +49,7 @@ def model_file_to_tflite(filename, save_path = None, optimise=False):
 
     model_file = Path(filename)
     assert model_file.suffix == ".keras", "This function only works on .keras files."
-    loaded_model = tf.keras.saving.load_model(
+    loaded_model = tf.keras.models.load_model(
         filename, custom_objects={"MDN": mdn_layer.MDN}
     )
     tflite_file = model_to_tflite(loaded_model, model_file, save_path=save_path, optimise=optimise)
@@ -86,6 +86,16 @@ def weights_file_to_model_file(weights_file, model_size, dimension, save_path = 
     import impsy.mdrnn as mdrnn
 
     model_config = mdrnn_config(model_size)
+    # .h5 weights are saved from training models, so load into training model first
+    training_model = mdrnn.PredictiveMusicMDRNN(
+        mode=mdrnn.NET_MODE_TRAIN,
+        dimension=dimension,
+        n_hidden_units=model_config["units"],
+        n_mixtures=model_config["mixes"],
+        layers=model_config["layers"],
+    )
+    training_model.load_model(model_file=weights_file)
+    # Build inference model and transfer weights
     inference_model = mdrnn.PredictiveMusicMDRNN(
         mode=mdrnn.NET_MODE_RUN,
         dimension=dimension,
@@ -93,7 +103,7 @@ def weights_file_to_model_file(weights_file, model_size, dimension, save_path = 
         n_mixtures=model_config["mixes"],
         layers=model_config["layers"],
     )
-    inference_model.load_model(model_file=weights_file)
+    inference_model.model.set_weights(training_model.model.get_weights())
     keras_file_path = Path(weights_file).with_suffix(".keras")
     if save_path is not None:
         keras_file_path = Path(save_path) / keras_file_path.name
