@@ -58,13 +58,17 @@ def get_hardware_info():
 def get_software_info():
     with open("pyproject.toml", "rb") as f:
         pyproject_data = tomllib.load(f)
+    project = pyproject_data.get("project", {})
+    urls = project.get("urls", {})
+    authors = project.get("authors", [])
+    author_names = [a.get("name", "") for a in authors if isinstance(a, dict)]
     return {
-        "Project": pyproject_data["tool"]["poetry"].get("name"),
-        "Version": pyproject_data["tool"]["poetry"].get("version"),
-        "Description": pyproject_data["tool"]["poetry"].get("description"),
-        "Authors": pyproject_data["tool"]["poetry"].get("authors"),
-        "Homepage": pyproject_data["tool"]["poetry"].get("homepage"),
-        "Repository": pyproject_data["tool"]["poetry"].get("repository"),
+        "Project": project.get("name"),
+        "Version": project.get("version"),
+        "Description": project.get("description"),
+        "Authors": author_names if author_names else None,
+        "Homepage": urls.get("homepage"),
+        "Repository": urls.get("repository"),
     }
 
 
