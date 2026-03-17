@@ -23,3 +23,15 @@ def test_model_file_to_tflite(trained_model):
     model_filename = trained_model["keras_file"]
     tflite_file = tflite_converter.model_file_to_tflite(model_filename)
     assert os.path.exists(tflite_file)
+
+
+def test_model_file_to_tflite_optimised(trained_model, models_location):
+    """Test TFLite conversion with optimisation flag enabled."""
+    model_filename = trained_model["keras_file"]
+    tflite_file = tflite_converter.model_file_to_tflite(
+        model_filename, save_path=models_location, optimise=True
+    )
+    assert os.path.exists(tflite_file)
+    # Optimised file should exist and be smaller or equal to non-optimised
+    non_opt_file = tflite_converter.model_file_to_tflite(model_filename, save_path=models_location)
+    assert os.path.getsize(tflite_file) <= os.path.getsize(non_opt_file) + 1024  # allow small variance
