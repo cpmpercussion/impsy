@@ -27,13 +27,11 @@ dependencies = [
 homepage = "https://github.com/cpmpercussion/impsy"
 repository = "https://github.com/cpmpercussion/impsy"
 
-[dependency-groups]
-dev = [
-    "pytest>=8.2.2,<9",
-    "flake8>=7.0.0,<8",
-    "black>=24.4.2,<25",
-    "coveralls>=4.0.2,<5",
-]
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.2.2,<9"
+flake8 = ">=7.0.0,<8"
+black = ">=24.4.2,<25"
+coveralls = ">=4.0.2,<5"
 
 [build-system]
 requires = ["poetry-core"]
