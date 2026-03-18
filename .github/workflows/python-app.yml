@@ -127,7 +127,7 @@ jobs:
     - name: Install dependencies with specific TF version
       run: |
         poetry install
-        poetry run pip install tensorflow==${{ matrix.tf-version }} tensorflow-probability==${{ matrix.tfp-version }}
+        poetry run pip install dm-tree>=0.1.9 tensorflow==${{ matrix.tf-version }} tensorflow-probability==${{ matrix.tfp-version }}
     - name: Lint with flake8
       run: |
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples

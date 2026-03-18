@@ -138,7 +138,8 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
         optimizer = tf.keras.optimizers.Adam()
         new_model.compile(loss=loss_func, optimizer=optimizer)
 
-    click.secho(f"Built MDRNN {"inference" if inference else "training"} model: {name}", fg="green")
+    mode_str = "inference" if inference else "training"
+    click.secho(f"Built MDRNN {mode_str} model: {name}", fg="green")
     return new_model
 
 
@@ -359,11 +360,67 @@ class TfliteMDRNN(MDRNNInferenceModel):
         self.signatures = self.interpreter.get_signature_list()
         if self.signatures:
             self.runner = self.interpreter.get_signature_runner()
+            self._discover_output_keys()
         else:
             self.runner = None
             self.interpreter.allocate_tensors()
             self._input_index = {d['name']: d['index'] for d in self.interpreter.get_input_details()}
             self._output_details = self.interpreter.get_output_details()
+
+
+    def _discover_output_keys(self):
+        """Discover the signature runner output key names for LSTM states.
+
+        TFLite signature output key naming varies across TF versions:
+        - TF 2.16: lstm_0, lstm_0_1 (h, c for layer 0)
+        - TF 2.18+: may use different naming conventions
+
+        This method builds lookup dicts so generate() doesn't hardcode names.
+        """
+        # Do a dummy forward pass to get the output keys
+        dummy_input = {'inputs': np.zeros((1, 1, self.dimension), dtype=np.float32)}
+        for i in range(self.n_layers):
+            dummy_input[f'state_h_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
+            dummy_input[f'state_c_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
+        raw_out = self.runner(**dummy_input)
+        output_keys = list(raw_out.keys())
+
+        # Map layer index -> (h_key, c_key) by matching key patterns
+        self._state_h_keys = {}
+        self._state_c_keys = {}
+        self._mdn_output_key = None
+
+        for key in output_keys:
+            if 'mdn' in key:
+                self._mdn_output_key = key
+                continue
+            # Match state keys: look for layer index patterns
+            for i in range(self.n_layers):
+                # Common patterns: "lstm_0"/"lstm_0_1", "state_h_0"/"state_c_0",
+                # or output_0/output_1 style
+                if f'state_h_{i}' in key:
+                    self._state_h_keys[i] = key
+                elif f'state_c_{i}' in key:
+                    self._state_c_keys[i] = key
+
+        # If state_h/state_c pattern didn't match, try lstm_N / lstm_N_1 pattern
+        if not self._state_h_keys:
+            for key in output_keys:
+                if key == self._mdn_output_key:
+                    continue
+                for i in range(self.n_layers):
+                    if key == f'lstm_{i}':
+                        self._state_h_keys[i] = key
+                    elif key == f'lstm_{i}_1':
+                        self._state_c_keys[i] = key
+
+        # Final fallback: sort remaining non-mdn keys and assign in pairs
+        if not self._state_h_keys:
+            state_keys = [k for k in output_keys if k != self._mdn_output_key]
+            state_keys.sort()
+            for i in range(self.n_layers):
+                self._state_h_keys[i] = state_keys[2 * i]
+                self._state_c_keys[i] = state_keys[2 * i + 1]
 
 
     def _to_numpy(self, x):
@@ -387,9 +444,9 @@ class TfliteMDRNN(MDRNNInferenceModel):
             raw_out = self.runner(**runner_input)
             ## Extract the lstm states and mdn parameters
             for i in range(self.n_layers):
-                self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
-                self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
-            mdn_params = raw_out['mdn_outputs'].squeeze()
+                self.lstm_states[2 * i] = raw_out[self._state_h_keys[i]]
+                self.lstm_states[2 * i + 1] = raw_out[self._state_c_keys[i]]
+            mdn_params = raw_out[self._mdn_output_key].squeeze()
         else:
             ## Run inference via standard interpreter API
             for name, value in runner_input.items():

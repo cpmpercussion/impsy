@@ -16,14 +16,18 @@ TF_LITE_DEPRECATED = TF_VERSION >= (2, 20)
 
 
 def get_tflite_interpreter(model_path: str):
-    """Return a TFLite interpreter, preferring ai_edge_litert on TF 2.20+."""
-    if TF_LITE_DEPRECATED:
-        try:
-            from ai_edge_litert import interpreter as litert
-            return litert.Interpreter(model_path=model_path)
-        except ImportError:
-            pass  # fall through to tf.lite
-    return tf.lite.Interpreter(model_path=model_path)
+    """Return a TFLite interpreter for inference.
+
+    Prefers tf.lite.Interpreter because it includes the Flex delegate
+    needed for models converted with SELECT_TF_OPS (e.g. MDRNN models).
+    Falls back to ai_edge_litert if tf.lite is unavailable (TF 2.20+).
+    """
+    try:
+        return tf.lite.Interpreter(model_path=model_path)
+    except AttributeError:
+        pass
+    from ai_edge_litert import interpreter as litert
+    return litert.Interpreter(model_path=model_path)
 
 
 def get_tflite_converter(model):
