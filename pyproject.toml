@@ -5,14 +5,12 @@ description = "IMPSY is the Interactive Musical Prediction SYstem, a tool for cr
 authors = [{ name = "Charles Martin", email = "cpm@charlesmartin.au" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.13"
 dependencies = [
-    "tensorflow>=2.16.2,<2.21",
-    "tensorflow-probability==0.24.0; python_version < '3.13'",
-    "tensorflow-probability==0.25.0; python_version >= '3.13'",
+    "tensorflow>=2.16.2,<2.20",
+    "tensorflow-probability==0.24.0",
     "keras-mdn-layer>=0.6.0",
-    "tf-keras>=2.16.0,<2.17; python_version < '3.13'",
-    "ai-edge-litert>=1.0.0",
+    "tf-keras>=2.16.0,<2.17",
     "h5py>=3.11,<4",
     "python-osc>=1.8.3,<2",
     "pyserial>=3.5,<4",
