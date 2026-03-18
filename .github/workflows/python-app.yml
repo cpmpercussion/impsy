@@ -89,31 +89,9 @@ jobs:
             python-version: "3.12"
             tf-version: "2.18.1"
             tfp-version: "0.25.0"
-          # TF 2.20.0 — Python 3.11, 3.12, 3.13 — Ubuntu, macOS, Windows
-          - platform: ubuntu-latest
-            python-version: "3.11"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
-          - platform: ubuntu-latest
-            python-version: "3.12"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
-          - platform: ubuntu-latest
-            python-version: "3.13"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
-          - platform: macos-latest
-            python-version: "3.12"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
-          - platform: macos-latest
-            python-version: "3.13"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
-          - platform: windows-latest
-            python-version: "3.12"
-            tf-version: "2.20.0"
-            tfp-version: "0.25.0"
+          # TF 2.20.0 — blocked on missing Flex delegate for SELECT_TF_OPS
+          # See https://github.com/google-ai-edge/LiteRT/issues/6458
+          # Re-enable once LiteRT supports Flex ops in ai_edge_litert
 
     runs-on: ${{ matrix.platform }}
     steps:

@@ -372,55 +372,37 @@ class TfliteMDRNN(MDRNNInferenceModel):
         """Discover the signature runner output key names for LSTM states.
 
         TFLite signature output key naming varies across TF versions:
-        - TF 2.16: lstm_0, lstm_0_1 (h, c for layer 0)
-        - TF 2.18+: may use different naming conventions
+        - TF 2.16: named keys like lstm_0, lstm_0_1, mdn_outputs
+        - TF 2.18+: generic keys like output_0, output_1, ...
 
-        This method builds lookup dicts so generate() doesn't hardcode names.
+        Uses output shapes to identify: MDN output has shape (1, mdn_params)
+        while LSTM states have shape (1, n_hidden_units).
         """
-        # Do a dummy forward pass to get the output keys
+        # Do a dummy forward pass to get the output keys and shapes
         dummy_input = {'inputs': np.zeros((1, 1, self.dimension), dtype=np.float32)}
         for i in range(self.n_layers):
             dummy_input[f'state_h_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
             dummy_input[f'state_c_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
         raw_out = self.runner(**dummy_input)
-        output_keys = list(raw_out.keys())
 
-        # Map layer index -> (h_key, c_key) by matching key patterns
+        # Identify MDN output by shape: it has more columns than n_hidden_units
+        # MDN params = n_mixtures * (1 + 2*dimension) = n_mixtures * (2*dim + 1)
+        # LSTM states have shape (1, n_hidden_units)
+        self._mdn_output_key = None
+        state_keys = []
+        for key, val in raw_out.items():
+            if val.shape[-1] != self.n_hidden_units:
+                self._mdn_output_key = key
+            else:
+                state_keys.append(key)
+
+        # State keys come in pairs (h, c) for each layer, sorted by key name
+        state_keys.sort()
         self._state_h_keys = {}
         self._state_c_keys = {}
-        self._mdn_output_key = None
-
-        for key in output_keys:
-            if 'mdn' in key:
-                self._mdn_output_key = key
-                continue
-            # Match state keys: look for layer index patterns
-            for i in range(self.n_layers):
-                # Common patterns: "lstm_0"/"lstm_0_1", "state_h_0"/"state_c_0",
-                # or output_0/output_1 style
-                if f'state_h_{i}' in key:
-                    self._state_h_keys[i] = key
-                elif f'state_c_{i}' in key:
-                    self._state_c_keys[i] = key
-
-        # If state_h/state_c pattern didn't match, try lstm_N / lstm_N_1 pattern
-        if not self._state_h_keys:
-            for key in output_keys:
-                if key == self._mdn_output_key:
-                    continue
-                for i in range(self.n_layers):
-                    if key == f'lstm_{i}':
-                        self._state_h_keys[i] = key
-                    elif key == f'lstm_{i}_1':
-                        self._state_c_keys[i] = key
-
-        # Final fallback: sort remaining non-mdn keys and assign in pairs
-        if not self._state_h_keys:
-            state_keys = [k for k in output_keys if k != self._mdn_output_key]
-            state_keys.sort()
-            for i in range(self.n_layers):
-                self._state_h_keys[i] = state_keys[2 * i]
-                self._state_c_keys[i] = state_keys[2 * i + 1]
+        for i in range(self.n_layers):
+            self._state_h_keys[i] = state_keys[2 * i]
+            self._state_c_keys[i] = state_keys[2 * i + 1]
 
 
     def _to_numpy(self, x):
