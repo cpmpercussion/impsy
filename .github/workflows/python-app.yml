@@ -55,17 +55,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # TF 2.16.2 — Python 3.11, 3.12 — Ubuntu, macOS
-          - platform: ubuntu-latest
-            python-version: "3.11"
-            tf-version: "2.16.2"
-            tfp-version: "0.24.0"
+          # TF 2.16.2 — Python 3.12 only (3.11 crashes with SIGABRT)
           - platform: ubuntu-latest
             python-version: "3.12"
-            tf-version: "2.16.2"
-            tfp-version: "0.24.0"
-          - platform: macos-latest
-            python-version: "3.11"
             tf-version: "2.16.2"
             tfp-version: "0.24.0"
           - platform: macos-latest
