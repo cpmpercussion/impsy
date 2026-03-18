@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# This workflow tests IMPSY across multiple Python and TensorFlow versions.
+# Full matrix runs on PRs; a smaller smoke test runs on pushes to main.
 
 name: Install and run IMPSY
 
@@ -13,14 +13,13 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  # Smoke test: runs on every push to main (fast feedback)
+  smoke-test:
+    if: github.event_name == 'push'
     strategy:
       matrix:
-        # temporarily testing on ubuntu and macos but not windows-latest as tf2.16 doesn't have a wheel for python 3.12 on windows. Return when testing with tf2.18.
         platform: [ubuntu-latest, macos-latest]
-
     runs-on: ${{ matrix.platform }}
-
     steps:
     - uses: actions/checkout@v4
     - name: Install poetry
@@ -30,26 +29,80 @@ jobs:
         python-version: '3.12'
         cache: 'poetry'
     - name: Install dependencies
-      run: |
-        poetry install
+      run: poetry install
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Run tests.
-      run: |
-        poetry run coverage run --source=impsy -m pytest 
-    - name: Upload coverage.
+    - name: Run tests
+      run: poetry run coverage run --source=impsy -m pytest
+    - name: Upload coverage
       run: poetry run coveralls
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Run the main file just to prove it works.
-      run: |
-        poetry run python ./start_impsy.py --help
-    - name: refresh coverage badge
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Verify CLI
+      run: poetry run python ./start_impsy.py --help
+    - name: Refresh coverage badge
       uses: fjogeleit/http-request-action@v1
       with:
         url: https://camo.githubusercontent.com/b28da7a25a163fa13a0be34c29acc4ffe83f8f8e17fd10337c0392f2f3938df1/68747470733a2f2f636f766572616c6c732e696f2f7265706f732f6769746875622f63706d70657263757373696f6e2f696d7073792f62616467652e737667
         method: PURGE
+
+  # Full compatibility matrix: runs on PRs to main
+  full-matrix:
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # TF 2.16.2 — Python 3.12 only (3.11 crashes with SIGABRT)
+          - platform: ubuntu-latest
+            python-version: "3.12"
+            tf-version: "2.16.2"
+            tfp-version: "0.24.0"
+          - platform: macos-latest
+            python-version: "3.12"
+            tf-version: "2.16.2"
+            tfp-version: "0.24.0"
+          # TF 2.18.1 — Python 3.11, 3.12 — Ubuntu, macOS
+          - platform: ubuntu-latest
+            python-version: "3.11"
+            tf-version: "2.18.1"
+            tfp-version: "0.25.0"
+          - platform: ubuntu-latest
+            python-version: "3.12"
+            tf-version: "2.18.1"
+            tfp-version: "0.25.0"
+          - platform: macos-latest
+            python-version: "3.11"
+            tf-version: "2.18.1"
+            tfp-version: "0.25.0"
+          - platform: macos-latest
+            python-version: "3.12"
+            tf-version: "2.18.1"
+            tfp-version: "0.25.0"
+          # TF 2.20.0 — blocked on missing Flex delegate for SELECT_TF_OPS
+          # See https://github.com/google-ai-edge/LiteRT/issues/6458
+          # Re-enable once LiteRT supports Flex ops in ai_edge_litert
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install poetry
+      run: pipx install poetry
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'poetry'
+    - name: Install dependencies with specific TF version
+      run: |
+        poetry install
+        poetry run pip install dm-tree>=0.1.9 tensorflow==${{ matrix.tf-version }} tensorflow-probability==${{ matrix.tfp-version }}
+    - name: Lint with flake8
+      run: |
+        poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
+        poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Run tests
+      run: poetry run pytest
+    - name: Verify CLI
+      run: poetry run python ./start_impsy.py --help

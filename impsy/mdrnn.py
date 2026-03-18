@@ -13,6 +13,7 @@ import datetime
 from pathlib import Path
 import abc
 import click
+from .compat import get_tflite_interpreter
 
 
 NET_MODE_TRAIN = "train"
@@ -137,7 +138,8 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
         optimizer = tf.keras.optimizers.Adam()
         new_model.compile(loss=loss_func, optimizer=optimizer)
 
-    click.secho(f"Built MDRNN {"inference" if inference else "training"} model: {name}", fg="green")
+    mode_str = "inference" if inference else "training"
+    click.secho(f"Built MDRNN {mode_str} model: {name}", fg="green")
     return new_model
 
 
@@ -354,15 +356,53 @@ class TfliteMDRNN(MDRNNInferenceModel):
 
     def prepare(self) -> None:
         assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
-        self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
+        self.interpreter = get_tflite_interpreter(model_path=str(self.model_file))
         self.signatures = self.interpreter.get_signature_list()
         if self.signatures:
             self.runner = self.interpreter.get_signature_runner()
+            self._discover_output_keys()
         else:
             self.runner = None
             self.interpreter.allocate_tensors()
             self._input_index = {d['name']: d['index'] for d in self.interpreter.get_input_details()}
             self._output_details = self.interpreter.get_output_details()
+
+
+    def _discover_output_keys(self):
+        """Discover the signature runner output key names for LSTM states.
+
+        TFLite signature output key naming varies across TF versions:
+        - TF 2.16: named keys like lstm_0, lstm_0_1, mdn_outputs
+        - TF 2.18+: generic keys like output_0, output_1, ...
+
+        Uses output shapes to identify: MDN output has shape (1, mdn_params)
+        while LSTM states have shape (1, n_hidden_units).
+        """
+        # Do a dummy forward pass to get the output keys and shapes
+        dummy_input = {'inputs': np.zeros((1, 1, self.dimension), dtype=np.float32)}
+        for i in range(self.n_layers):
+            dummy_input[f'state_h_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
+            dummy_input[f'state_c_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
+        raw_out = self.runner(**dummy_input)
+
+        # Identify MDN output by shape: it has more columns than n_hidden_units
+        # MDN params = n_mixtures * (1 + 2*dimension) = n_mixtures * (2*dim + 1)
+        # LSTM states have shape (1, n_hidden_units)
+        self._mdn_output_key = None
+        state_keys = []
+        for key, val in raw_out.items():
+            if val.shape[-1] != self.n_hidden_units:
+                self._mdn_output_key = key
+            else:
+                state_keys.append(key)
+
+        # State keys come in pairs (h, c) for each layer, sorted by key name
+        state_keys.sort()
+        self._state_h_keys = {}
+        self._state_c_keys = {}
+        for i in range(self.n_layers):
+            self._state_h_keys[i] = state_keys[2 * i]
+            self._state_c_keys[i] = state_keys[2 * i + 1]
 
 
     def _to_numpy(self, x):
@@ -386,9 +426,9 @@ class TfliteMDRNN(MDRNNInferenceModel):
             raw_out = self.runner(**runner_input)
             ## Extract the lstm states and mdn parameters
             for i in range(self.n_layers):
-                self.lstm_states[2 * i] = raw_out[f'lstm_{i}'] # h
-                self.lstm_states[2 * i + 1] = raw_out[f'lstm_{i}_1'] # c
-            mdn_params = raw_out['mdn_outputs'].squeeze()
+                self.lstm_states[2 * i] = raw_out[self._state_h_keys[i]]
+                self.lstm_states[2 * i + 1] = raw_out[self._state_c_keys[i]]
+            mdn_params = raw_out[self._mdn_output_key].squeeze()
         else:
             ## Run inference via standard interpreter API
             for name, value in runner_input.items():

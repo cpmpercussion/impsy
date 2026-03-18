@@ -1,39 +1,42 @@
 """impsy.tflite_converter: Functions for converting a model to tflite format."""
 
 from .utils import mdrnn_config, get_config_data
+from .compat import (
+    get_tflite_converter,
+    get_tflite_ops,
+    get_tflite_optimize_default,
+    analyze_tflite_model,
+)
 from pathlib import Path
 import click
+import tensorflow as tf
 
 
 def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=False):
     """This actually converts a loaded Keras model to tflite format."""
-    import tensorflow as tf
-
     # Setup output path and name.
     output_file = model_path.with_suffix(".tflite")
     if save_path is not None:
         output_file = save_path / output_file.name
 
     click.secho("Setup converter.", fg="blue")
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.target_spec.supported_ops = [
-        tf.lite.OpsSet.TFLITE_BUILTINS,
-        tf.lite.OpsSet.SELECT_TF_OPS,
-    ]
+    converter = get_tflite_converter(model)
+    builtin_ops, select_tf_ops = get_tflite_ops()
+    converter.target_spec.supported_ops = [builtin_ops, select_tf_ops]
     converter._experimental_lower_tensor_list_ops = False
 
     if optimise:
         click.secho("Using default optimisations: this will reduce model size but may degrade performance.")
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    
+        converter.optimizations = [get_tflite_optimize_default()]
+
     converter.inference_input_type = tf.float32
     converter.inference_output_type = tf.float32
 
     click.secho("Do the conversion.", fg="blue")
     tflite_model = converter.convert()
-    
+
     click.secho("Print Analysis...", fg="blue")
-    tf.lite.experimental.Analyzer.analyze(model_content=tflite_model)
+    analyze_tflite_model(model_content=tflite_model)
 
     click.secho("Saving..", fg="blue")
     click.secho(f"Saving tflite model to: {output_file}", fg="blue")
@@ -44,7 +47,6 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
 
 def model_file_to_tflite(filename, save_path = None, optimise=False):
     """Converts a given model"""
-    import tensorflow as tf
     import keras_mdn_layer as mdn_layer
 
     model_file = Path(filename)
@@ -58,7 +60,6 @@ def model_file_to_tflite(filename, save_path = None, optimise=False):
 
 def config_to_tflite(config_path, save_path = None, optimise=False):
     """Converts the model specified in a config dictionary to tflite format."""
-    import tensorflow as tf
     import impsy.mdrnn as mdrnn
 
     click.secho("IMPSY: Converting model to tflite.", fg="blue")
