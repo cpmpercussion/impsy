@@ -30,7 +30,7 @@ repository = "https://github.com/cpmpercussion/impsy"
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.2.2,<9"
 flake8 = ">=7.0.0,<8"
-black = ">=24.4.2,<25"
+black = ">=24.4.2,<27"
 coveralls = ">=4.0.2,<5"
 
 [build-system]
