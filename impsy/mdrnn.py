@@ -13,6 +13,7 @@ import datetime
 from pathlib import Path
 import abc
 import click
+from .compat import get_tflite_interpreter
 
 
 NET_MODE_TRAIN = "train"
@@ -354,7 +355,7 @@ class TfliteMDRNN(MDRNNInferenceModel):
 
     def prepare(self) -> None:
         assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
-        self.interpreter = tf.lite.Interpreter(model_path=str(self.model_file))
+        self.interpreter = get_tflite_interpreter(model_path=str(self.model_file))
         self.signatures = self.interpreter.get_signature_list()
         if self.signatures:
             self.runner = self.interpreter.get_signature_runner()
