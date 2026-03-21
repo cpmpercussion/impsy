@@ -18,17 +18,10 @@ def get_tflite_interpreter(model_path: str):
 def get_tflite_converter(model):
     """Return a TFLite converter from a Keras model.
 
-    Uses from_concrete_functions to support pure Keras 3 layers
-    (from_keras_model fails with Keras 3 custom layers on TF 2.16-2.18).
+    Uses from_keras_model (works on TF 2.19.1+ with Keras 3). This preserves
+    the model's input names in the TFLite SignatureDef across Python versions.
     """
-    input_spec = [tf.TensorSpec(shape=inp.shape, dtype=tf.float32) for inp in model.inputs]
-
-    @tf.function(input_signature=input_spec)
-    def serve(*args):
-        return model(list(args))
-
-    concrete = serve.get_concrete_function()
-    return tf.lite.TFLiteConverter.from_concrete_functions([concrete], model)
+    return tf.lite.TFLiteConverter.from_keras_model(model)
 
 
 def get_tflite_ops():
