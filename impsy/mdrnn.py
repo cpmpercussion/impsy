@@ -364,8 +364,25 @@ class TfliteMDRNN(MDRNNInferenceModel):
         else:
             self.runner = None
             self.interpreter.allocate_tensors()
-            self._input_index = {d['name']: d['index'] for d in self.interpreter.get_input_details()}
-            self._output_details = self.interpreter.get_output_details()
+            # Build input index mapping expected names to tensor indices.
+            # Input order is: inputs, state_h_0, state_c_0, state_h_1, state_c_1, ...
+            expected_names = ['inputs']
+            for i in range(self.n_layers):
+                expected_names.append(f'state_h_{i}')
+                expected_names.append(f'state_c_{i}')
+            input_details = sorted(self.interpreter.get_input_details(), key=lambda d: d['index'])
+            self._input_index = {name: d['index'] for name, d in zip(expected_names, input_details)}
+            # Build output index mapping by shape: MDN output has more columns than n_hidden_units.
+            output_details = self.interpreter.get_output_details()
+            self._mdn_output_index = None
+            state_outputs = []
+            for d in output_details:
+                if d['shape'][-1] != self.n_hidden_units:
+                    self._mdn_output_index = d['index']
+                else:
+                    state_outputs.append(d['index'])
+            state_outputs.sort()
+            self._state_output_indices = state_outputs
 
 
     def _discover_output_keys(self):
@@ -434,11 +451,11 @@ class TfliteMDRNN(MDRNNInferenceModel):
             for name, value in runner_input.items():
                 self.interpreter.set_tensor(self._input_index[name], self._to_numpy(value))
             self.interpreter.invoke()
-            ## Outputs ordered: [mdn_out, state_h_0, state_c_0, ...]
-            mdn_params = self.interpreter.get_tensor(self._output_details[0]['index']).squeeze()
+            ## Extract outputs by shape-based indices
+            mdn_params = self.interpreter.get_tensor(self._mdn_output_index).squeeze()
             for i in range(self.n_layers):
-                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._output_details[1 + 2 * i]['index'])
-                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._output_details[2 + 2 * i]['index'])
+                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._state_output_indices[2 * i])
+                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._state_output_indices[2 * i + 1])
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(

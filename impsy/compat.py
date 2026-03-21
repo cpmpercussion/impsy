@@ -16,7 +16,11 @@ def get_tflite_interpreter(model_path: str):
 
 
 def get_tflite_converter(model):
-    """Return a TFLite converter from a Keras model."""
+    """Return a TFLite converter from a Keras model.
+
+    Uses from_keras_model (works on TF 2.19.1+ with Keras 3). This preserves
+    the model's input names in the TFLite SignatureDef across Python versions.
+    """
     return tf.lite.TFLiteConverter.from_keras_model(model)
 
 

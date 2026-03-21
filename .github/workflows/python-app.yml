@@ -1,4 +1,5 @@
-# This workflow tests IMPSY across multiple Python and TensorFlow versions.
+# This workflow tests IMPSY across Python versions and platforms
+# using the poetry-locked dependency versions.
 # Full matrix runs on PRs; a smaller smoke test runs on pushes to main.
 
 name: Install and run IMPSY
@@ -18,7 +19,7 @@ jobs:
     if: github.event_name == 'push'
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest]
+        platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
     - uses: actions/checkout@v4
@@ -49,42 +50,14 @@ jobs:
         method: PURGE
 
   # Full compatibility matrix: runs on PRs to main
+  # Tests Python 3.11 + 3.12 on Ubuntu + macOS with poetry-locked deps (TF 2.19.1)
   full-matrix:
     if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # TF 2.16.2 — Python 3.12 only (3.11 crashes with SIGABRT)
-          - platform: ubuntu-latest
-            python-version: "3.12"
-            tf-version: "2.16.2"
-            tfp-version: "0.24.0"
-          - platform: macos-latest
-            python-version: "3.12"
-            tf-version: "2.16.2"
-            tfp-version: "0.24.0"
-          # TF 2.18.1 — Python 3.11, 3.12 — Ubuntu, macOS
-          - platform: ubuntu-latest
-            python-version: "3.11"
-            tf-version: "2.18.1"
-            tfp-version: "0.25.0"
-          - platform: ubuntu-latest
-            python-version: "3.12"
-            tf-version: "2.18.1"
-            tfp-version: "0.25.0"
-          - platform: macos-latest
-            python-version: "3.11"
-            tf-version: "2.18.1"
-            tfp-version: "0.25.0"
-          - platform: macos-latest
-            python-version: "3.12"
-            tf-version: "2.18.1"
-            tfp-version: "0.25.0"
-          # TF 2.20.0 — blocked on missing Flex delegate for SELECT_TF_OPS
-          # See https://github.com/google-ai-edge/LiteRT/issues/6458
-          # Re-enable once LiteRT supports Flex ops in ai_edge_litert
-
+        platform: [ubuntu-latest, macos-latest]
+        python-version: ["3.11", "3.12"]
     runs-on: ${{ matrix.platform }}
     steps:
     - uses: actions/checkout@v4
@@ -94,10 +67,8 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'poetry'
-    - name: Install dependencies with specific TF version
-      run: |
-        poetry install
-        poetry run pip install dm-tree>=0.1.9 tensorflow==${{ matrix.tf-version }} tensorflow-probability==${{ matrix.tfp-version }}
+    - name: Install dependencies
+      run: poetry install
     - name: Lint with flake8
       run: |
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
