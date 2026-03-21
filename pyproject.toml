@@ -7,7 +7,7 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "tensorflow>=2.16.2,<2.20",
+    "tensorflow>=2.19.1,<2.20",
     "keras-mdn-layer @ git+https://github.com/cpmpercussion/keras-mdn-layer.git@v0.7.0-alpha",
     "h5py>=3.11,<4",
     "python-osc>=1.8.3,<2",
