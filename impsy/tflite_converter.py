@@ -1,15 +1,24 @@
 """impsy.tflite_converter: Functions for converting a model to tflite format."""
 
 from .utils import mdrnn_config, get_config_data
-from .compat import (
-    get_tflite_converter,
-    get_tflite_ops,
-    get_tflite_optimize_default,
-    analyze_tflite_model,
-)
+from .compat import get_tflite_optimize_default, analyze_tflite_model
 from pathlib import Path
 import click
 import tensorflow as tf
+
+
+def _make_concrete_function(model):
+    """Trace model with batch_size=1 so TensorList shapes are static, avoiding SELECT_TF_OPS."""
+    input_specs = [
+        tf.TensorSpec(shape=[1] + list(inp.shape[1:]), dtype=tf.float32, name=inp.name)
+        for inp in model.inputs
+    ]
+
+    @tf.function(input_signature=input_specs)
+    def serve(*args):
+        return model(list(args))
+
+    return serve.get_concrete_function()
 
 
 def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=False):
@@ -20,10 +29,9 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
         output_file = save_path / output_file.name
 
     click.secho("Setup converter.", fg="blue")
-    converter = get_tflite_converter(model)
-    builtin_ops, select_tf_ops = get_tflite_ops()
-    converter.target_spec.supported_ops = [builtin_ops, select_tf_ops]
-    converter._experimental_lower_tensor_list_ops = False
+    concrete_func = _make_concrete_function(model)
+    converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_func])
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
 
     if optimise:
         click.secho("Using default optimisations: this will reduce model size but may degrade performance.")
