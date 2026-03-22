@@ -50,14 +50,14 @@ jobs:
         method: PURGE
 
   # Full compatibility matrix: runs on PRs to main
-  # Tests Python 3.11 + 3.12 on Ubuntu + macOS with poetry-locked deps (TF 2.19.1)
+  # Tests Python 3.11 + 3.12 + 3.13 on Ubuntu + macOS + Windows with poetry-locked deps
   full-matrix:
     if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     runs-on: ${{ matrix.platform }}
     steps:
     - uses: actions/checkout@v4
