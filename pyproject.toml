@@ -30,6 +30,11 @@ pytest = ">=8.2.2,<9"
 flake8 = ">=7.0.0,<8"
 black = ">=24.4.2,<25"
 coveralls = ">=4.0.2,<5"
+tensorflow-io-gcs-filesystem = [ # this dependency is only needed for Tensorflow < 2.20 and only on Python 3.11.
+  {platform = "win32", python=">=3.11,<3.12", version = "0.31.0"},
+  {platform = "darwin", python=">=3.11,<3.12", version = ">=0.37.1"},
+  {platform = "linux", python=">=3.11,<3.12", version = ">=0.37.1"},
+]
 
 [build-system]
 requires = ["poetry-core"]
