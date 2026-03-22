@@ -391,14 +391,25 @@ class TfliteMDRNN(MDRNNInferenceModel):
         except RuntimeError as e:
             if "Select TensorFlow" not in str(e) and "Flex" not in str(e):
                 raise
-            keras_file = self.model_file.with_suffix(".keras")
-            if not keras_file.exists():
+            # Find a sibling weights file (.h5 or .weights.h5) to rebuild from.
+            h5_file = self.model_file.with_suffix(".h5")
+            if not h5_file.exists():
+                h5_file = self.model_file.parent / (self.model_file.stem + ".weights.h5")
+            if not h5_file.exists():
                 raise RuntimeError(
-                    f"TFLite model requires SELECT_TF_OPS and no .keras file found at {keras_file} to reconvert from."
+                    f"TFLite model requires SELECT_TF_OPS and no .h5 weights file found to reconvert from."
                 ) from e
-            click.secho(f"TFLite model uses SELECT_TF_OPS; reconverting from {keras_file}", fg="yellow")
-            from .tflite_converter import model_file_to_tflite
-            model_file_to_tflite(str(keras_file))
+            click.secho(f"TFLite model uses SELECT_TF_OPS; rebuilding from {h5_file}", fg="yellow")
+            training_model = build_mdrnn_model(
+                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=False
+            )
+            training_model.load_weights(str(h5_file))
+            inference_model = build_mdrnn_model(
+                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True
+            )
+            inference_model.set_weights(training_model.get_weights())
+            from .tflite_converter import model_to_tflite
+            model_to_tflite(inference_model, self.model_file)
             self._setup_interpreter()
 
     def _discover_output_keys(self):
