@@ -67,6 +67,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'poetry'
+    - name: Install ALSA dev headers (Linux only, required to build python-rtmidi from source)
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y libasound2-dev
     - name: Install dependencies
       run: poetry install
     - name: Lint with flake8
