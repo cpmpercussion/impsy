@@ -354,8 +354,8 @@ class TfliteMDRNN(MDRNNInferenceModel):
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
     
 
-    def prepare(self) -> None:
-        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+    def _setup_interpreter(self) -> None:
+        """Load the TFLite interpreter and discover inputs/outputs."""
         self.interpreter = get_tflite_interpreter(model_path=str(self.model_file))
         self.signatures = self.interpreter.get_signature_list()
         if self.signatures:
@@ -384,6 +384,22 @@ class TfliteMDRNN(MDRNNInferenceModel):
             state_outputs.sort()
             self._state_output_indices = state_outputs
 
+    def prepare(self) -> None:
+        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+        try:
+            self._setup_interpreter()
+        except RuntimeError as e:
+            if "Select TensorFlow" not in str(e) and "Flex" not in str(e):
+                raise
+            keras_file = self.model_file.with_suffix(".keras")
+            if not keras_file.exists():
+                raise RuntimeError(
+                    f"TFLite model requires SELECT_TF_OPS and no .keras file found at {keras_file} to reconvert from."
+                ) from e
+            click.secho(f"TFLite model uses SELECT_TF_OPS; reconverting from {keras_file}", fg="yellow")
+            from .tflite_converter import model_file_to_tflite
+            model_file_to_tflite(str(keras_file))
+            self._setup_interpreter()
 
     def _discover_output_keys(self):
         """Discover the signature runner output key names for LSTM states.
