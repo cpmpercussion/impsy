@@ -171,3 +171,4 @@ datasets
 *.csv
 
 experiment_data
+.claude/settings.local.json
