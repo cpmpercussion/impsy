@@ -12,17 +12,8 @@ import tensorflow as tf
 
 def get_tflite_interpreter(model_path: str):
     """Return a TFLite interpreter for inference."""
-    return tf.lite.Interpreter(model_path=model_path)
-
-
-def get_tflite_converter(model):
-    """Return a TFLite converter from a Keras model."""
-    return tf.lite.TFLiteConverter.from_keras_model(model)
-
-
-def get_tflite_ops():
-    """Return (TFLITE_BUILTINS, SELECT_TF_OPS) enum values."""
-    return tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS
+    from ai_edge_litert.interpreter import Interpreter
+    return Interpreter(model_path=model_path)
 
 
 def get_tflite_optimize_default():

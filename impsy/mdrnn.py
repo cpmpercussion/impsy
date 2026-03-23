@@ -354,8 +354,8 @@ class TfliteMDRNN(MDRNNInferenceModel):
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
     
 
-    def prepare(self) -> None:
-        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+    def _setup_interpreter(self) -> None:
+        """Load the TFLite interpreter and discover inputs/outputs."""
         self.interpreter = get_tflite_interpreter(model_path=str(self.model_file))
         self.signatures = self.interpreter.get_signature_list()
         if self.signatures:
@@ -364,9 +364,53 @@ class TfliteMDRNN(MDRNNInferenceModel):
         else:
             self.runner = None
             self.interpreter.allocate_tensors()
-            self._input_index = {d['name']: d['index'] for d in self.interpreter.get_input_details()}
-            self._output_details = self.interpreter.get_output_details()
+            # Build input index mapping expected names to tensor indices.
+            # Input order is: inputs, state_h_0, state_c_0, state_h_1, state_c_1, ...
+            expected_names = ['inputs']
+            for i in range(self.n_layers):
+                expected_names.append(f'state_h_{i}')
+                expected_names.append(f'state_c_{i}')
+            input_details = sorted(self.interpreter.get_input_details(), key=lambda d: d['index'])
+            self._input_index = {name: d['index'] for name, d in zip(expected_names, input_details)}
+            # Build output index mapping by shape: MDN output has more columns than n_hidden_units.
+            output_details = self.interpreter.get_output_details()
+            self._mdn_output_index = None
+            state_outputs = []
+            for d in output_details:
+                if d['shape'][-1] != self.n_hidden_units:
+                    self._mdn_output_index = d['index']
+                else:
+                    state_outputs.append(d['index'])
+            state_outputs.sort()
+            self._state_output_indices = state_outputs
 
+    def prepare(self) -> None:
+        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+        try:
+            self._setup_interpreter()
+        except RuntimeError as e:
+            if "Select TensorFlow" not in str(e) and "Flex" not in str(e):
+                raise
+            # Find a sibling weights file (.h5 or .weights.h5) to rebuild from.
+            h5_file = self.model_file.with_suffix(".h5")
+            if not h5_file.exists():
+                h5_file = self.model_file.parent / (self.model_file.stem + ".weights.h5")
+            if not h5_file.exists():
+                raise RuntimeError(
+                    f"TFLite model requires SELECT_TF_OPS and no .h5 weights file found to reconvert from."
+                ) from e
+            click.secho(f"TFLite model uses SELECT_TF_OPS; rebuilding from {h5_file}", fg="yellow")
+            training_model = build_mdrnn_model(
+                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=False
+            )
+            training_model.load_weights(str(h5_file))
+            inference_model = build_mdrnn_model(
+                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True
+            )
+            inference_model.set_weights(training_model.get_weights())
+            from .tflite_converter import model_to_tflite
+            model_to_tflite(inference_model, self.model_file)
+            self._setup_interpreter()
 
     def _discover_output_keys(self):
         """Discover the signature runner output key names for LSTM states.
@@ -434,11 +478,11 @@ class TfliteMDRNN(MDRNNInferenceModel):
             for name, value in runner_input.items():
                 self.interpreter.set_tensor(self._input_index[name], self._to_numpy(value))
             self.interpreter.invoke()
-            ## Outputs ordered: [mdn_out, state_h_0, state_c_0, ...]
-            mdn_params = self.interpreter.get_tensor(self._output_details[0]['index']).squeeze()
+            ## Extract outputs by shape-based indices
+            mdn_params = self.interpreter.get_tensor(self._mdn_output_index).squeeze()
             for i in range(self.n_layers):
-                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._output_details[1 + 2 * i]['index'])
-                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._output_details[2 + 2 * i]['index'])
+                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._state_output_indices[2 * i])
+                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._state_output_indices[2 * i + 1])
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(

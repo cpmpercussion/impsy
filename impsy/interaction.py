@@ -53,6 +53,7 @@ def setup_logging(dimension: int, location="logs", delay_file_open=True):
     file_handler.setFormatter(formatter)
     logger = logging.getLogger("impsylogger")
     logger.setLevel(logging.INFO)
+    logger.propagate = False
     logger.addHandler(file_handler)
 
     click.secho(f"Logging enabled: {log_name}", fg="green")
