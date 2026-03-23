@@ -14,9 +14,9 @@ Here's a [demonstration video showing how IMPSY can be used with different music
 
 ## Installation
 
-IMPSY is written in Python with Keras and TensorFlow Probability, so it should work on any platform where Tensorflow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently relies on Python 3.12, TensorFlow 2.16.2, TensorFlow Probability 0.24.0, and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
+IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
 
-To install IMPSY, first **ensure that you have a Python 3.12** installation available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows (WSL):
+To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows:
 
     curl -sSL https://install.python-poetry.org | python3 -
 
@@ -155,4 +155,4 @@ The network is illustrated here---every time IMPSY receives an interaction messa
 
 ![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/images/mdn_diagram.png)
 
-The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. There's more info and tutorials about MDNs on [that github repo](https://github.com/cpmpercussion/keras-mdn-layer).
+The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. TFLite inference uses [ai-edge-litert](https://pypi.org/project/ai-edge-litert/) (the successor to the TensorFlow Lite runtime). There's more info and tutorials about MDNs on [the keras-mdn-layer github repo](https://github.com/cpmpercussion/keras-mdn-layer).
