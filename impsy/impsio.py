@@ -25,10 +25,12 @@ class IOServer(abc.ABC):
         config: dict,
         callback: Callable[[int, float], None],
         dense_callback: Callable[[List[int]], None],
+        command_callback: Callable[[str, list], None] = None,
     ) -> None:
         self.config = config  # the IMPSY config
         self.callback = callback  # a callback method to report incoming sparse data.(e.g., MIDI notes)
         self.dense_callback = dense_callback  # a callback for dense input data (e.g., lists of OSC arguments)
+        self.command_callback = command_callback  # a callback for command messages (e.g., mode changes)
 
     @abc.abstractmethod
     def send(self, output_values) -> None:
@@ -335,9 +337,12 @@ class OSCServer(IOServer):
     OUTPUT_MESSAGE_ADDRESS = "/impsy"
     TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
     TIMESCALE_MESSAGE_ADDRESS = "/timescale"
+    MODE_MESSAGE_ADDRESS = "/impsy/mode"
+    RESET_MESSAGE_ADDRESS = "/impsy/reset"
+    PAUSE_MESSAGE_ADDRESS = "/impsy/pause"
 
-    def __init__(self, config, callback, dense_callback) -> None:
-        super().__init__(config, callback, dense_callback)
+    def __init__(self, config, callback, dense_callback, command_callback=None) -> None:
+        super().__init__(config, callback, dense_callback, command_callback)
         # Set up OSC client and server
         self.dimension = config["model"][
             "dimension"
@@ -355,6 +360,15 @@ class OSCServer(IOServer):
         )
         self.dispatcher.map(
             OSCServer.TIMESCALE_MESSAGE_ADDRESS, self.handle_timescale_message
+        )
+        self.dispatcher.map(
+            OSCServer.MODE_MESSAGE_ADDRESS, self.handle_mode_message
+        )
+        self.dispatcher.map(
+            OSCServer.RESET_MESSAGE_ADDRESS, self.handle_reset_message
+        )
+        self.dispatcher.map(
+            OSCServer.PAUSE_MESSAGE_ADDRESS, self.handle_pause_message
         )
         self.server = osc_server.ThreadingOSCUDPServer(
             (config["osc"]["server_ip"], config["osc"]["server_port"]), self.dispatcher
@@ -381,6 +395,26 @@ class OSCServer(IOServer):
         if self.verbose:
             click.secho(f"Timescale: {new_timescale}", fg="blue")
         # TODO: do something with this information...
+
+    def handle_mode_message(self, address: str, *osc_arguments) -> None:
+        """Handler for mode change messages: format is s [mode_name]"""
+        if osc_arguments and self.command_callback:
+            mode = str(osc_arguments[0])
+            click.secho(f"OSC: Mode change request: {mode}", fg="blue")
+            self.command_callback("mode", [mode])
+
+    def handle_reset_message(self, address: str, *osc_arguments) -> None:
+        """Handler for LSTM reset messages."""
+        click.secho("OSC: LSTM reset request", fg="blue")
+        if self.command_callback:
+            self.command_callback("reset", [])
+
+    def handle_pause_message(self, address: str, *osc_arguments) -> None:
+        """Handler for pause/resume messages: format is i [0=resume, 1=pause]"""
+        if osc_arguments and self.command_callback:
+            pause = int(osc_arguments[0])
+            click.secho(f"OSC: {'Pause' if pause else 'Resume'} request", fg="blue")
+            self.command_callback("pause", [pause])
 
     def connect(self) -> None:
         click.secho("Preparing OSC server thread.", fg="yellow")

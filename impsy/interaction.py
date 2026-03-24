@@ -14,22 +14,22 @@ from pathlib import Path
 np.set_printoptions(precision=2)
 
 INTERACTION_MODES = {
-    "callresponse": {
+    "callresponse": { # user and model alternate control with RNN taking over after a threshold.
         "user_to_rnn": True,
         "rnn_to_rnn": False,
         "rnn_to_sound": False,
     },
-    "polyphony": {
+    "polyphony": { # user and model control at the same time, but model is not fed back into itself.
         "user_to_rnn": True,
         "rnn_to_rnn": False,
         "rnn_to_sound": True,
     },
-    "battle": {
+    "battle": { # user and model control at the same time but independently, with model fed back into itself.
         "user_to_rnn": False,
         "rnn_to_rnn": True,
         "rnn_to_sound": True,
     },
-    "useronly": {
+    "useronly": { # user control only, for logging without a model loaded.
         "user_to_rnn": False,
         "rnn_to_rnn": False,
         "rnn_to_sound": False,
@@ -45,7 +45,7 @@ def setup_logging(dimension: int, location="logs", delay_file_open=True):
     # make sure logging directory exists.
     log_file.parent.mkdir(parents=True, exist_ok=True)
     log_format = "%(message)s"
-    
+
     # Set up a specific logger for IMPSY
     file_handler = logging.FileHandler(log_file, delay=delay_file_open)
     file_handler.setLevel(logging.INFO)
@@ -129,6 +129,7 @@ class InteractionServer(object):
             "dimension"
         ]  # retrieve dimension from the config file.
         self.mode = self.config["interaction"]["mode"]
+        self.paused = False
 
         ## Set up log
         self.log_location = log_location
@@ -142,19 +143,20 @@ class InteractionServer(object):
                 self.config, self.construct_input_list, self.dense_callback
             )
             self.senders.append(midi_sender)
-        
+
         if "websocket" in self.config:
             websocket_sender = impsio.WebSocketServer(
                 self.config, self.construct_input_list, self.dense_callback
             )
             self.senders.append(websocket_sender)
-        
+
         if "osc" in self.config:
             osc_sender = impsio.OSCServer(
-                self.config, self.construct_input_list, self.dense_callback
+                self.config, self.construct_input_list, self.dense_callback,
+                command_callback=self.handle_command,
             )
             self.senders.append(osc_sender)
-        
+
         if "serial" in self.config:
             self.senders.append(impsio.SerialServer(self.config, self.construct_input_list, self.dense_callback))
 
@@ -196,9 +198,34 @@ class InteractionServer(object):
             mdrnn.random_sample(out_dim=self.dimension)
         )
         self.call_response_mode = "call"
+        self._reset_requested = False
+
+    def handle_command(self, command: str, args: list):
+        """Handle incoming commands from OSC or other sources."""
+        if command == "mode" and args:
+            new_mode = args[0]
+            if new_mode in INTERACTION_MODES:
+                self.mode = new_mode
+                mode_mapping = INTERACTION_MODES[new_mode]
+                self.user_to_rnn = mode_mapping["user_to_rnn"]
+                self.rnn_to_rnn = mode_mapping["rnn_to_rnn"]
+                self.rnn_to_sound = mode_mapping["rnn_to_sound"]
+                self.call_response_mode = "call"
+                click.secho(f"Mode changed to: {new_mode}", bg="blue", fg="white")
+            else:
+                click.secho(f"Unknown mode: {new_mode}", fg="red")
+        elif command == "pause" and args:
+            self.paused = bool(args[0])
+            click.secho(f"{'Paused' if self.paused else 'Resumed'}", bg="yellow", fg="black")
+        elif command == "reset":
+            # Reset will be handled in the prediction loop where we have access to the network
+            self._reset_requested = True
+            click.secho("LSTM reset requested", bg="red", fg="white")
 
     def send_back_values(self, output_values):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
+        if self.paused:
+            return
         output = np.minimum(np.maximum(output_values, 0), 1)
         if self.verbose:
             print_io("out", output, "green")
@@ -357,8 +384,14 @@ class InteractionServer(object):
             rnn_thread.start()
             click.secho("RNN Thread Started", fg="green")
             while True:
-                self.make_prediction(net)
-                if self.config["interaction"]["mode"] == "callresponse":
+                # Handle LSTM reset requests from OSC commands
+                if self._reset_requested:
+                    net.reset_lstm_states()
+                    self._reset_requested = False
+                    click.secho("LSTM states reset.", fg="green")
+                if not self.paused:
+                    self.make_prediction(net)
+                if self.mode == "callresponse":
                     for sender in self.senders:
                         sender.handle()  # handle incoming inputs
                     self.monitor_user_action()
