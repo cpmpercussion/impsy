@@ -1,28 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IMPSY - View Log Files</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>IMPSY Log Files</h1>
+{% extends "base.html" %}
+{% block title %}IMPSY - Log Files{% endblock %}
+{% block content %}
+<h1 class="mb-2">Log Files</h1>
+<p class="text-secondary mb-4">Interaction logs recorded during performances. Run <code>impsy run</code> to record new data.</p>
 
-    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
-    
+<div class="card">
+    <div class="card-body">
     {% if log_files %}
-        <ul>
-        {% for file in log_files %}
-            <li>
-                {{ file }} 
-                <a href="{{ url_for('download_log', filename=file) }}">[Download]</a>
-            </li>
-        {% endfor %}
-        </ul>
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Size</th>
+                    <th>Date</th>
+                    <th>Dim</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for file in log_files %}
+                <tr>
+                    <td><code class="text-break">{{ file.name }}</code></td>
+                    <td class="text-nowrap">{{ file.size }}</td>
+                    <td class="text-nowrap">{{ file.date }}</td>
+                    <td>{{ file.dimension }}d</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ url_for('download_log', filename=file.name) }}" class="btn btn-outline-secondary btn-sm">Download</a>
+                        <form method="POST" action="{{ url_for('delete_log', filename=file.name) }}" class="d-inline" onsubmit="return confirm('Delete {{ file.name }}?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
     {% else %}
-        <p>No log files found.</p>
+        <p class="text-center text-secondary my-4 mb-0">No log files found. Run <code>impsy run</code> to record interactions.</p>
     {% endif %}
-
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

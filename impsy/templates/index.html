@@ -1,42 +1,89 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IMPSY Web Interface</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>IMPSY Web Interface</h1>
+{% extends "base.html" %}
+{% block title %}IMPSY Dashboard{% endblock %}
+{% block content %}
+<h1 class="mb-2">Dashboard</h1>
+<p class="text-secondary mb-4">Follow the workflow steps to set up your interactive music system.</p>
 
-    <h2>Pages:</h2>
-    <ul>
-    {% for route in routes %}
-        {% if route.endpoint != 'index' and route.methods != 'OPTIONS,HEAD' %}
-        <li><a href="{{ route.route }}">{{ route_names.get(route.endpoint, route.endpoint) }}</a></li>
-        {% endif %}
-    {% endfor %}
-    </ul>
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mb-4">
+    <div class="col">
+        <a href="{{ url_for('edit_config') }}" class="card h-100 text-decoration-none text-center workflow-card {% if workflow.config %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="step-icon mx-auto mb-2 {% if workflow.config %}bg-success-subtle text-success{% endif %}">{% if workflow.config %}&#10003;{% else %}1{% endif %}</div>
+                <h6 class="card-title mb-1">Configure</h6>
+                <small class="{% if workflow.config %}text-success{% else %}text-secondary{% endif %}">
+                    {% if workflow.config %}config.toml ready{% else %}Set up I/O and model{% endif %}
+                </small>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a href="{{ url_for('logs') }}" class="card h-100 text-decoration-none text-center workflow-card {% if workflow.logs %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="step-icon mx-auto mb-2 {% if workflow.logs %}bg-success-subtle text-success{% endif %}">{% if workflow.logs %}&#10003;{% else %}2{% endif %}</div>
+                <h6 class="card-title mb-1">Log Data</h6>
+                <small class="{% if workflow.logs %}text-success{% else %}text-secondary{% endif %}">
+                    {% if workflow.logs %}{{ workflow.log_count }} log file{{ 's' if workflow.log_count != 1 }}{% else %}Record interactions{% endif %}
+                </small>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a href="{{ url_for('datasets') }}" class="card h-100 text-decoration-none text-center workflow-card {% if workflow.datasets %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="step-icon mx-auto mb-2 {% if workflow.datasets %}bg-success-subtle text-success{% endif %}">{% if workflow.datasets %}&#10003;{% else %}3{% endif %}</div>
+                <h6 class="card-title mb-1">Build Dataset</h6>
+                <small class="{% if workflow.datasets %}text-success{% else %}text-secondary{% endif %}">
+                    {% if workflow.datasets %}{{ workflow.dataset_count }} dataset{{ 's' if workflow.dataset_count != 1 }}{% else %}Generate from logs{% endif %}
+                </small>
+            </div>
+        </a>
+    </div>
+    <div class="col">
+        <a href="{{ url_for('models') }}" class="card h-100 text-decoration-none text-center workflow-card {% if workflow.models %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="step-icon mx-auto mb-2 {% if workflow.models %}bg-success-subtle text-success{% endif %}">{% if workflow.models %}&#10003;{% else %}4{% endif %}</div>
+                <h6 class="card-title mb-1">Train Model</h6>
+                <small class="{% if workflow.models %}text-success{% else %}text-secondary{% endif %}">
+                    {% if workflow.models %}{{ workflow.model_count }} model{{ 's' if workflow.model_count != 1 }}{% else %}Train or upload{% endif %}
+                </small>
+            </div>
+        </a>
+    </div>
+</div>
 
-    <h2>System Information:</h2>
-    <ul>
-    {% for key, value in hardware_info.items() %}
-        <li><strong>{{ key }}:</strong> {{ value }}</li>
-    {% endfor %}
-    </ul>
-
-    <h2>Project Information:</h2>
-    <ul>
-    {% for key, value in software_info.items() %}
-        <li>
-            <strong>{{ key }}:</strong> 
-            {% if value|lower|startswith('http://') or value|lower|startswith('https://') %}
-                <a href="{{ value }}" target="_blank">{{ value }}</a>
-            {% else %}
-                {{ value }}
-            {% endif %}
-        </li>
-    {% endfor %}
-    </ul>
-</body>
-</html>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">System</h5>
+                <ul class="list-unstyled mb-0">
+                {% for key, value in hardware_info.items() %}
+                    <li class="py-1 border-bottom"><strong class="text-secondary me-2">{{ key }}</strong> {{ value }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Project</h5>
+                <ul class="list-unstyled mb-0">
+                {% for key, value in software_info.items() %}
+                    <li class="py-1 border-bottom">
+                        <strong class="text-secondary me-2">{{ key }}</strong>
+                        {% if value is string and (value.startswith('http://') or value.startswith('https://')) %}
+                            <a href="{{ value }}" target="_blank">{{ value }}</a>
+                        {% elif value is iterable and value is not string %}
+                            {{ value | join(', ') }}
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

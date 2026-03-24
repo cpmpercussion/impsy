@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}IMPSY - Commands{% endblock %}
+{% block content %}
+<h1 class="mb-2">Commands</h1>
+<p class="text-secondary mb-4">Send commands to the running IMPSY interaction server via OSC.</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Server</h5>
+        <p class="text-secondary mb-3">Sending to <code>{{ osc_host }}:{{ osc_port }}</code></p>
+
+        <h5 class="card-title">Mode</h5>
+        <form method="POST">
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 mb-3">
+                <div class="col">
+                    <button type="submit" name="command" value="mode:callresponse" class="btn btn-outline-primary w-100 py-3">
+                        <strong class="d-block">Call &amp; Response</strong>
+                        <small class="text-secondary">RNN responds after user pauses</small>
+                    </button>
+                </div>
+                <div class="col">
+                    <button type="submit" name="command" value="mode:polyphony" class="btn btn-outline-primary w-100 py-3">
+                        <strong class="d-block">Polyphony</strong>
+                        <small class="text-secondary">User and RNN play simultaneously</small>
+                    </button>
+                </div>
+                <div class="col">
+                    <button type="submit" name="command" value="mode:battle" class="btn btn-outline-primary w-100 py-3">
+                        <strong class="d-block">Battle</strong>
+                        <small class="text-secondary">Autonomous RNN performance</small>
+                    </button>
+                </div>
+                <div class="col">
+                    <button type="submit" name="command" value="mode:useronly" class="btn btn-outline-primary w-100 py-3">
+                        <strong class="d-block">User Only</strong>
+                        <small class="text-secondary">Logging only, no predictions</small>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Actions</h5>
+        <form method="POST">
+            <button type="submit" name="command" value="reset" class="btn btn-outline-warning py-3 px-4">
+                <strong class="d-block">Reset LSTM</strong>
+                <small class="text-secondary">Clear the neural network state</small>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@ import pytest
 import os
 import io
 from pathlib import Path
-from impsy.web_interface import app, get_routes, allowed_model_file, allowed_log_file, allowed_dataset_file
+from impsy.web_interface import app, allowed_model_file, allowed_log_file, allowed_dataset_file
 
 
 @pytest.fixture
@@ -15,15 +15,8 @@ def client():
 def test_index_route(client):
     response = client.get('/')
     assert response.status_code == 200
-    assert b'IMPSY Web Interface' in response.data
-
-
-def test_routes_exist():
-    routes = get_routes()
-    assert len(routes) > 0
-    for route in routes:
-        assert 'endpoint' in route
-        assert 'route' in route
+    assert b'IMPSY' in response.data
+    assert b'Dashboard' in response.data
 
 
 def test_logs_route(client):
@@ -45,6 +38,12 @@ def test_datasets_get(client):
 def test_models_get(client):
     """Test GET /models returns 200."""
     response = client.get('/models')
+    assert response.status_code == 200
+
+
+def test_setup_get(client):
+    """Test GET /config/setup returns 200."""
+    response = client.get('/config/setup')
     assert response.status_code == 200
 
 
@@ -117,8 +116,7 @@ def test_models_upload_empty_filename(client):
 
 
 def test_config_post(client, tmp_path):
-    """Test POST /config saves content."""
-    # Back up the config file first
+    """Test POST /config saves content and redirects."""
     from impsy.web_interface import CONFIG_FILE
     config_backup = None
     if os.path.exists(CONFIG_FILE):
@@ -127,8 +125,7 @@ def test_config_post(client, tmp_path):
 
     try:
         response = client.post('/config', data={'config_content': 'title = "test"\n'})
-        assert response.status_code == 200
-        assert b'Config saved' in response.data
+        assert response.status_code == 302  # redirect after save
     finally:
         # Restore the original config
         if config_backup is not None:
@@ -140,3 +137,32 @@ def test_datasets_post(client):
     """Test POST /datasets with dimension triggers dataset generation."""
     response = client.post('/datasets', data={'dimension': '2'}, follow_redirects=True)
     assert response.status_code == 200
+
+
+def test_setup_post(client):
+    """Test POST /config/setup creates a config file and redirects."""
+    from impsy.web_interface import CONFIG_FILE
+    config_backup = None
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            config_backup = f.read()
+
+    try:
+        response = client.post('/config/setup', data={
+            'title': 'Test Instrument',
+            'mode': 'callresponse',
+            'dimension': '5',
+            'model_size': 's',
+            'io_osc': '1',
+        })
+        assert response.status_code == 302
+        assert os.path.exists(CONFIG_FILE)
+        with open(CONFIG_FILE, 'r') as f:
+            content = f.read()
+        assert 'Test Instrument' in content
+        assert 'dimension = 5' in content
+        assert '[osc]' in content
+    finally:
+        if config_backup is not None:
+            with open(CONFIG_FILE, 'w') as f:
+                f.write(config_backup)

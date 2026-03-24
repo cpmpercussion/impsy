@@ -1,42 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IMPSY - View Dataset Files</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>IMPSY Dataset Files</h1>
+{% extends "base.html" %}
+{% block title %}IMPSY - Datasets{% endblock %}
+{% block content %}
+<h1 class="mb-2">Datasets</h1>
+<p class="text-secondary mb-4">Generate training datasets from log files, or manage existing datasets.</p>
 
-    {% with messages = get_flashed_messages()%}
-    {% if messages%}
-    {% for message in messages%}
-    <p>{{message}}</p>
-    {%endfor%}
-    {%endif%}
-    {%endwith%}
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Generate Dataset</h5>
+        <form method="POST" action="{{ url_for('datasets') }}" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="dimension" class="form-label">Dimension</label>
+                <input type="number" class="form-control" id="dimension" name="dimension" required min="2" value="{{ default_dimension }}" style="width: 100px">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Generate Dataset</button>
+            </div>
+        </form>
+        <div class="form-text mt-2">Dimension = number of musical parameters + 1 (for time). Must match your config.</div>
+    </div>
+</div>
 
-    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
-
-    <form method="POST" action="{{ url_for('datasets') }}">
-        <label for="dimension">Dataset Dimension:</label>
-        <input type="number" id="dimension" name="dimension" required min="2">
-        <button type="submit">Generate Dataset</button>
-    </form>
-    
-    {% if dataset_files %}
-        <ul>
-        {% for file in dataset_files %}
-            <li {% if file == new_dataset %}class="highlight"{% endif %}>
-                {{ file }} 
-                <a href="{{ url_for('download_dataset', filename=file) }}">[Download] {% if file == new_dataset %}<i> updated!</i>{% endif %}</a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No dataset files found.</p>
-    {% endif %}
-
-</body>
-</html>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Dataset Files</h5>
+        {% if dataset_files %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Size</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for file in dataset_files %}
+                <tr class="{% if file.name == new_dataset %}table-success{% endif %}">
+                    <td>
+                        <code class="text-break">{{ file.name }}</code>
+                        {% if file.name == new_dataset %}<span class="badge bg-success ms-2">new</span>{% endif %}
+                    </td>
+                    <td class="text-nowrap">{{ file.size }}</td>
+                    <td class="text-nowrap">{{ file.date }}</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ url_for('download_dataset', filename=file.name) }}" class="btn btn-outline-secondary btn-sm">Download</a>
+                        <form method="POST" action="{{ url_for('delete_dataset', filename=file.name) }}" class="d-inline" onsubmit="return confirm('Delete {{ file.name }}?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-center text-secondary my-4 mb-0">No dataset files found. Generate a dataset from your log files above.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

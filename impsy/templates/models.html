@@ -1,31 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IMPSY - Model Files</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>IMPSY Model Files</h1>
+{% extends "base.html" %}
+{% block title %}IMPSY - Models{% endblock %}
+{% block content %}
+<h1 class="mb-2">Models</h1>
+<p class="text-secondary mb-4">Upload trained models or train new ones with <code>impsy train</code>.</p>
 
-    <a href="{{ url_for('index') }}" class="back-link">Back to IMPSY</a>
-    
-    <h2>Upload New Model</h2>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Upload Model</h5>
+        <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="file" class="form-label">Model file (.keras, .h5, or .tflite)</label>
+                <input type="file" class="form-control" name="file" id="file" accept=".keras,.h5,.tflite">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <h2>Existing Models</h2>
-    <ul>
-    {% for file in model_files %}
-        <li>
-            {{ file }} 
-            <a href="{{ url_for('download_model', filename=file) }}">[Download]</a>
-        </li>
-    {% endfor %}
-    </ul>
-
-</body>
-</html>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Model Files</h5>
+        {% if model_files %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Size</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for file in model_files %}
+                <tr>
+                    <td><code class="text-break">{{ file.name }}</code></td>
+                    <td class="text-nowrap">{{ file.size }}</td>
+                    <td class="text-nowrap">{{ file.date }}</td>
+                    <td class="text-end text-nowrap">
+                        <a href="{{ url_for('download_model', filename=file.name) }}" class="btn btn-outline-secondary btn-sm">Download</a>
+                        <form method="POST" action="{{ url_for('delete_model', filename=file.name) }}" class="d-inline" onsubmit="return confirm('Delete {{ file.name }}?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-center text-secondary my-4 mb-0">No model files found. Train a model with <code>impsy train</code> or upload one above.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

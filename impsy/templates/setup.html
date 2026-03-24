@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}IMPSY - Setup Wizard{% endblock %}
+{% block content %}
+<h1 class="mb-2">Setup Wizard</h1>
+<p class="text-secondary mb-4">Create a new configuration for your IMPSY instrument.</p>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="title" class="form-label">Instrument Name</label>
+                <input type="text" class="form-control" id="title" name="title" placeholder="My IMPSY Instrument" value="{{ request.form.get('title', '') }}">
+                <div class="form-text">A descriptive name for this configuration.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Interaction Mode</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="mode_cr" value="callresponse" checked>
+                        <label class="form-check-label" for="mode_cr">Call &amp; Response</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="mode_poly" value="polyphony">
+                        <label class="form-check-label" for="mode_poly">Polyphony</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="mode_battle" value="battle">
+                        <label class="form-check-label" for="mode_battle">Battle</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" id="mode_user" value="useronly">
+                        <label class="form-check-label" for="mode_user">User Only (logging)</label>
+                    </div>
+                </div>
+                <div class="form-text">Call &amp; Response: RNN responds when you pause. Polyphony: simultaneous play. Battle: autonomous RNN. User Only: logging only.</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="dimension" class="form-label">Dimension</label>
+                <input type="number" class="form-control" id="dimension" name="dimension" min="2" max="64" value="9" style="width: 100px">
+                <div class="form-text">Number of musical parameters + 1 (for time). E.g., 8 MIDI controls = dimension 9.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Model Size</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model_size" id="size_xs" value="xs">
+                        <label class="form-check-label" for="size_xs">XS (32)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model_size" id="size_s" value="s" checked>
+                        <label class="form-check-label" for="size_s">S (64)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model_size" id="size_m" value="m">
+                        <label class="form-check-label" for="size_m">M (128)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model_size" id="size_l" value="l">
+                        <label class="form-check-label" for="size_l">L (256)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model_size" id="size_xl" value="xl">
+                        <label class="form-check-label" for="size_xl">XL (512)</label>
+                    </div>
+                </div>
+                <div class="form-text">Larger models are more expressive but slower. S or M recommended for Raspberry Pi.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">I/O Interfaces</label>
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="io_midi" id="io_midi" value="1" checked>
+                        <label class="form-check-label" for="io_midi">MIDI</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="io_osc" id="io_osc" value="1">
+                        <label class="form-check-label" for="io_osc">OSC</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="io_websocket" id="io_ws" value="1">
+                        <label class="form-check-label" for="io_ws">WebSocket</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="io_serial" id="io_serial" value="1">
+                        <label class="form-check-label" for="io_serial">Serial</label>
+                    </div>
+                </div>
+                <div class="form-text">Select which I/O interfaces to include. You can edit the detailed mappings in the config file later.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Configuration</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
