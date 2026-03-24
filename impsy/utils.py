@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import tomllib
 import click
 import mido
@@ -51,15 +50,18 @@ def generate_data(samples: int = 50000, dimension: int = 2):
         0, t_interval / 20.0, size=NSAMPLE
     )  ## fuzz up the time sampling
     t_data = t_data + t_r_data
-    r_data = np.random.normal(size=NSAMPLE)
-    # x_data = np.sin(t_data) * 1.0 + (r_data * 0.05)
-    df = pd.DataFrame({"t": t_data})
+
+    # Build columns: t, x0, x1, ..., x(n-2)
+    columns = np.zeros((NSAMPLE, dimension), dtype=np.float32)
     for i in range(dimension - 1):
-        df[f"x{i}"] = df["t"].apply(fuzzy_sine_function, scale=i)
-    df.t = df.t.diff()
-    df.t = df.t.fillna(1e-4)
-    print(df.describe())
-    return np.array(df)
+        columns[:, i + 1] = np.array([fuzzy_sine_function(t, scale=i) for t in t_data], dtype=np.float32)
+
+    # Compute time diffs
+    dt = np.diff(t_data, prepend=t_data[0])
+    dt[0] = 1e-4
+    columns[:, 0] = dt
+
+    return columns
 
 
 def get_config_data(config_path: str):

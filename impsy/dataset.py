@@ -1,26 +1,48 @@
 """impsy.dataset: functions for generating a dataset from .log files in the log directory."""
 
 import numpy as np
-import pandas as pd
+import csv
 import os
 import click
 from pathlib import Path
+from datetime import datetime
 
 
 def transform_log_to_sequence_example(logfile: str, dimension: int):
-    data_names = ["x" + str(i) for i in range(dimension - 1)]
-    column_names = ["date", "source"] + data_names
-    perf_df = pd.read_csv(
-        logfile, header=None, parse_dates=True, index_col=0, names=column_names
-    )
-    #  Filter out RNN lines, just keep 'interface'
-    perf_df = perf_df[perf_df.source == "interface"]
-    #  Process times.
-    perf_df["t"] = perf_df.index
-    perf_df.t = perf_df.t.diff()
-    perf_df.t = perf_df.t.dt.total_seconds()
-    perf_df = perf_df.dropna()
-    return np.array(perf_df[["t"] + data_names])
+    """Transform a log file into a numpy array of (dt, x_1, ..., x_n) sequences."""
+    timestamps = []
+    values = []
+    n_data_cols = dimension - 1
+    # remember that logs are in format:
+    # timestamp, source, x_1, x_2, ..., x_n
+
+    # this used to be simple pandas, but to eliminate that dependency we do it manually.
+    with open(logfile, 'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) < 2 + n_data_cols:
+                continue
+            source = row[1].strip()
+            if source != "interface":
+                continue # only take interface interactions
+            try:
+                ts = datetime.fromisoformat(row[0].strip())
+                data = [float(row[i]) for i in range(2, 2 + n_data_cols)]
+                timestamps.append(ts)
+                values.append(data)
+            except (ValueError, IndexError):
+                continue
+
+    if len(timestamps) < 2:
+        return np.array([]).reshape(0, dimension)
+
+    # Compute time deltas
+    result = []
+    for i in range(1, len(timestamps)):
+        dt = (timestamps[i] - timestamps[i - 1]).total_seconds()
+        result.append([dt] + values[i])
+
+    return np.array(result, dtype=np.float64)
 
 
 def generate_dataset(

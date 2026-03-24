@@ -1,9 +1,6 @@
 import click
 import time
 from .utils import mdrnn_config
-import pandas as pd
-
-pd.set_option("display.float_format", lambda x: "%.4f" % x)
 
 
 def time_network_build(dimension, size):
