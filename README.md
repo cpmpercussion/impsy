@@ -8,8 +8,8 @@
 
 ![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/predictive_interaction.png)
 
-IMPSY is a platform for creating intelligent musical instruments. 
-It works on a regular computer and on single-board computers such as a Raspberry Pi. 
+IMPSY is a platform for creating intelligent musical instruments.
+It works on regular computers and on single-board computers such as a Raspberry Pi. 
 IMPSY uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. 
 It provides input and output interfaces over MIDI, OSC, WebSockets, and serial and can work with musical interfaces with any number of real valued inputs (we've tried from 1-16). 
 Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. 
