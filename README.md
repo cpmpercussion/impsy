@@ -1,4 +1,4 @@
-# IMPSY: An Intellignet Musical Instrument Platform
+# IMPSY: An Intelligent Musical Instrument Platform
 
 ![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580175.svg)](https://doi.org/10.5281/zenodo.2580175)
