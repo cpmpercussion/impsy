@@ -1,16 +1,21 @@
-# IMPSY: The Interactive Musical Predictive System
+# IMPSY: An Intellignet Musical Instrument Platform
 
 ![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580176.svg)](https://doi.org/10.5281/zenodo.2580176)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580175.svg)](https://doi.org/10.5281/zenodo.2580175)
 [![Install and run IMPSY](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml/badge.svg)](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml)
 [![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/impsy/badge.svg)](https://coveralls.io/github/cpmpercussion/impsy)
 [![PyPI - Version](https://img.shields.io/pypi/v/IMPSY)](https://pypi.org/project/impsy/)
 
 ![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/predictive_interaction.png)
 
-IMPSY is a system for predicting musical control data in live performance. It uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. It provides input and output interfaces over MIDI, OSC, WebSockets, and serial and can work with musical interfaces with any number of real valued inputs (we've tried from 1-8). Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. Whenever you use IMPSY, your input data is logged to build up a training corpus and a script is provided to train new versions of your model.
+IMPSY is a platform for creating intelligent musical instruments. 
+It works on a regular computer and on single-board computers such as a Raspberry Pi. 
+IMPSY uses a mixture density recurrent neural network (MDRNN) to observe control inputs over multiple time steps, predicting the next value of each step, and the time that expects the next value to occur. 
+It provides input and output interfaces over MIDI, OSC, WebSockets, and serial and can work with musical interfaces with any number of real valued inputs (we've tried from 1-16). 
+Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. 
+Whenever you use IMPSY, your input data is logged to build up a training corpus and a command is provided to train new versions of your model.
 
-Here's a [demonstration video showing how IMPSY can be used with different musical interfaces:](https://www.youtube.com/embed/Kdmhrp2dfHw)
+Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
 
 ## Installation
 
