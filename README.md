@@ -23,15 +23,15 @@ We have pre-built SD card images for running IMPSY on a Raspberry Pi. See the [i
 
 The impsy-pi image loads IMPSY automatically at boot and can be configured remotely over a USB connection to your Raspberry Pi.
 
-## Installation
+## Local Installation
+
+If you wish to install IMPSY on a regular computer, or from scratch on a single-board computer here are the instructions. IMPSY is distributed as python software so you will need to use command-line interface to install it.
 
 IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
 
-To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows:
+To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). 
 
-    curl -sSL https://install.python-poetry.org | python3 -
-
-Then you should clone this repository or download it to your computer:
+Once `poetry` is available in your environment, you should clone this repository or download it to your computer:
 
     git clone https://github.com/cpmpercussion/impsy.git
     cd impsy
