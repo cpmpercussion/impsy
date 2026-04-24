@@ -17,6 +17,12 @@ Whenever you use IMPSY, your input data is logged to build up a training corpus 
 
 Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
 
+## Raspberry Pi Setup
+
+We have pre-built SD card images for running IMPSY on a Raspberry Pi. See the [impsy-pi](https://github.com/cpmpercussion/impsy-pi) repository for details.
+
+The impsy-pi image loads IMPSY automatically at boot and can be configured remotely over a USB connection to your Raspberry Pi.
+
 ## Installation
 
 IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
