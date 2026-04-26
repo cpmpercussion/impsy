@@ -15,7 +15,8 @@ It provides input and output interfaces over MIDI, OSC, WebSockets, and serial a
 Several interactive paradigms are supported for call-response improvisation, as well as independent operation, and "filtering" of the performer's input. 
 Whenever you use IMPSY, your input data is logged to build up a training corpus and a command is provided to train new versions of your model.
 
-Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
+- Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
+- IMPSY's homepage, workshop materials, and research and artistic documentation is at: <https://charlesmartin.au/impsy-homepage/>
 
 ## Raspberry Pi Setup
 
