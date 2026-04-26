@@ -6,7 +6,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/impsy/badge.svg)](https://coveralls.io/github/cpmpercussion/impsy)
 [![PyPI - Version](https://img.shields.io/pypi/v/IMPSY)](https://pypi.org/project/impsy/)
 
-![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/predictive_interaction.png)
+![An intelligent musical instrument setup powered by IMPSY running on a Raspberry Pi 53](https://github.com/cpmpercussion/impsy/raw/main/images/impsy-s1-soundout-1000w.jpg)
 
 IMPSY is a platform for creating intelligent musical instruments.
 It works on regular computers and on single-board computers such as a Raspberry Pi. 
@@ -29,9 +29,11 @@ If you wish to install IMPSY on a regular computer, or from scratch on a single-
 
 IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
 
-To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). 
+To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows:
 
-Once `poetry` is available in your environment, you should clone this repository or download it to your computer:
+    curl -sSL https://install.python-poetry.org | python3 -
+
+Then you should clone this repository or download it to your computer:
 
     git clone https://github.com/cpmpercussion/impsy.git
     cd impsy
@@ -50,28 +52,25 @@ There are four steps for using IMPSY. First, you'll need to setup your musical i
 
 ### 1. Connect music interface and synthesis software and configure IMPSY
 
-IMPSY doesn't make any sound, it communicates with other sound making hardware or software and controller hardware or software via MIDI, OSC, WebSockets or serial. You could send and receive predictions from the same sofware (e.g., Pd with OSC input and output) or hardware (e.g., Arturia Microfreak with MIDI in and out). You can also have separate sources for input and output (input from an X-Touch controller with output to Max via OSC) and multiple sources at the same time.
+IMPSY doesn't make any sound, it communicates with other sound making hardware or software and controller hardware or software via MIDI, OSC, WebSockets or serial. You could send and receive predictions from the same sofware (e.g., Pd with OSC input and output) or hardware (e.g., Arturia Microfreak with MIDI in and out). You can also have separate sources for input and output (input from a MIDI controller with output to Max via OSC) and multiple sources at the same time.
 
-You need to decide on a fixed number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9. 
+You need to decide on a fixed number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9.
 
-Your impsy configuration goes in a `.toml` file which by default is called `config.toml`. You can look in the `configs` directory to see many options including `default.toml` which has every possible section filled in.
+Your IMPSY configuration goes in a `.toml` file which by default is called `config.toml`. You can look in the `configs` directory to see many options including `default.toml` which has every possible section filled in.
 
-For MIDI communication, IMPSY receives and sends message for one different note channel or CC for each dimension. Have a look at the `midi` block in `default.toml` for an example.
+For MIDI communication, IMPSY receives and sends message for one different note channel or CC for each dimension. Have a look at the `midi` block in `default.toml` for an example. 
+Here's an example diagram for using IMPSY with a Roland S-1 synthesiser. The MIDI input to IMPSY is 7 control knobs on the synthesiser face and the keyboard. IMPSY outputs MIDI to control the same 7 synth parameters and notes.
+
+![System diagram using IMPSY with a Roland S-1 synthesiser.](https://github.com/cpmpercussion/impsy/raw/main/images/impsy-diagram.png)
+
+So what happens if IMPSY and the performer play at the same time? In this example, it doesn't make sense for both to control the synthesiser at the same time, so we set IMPSY to run in "call and response" mode, so that it only makes predictions when the human has stopped performing.
 
 For OSC and Serial communication, IMPSY receives and sends on every dimension together in single dense messages. The messages to IMPSY should have the OSC address `/interface`, and then a float between 0 and 1 for each continuous output on your interface, e.g.:
 
     /interface 0 0.5 0.23 0.87 0.9 0.7 0.45 0.654
 
-Your synthesiser software or interface needs to listen for messages from the IMPSY system as well. These have the same format with the OSC address `/prediction`. You can interpret these as interactions predicted to occur right when the message is sent.
-The address and port of IMPSY's OSC server is configurable in the `osc` block, see `default.toml`.
+Your synthesiser software or interface needs to listen for messages from the IMPSY system as well. These have the same format with the OSC address `/prediction`. You can interpret these as interactions predicted to occur right when the message is sent. The address and port of IMPSY's OSC server is configurable in the `osc` block, see `default.toml`.
 
-Here's an example diagram for our 8-controller example, the [xtouch mini controller](https://www.musictribe.com/Categories/Behringer/Computer-Audio/Desktop-Controllers/X-TOUCH-MINI/p/P0B3M).
-
-![Predictive Musical Interaction](https://github.com/cpmpercussion/impsy/raw/main/images/IMPS_connection_example.png)
-
-In this example we've used Pd to connect the xtouch mini to IMPSY and to synthesis sounds. Our Pd mapping patch takes data from the xtouch and sends `/interface` OSC messages to IMPSY, it also receives `/prediction` OSC message back from IMPSY whenever they occur. Of course, whenever the user performs with the controller, the mapping patch sends commands to the synthesiser patch to make sound. Whenever `/prediction` messages are received, these also trigger changes in the synth patch, and we also send MIDI messages back to the xtouch controller to update its lights so that the performer knows what IMPSY is predicting.
-
-So what happens if IMPSY and the performer play at the same time? In this example, it doesn't make sense for both to control the synthesiser at the same time, so we set IMPSY to run in "call and response" mode, so that it only makes predictions when the human has stopped performing. We could also set up our mapping patch to use prediction messages for a different synth and use one of the simultaneous performance modes of IMPS.
 
 ### 2. Log some training data
 
@@ -167,3 +166,7 @@ The network is illustrated here---every time IMPSY receives an interaction messa
 ![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/images/mdn_diagram.png)
 
 The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. TFLite inference uses [ai-edge-litert](https://pypi.org/project/ai-edge-litert/) (the successor to the TensorFlow Lite runtime). There's more info and tutorials about MDNs on [the keras-mdn-layer github repo](https://github.com/cpmpercussion/keras-mdn-layer).
+
+## IMPSY History
+
+IMPSY emerged from research at the University of Oslo as part of the EPEC (Engineering Predictabiity with Embodied Cognition) from 2016--2019. The initial software, called IMPS, focussed on OSC interaction and was released in 2019. A rewritten system called IMPSY was released in 2024 with a focus on embedded use within hardware electronic music setups. In 2026, the `keras-mdn-layer` components were rewritten in pure Keras to eliminate dependencies and make the system even lighter for embedded applications.
