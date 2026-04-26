@@ -21,7 +21,7 @@ Here's a demonstration video showing how IMPSY can be used with different musica
 
 We have pre-built SD card images for running IMPSY on a Raspberry Pi. See the [impsy-pi](https://github.com/cpmpercussion/impsy-pi) repository for details.
 
-The impsy-pi image loads IMPSY automatically at boot and can be configured remotely over a USB connection to your Raspberry Pi.
+The `impsy-pi` image loads IMPSY automatically at boot and can be configured remotely over a USB connection to your Raspberry Pi.
 
 ## Local Installation
 
