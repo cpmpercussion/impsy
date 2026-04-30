@@ -501,7 +501,6 @@ class MIDIServer(IOServer):
         self.last_midi_notes = {}  # dict to store last played notes via midi
         self.midi_output_mapping = self.config["midi"]["output"]
         self.midi_input_mapping = self.config["midi"]["input"]
-        # self.websocket_send_midi = None  # TODO implement some kind generic MIDI callback for other output channels.
         self.feedback_protection = feedback_protection
         self.feedback_threshold = feedback_threshold  # default is 0.02s
         # Load feedback protection from config

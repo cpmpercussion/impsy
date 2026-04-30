@@ -380,7 +380,6 @@ class InteractionServer(object):
                     self.rnn_output_buffer.get()
                     self.rnn_output_buffer.task_done()
                 # send MIDI noteoff messages to stop previous sounds
-                # TODO: this could be framed as "control switching"
 
     def playback_rnn_loop(self):
         """Plays back RNN notes from its buffer queue. This loop blocks and should run in a separate thread."""
