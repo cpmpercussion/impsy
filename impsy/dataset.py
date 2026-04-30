@@ -17,14 +17,14 @@ def transform_log_to_sequence_example(logfile: str, dimension: int):
     # timestamp, source, x_1, x_2, ..., x_n
 
     # this used to be simple pandas, but to eliminate that dependency we do it manually.
-    with open(logfile, 'r') as f:
+    with open(logfile, "r") as f:
         reader = csv.reader(f)
         for row in reader:
             if len(row) < 2 + n_data_cols:
                 continue
             source = row[1].strip()
             if source != "interface":
-                continue # only take interface interactions
+                continue  # only take interface interactions
             try:
                 ts = datetime.fromisoformat(row[0].strip())
                 data = [float(row[i]) for i in range(2, 2 + n_data_cols)]
@@ -80,7 +80,7 @@ def generate_dataset(
     interactions = 0
     for l in log_arrays:
         if l.shape[0] == 0:
-            continue # ignore logs with zero values.
+            continue  # ignore logs with zero values.
         acc += l.shape[0] * l.shape[1]
         interactions += l.shape[0]
         time += l.T[0].sum()
@@ -95,7 +95,9 @@ def generate_dataset(
     click.secho(f"total number of interactions: {interactions}", fg="blue")
     click.secho(f"total time represented: {time}", fg="blue")
     click.secho(f"total number of perfs in raw array: {len(raw_perfs)}", fg="blue")
-    raw_perfs = np.array(raw_perfs, dtype=object) # use object encoding to allow inhomogeneous arrays.
+    raw_perfs = np.array(
+        raw_perfs, dtype=object
+    )  # use object encoding to allow inhomogeneous arrays.
     np.savez_compressed(dataset_file, perfs=raw_perfs)
     click.secho(f"done saving: {dataset_name}", fg="green")
     return dataset_file

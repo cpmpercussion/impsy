@@ -4,7 +4,6 @@ import os
 from impsy import dataset
 from impsy import train
 
-
 ## Test logs, data and training.
 
 
@@ -58,14 +57,18 @@ def test_malformed_log_file(tmp_path, dimension):
     log_file = tmp_path / f"2024-01-01T12-00-00-{dimension}d-mdrnn.log"
     log_file.write_text("this is not,valid,csv data\nbad,data,here\n")
     # Should not crash
-    result = dataset.generate_dataset(dimension=dimension, source=str(tmp_path), destination=str(tmp_path))
+    result = dataset.generate_dataset(
+        dimension=dimension, source=str(tmp_path), destination=str(tmp_path)
+    )
     # Result should be None since no valid data was produced
     assert result is None
 
 
 def test_empty_log_directory(tmp_path, dimension):
     """Test dataset generation with no matching log files."""
-    result = dataset.generate_dataset(dimension=dimension, source=str(tmp_path), destination=str(tmp_path))
+    result = dataset.generate_dataset(
+        dimension=dimension, source=str(tmp_path), destination=str(tmp_path)
+    )
     assert result is None
 
 
@@ -76,7 +79,9 @@ def test_log_with_rnn_source_filtered(tmp_path):
     lines = []
     for i in range(10):
         lines.append(f"2024-01-01T12:00:{i:02d},interface,{0.5},{0.5}\n")
-        lines.append(f"2024-01-01T12:00:{i:02d},rnn,{0.9},{0.9}\n")  # should be filtered
+        lines.append(
+            f"2024-01-01T12:00:{i:02d},rnn,{0.9},{0.9}\n"
+        )  # should be filtered
     log_file.write_text("".join(lines))
     log = dataset.transform_log_to_sequence_example(str(log_file), dimension)
     # All entries should be from interface source only

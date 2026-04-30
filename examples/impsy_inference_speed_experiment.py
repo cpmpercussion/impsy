@@ -12,7 +12,6 @@ import pandas as pd
 import click
 import os
 
-
 np.set_printoptions(precision=2)
 pd.set_option("display.float_format", lambda x: "%.3f" % x)
 
@@ -24,7 +23,9 @@ os.makedirs(location, exist_ok=True)
 def create_models(dimension=4, units=64, mixes=5, layers=2):
     """Builds a network and saves weights, model file, and tflite file."""
     start_model_build = time.time()
-    model = mdrnn.build_mdrnn_model(dimension, units, mixes, layers, inference=True, seq_length=1)
+    model = mdrnn.build_mdrnn_model(
+        dimension, units, mixes, layers, inference=True, seq_length=1
+    )
     model_build_time = time.time() - start_model_build
     model_name = mdrnn.mdrnn_model_name(dimension, layers, units, mixes)
 
@@ -36,7 +37,7 @@ def create_models(dimension=4, units=64, mixes=5, layers=2):
     ## Only bother creating if the files don't exist.
     if not model_path.exists():
         model.save(model_path)
-    
+
     if not tflite_path.exists():
         tflite_path = tflite_converter.model_to_tflite(model, model_path)
 
@@ -63,16 +64,16 @@ def experiment(inference_model, model_type, config, num_tests):
         inference_model.generate(input_value)
         time_delta = time.time() - start
         if i > 0:
-          # omit _first_ prediction which is a bit bigger due to setup.
-          out_dict = {
-              "time": time_delta * 1000, # use ms
-              "mixes": config["mixes"],
-              "layers": config["layers"],
-              "units": config["units"],
-              "dimension": config["dimension"],
-              "model_type": model_type,
-          }
-          times.append(out_dict)
+            # omit _first_ prediction which is a bit bigger due to setup.
+            out_dict = {
+                "time": time_delta * 1000,  # use ms
+                "mixes": config["mixes"],
+                "layers": config["layers"],
+                "units": config["units"],
+                "dimension": config["dimension"],
+                "model_type": model_type,
+            }
+            times.append(out_dict)
     return times
 
 
@@ -87,28 +88,31 @@ def run_test(num_tests, config):
 
     models = create_models(dim, units, mixes, layers)
     start_model_load = time.time()
-    keras_model = mdrnn.KerasMDRNN(models["keras"],dim, units, mixes, layers)
+    keras_model = mdrnn.KerasMDRNN(models["keras"], dim, units, mixes, layers)
     keras_load_time = time.time() - start_model_load
 
     inference_times += experiment(keras_model, "keras", config, num_tests)
 
     start_model_load = time.time()
-    tflite_model = mdrnn.TfliteMDRNN(models["tflite"],dim, units, mixes, layers)
+    tflite_model = mdrnn.TfliteMDRNN(models["tflite"], dim, units, mixes, layers)
     tflite_load_time = time.time() - start_model_load
 
     inference_times += experiment(tflite_model, "tflite", config, num_tests)
 
-    load_times.append({
-        "keras_load": keras_load_time, # use s
-        "tflite_load": tflite_load_time, # use s
-        "mixes": mixes,
-        "layers": layers,
-        "units": units,
-        "dimension": dim,
-    })
+    load_times.append(
+        {
+            "keras_load": keras_load_time,  # use s
+            "tflite_load": tflite_load_time,  # use s
+            "mixes": mixes,
+            "layers": layers,
+            "units": units,
+            "dimension": dim,
+        }
+    )
 
     model_files = [models["keras"], models["tflite"]]
     return inference_times, model_files, load_times
+
 
 ### Setup and start the experiment.
 # parameter combinations
@@ -133,10 +137,14 @@ load_experiment = pd.DataFrame.from_records(exp_load_times)
 load_experiment.to_csv(location / "impsy_experiment_loads.csv")
 
 click.secho("keras experiment data:", fg="green")
-click.secho(inference_experiment[inference_experiment['model_type'] == 'keras'].describe())
+click.secho(
+    inference_experiment[inference_experiment["model_type"] == "keras"].describe()
+)
 
 click.secho("tflite experiment data:", fg="green")
-click.secho(inference_experiment[inference_experiment['model_type'] == 'tflite'].describe())
+click.secho(
+    inference_experiment[inference_experiment["model_type"] == "tflite"].describe()
+)
 
 click.secho("model load data:", fg="green")
 click.secho(load_experiment.describe())

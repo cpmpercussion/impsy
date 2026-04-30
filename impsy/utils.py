@@ -54,7 +54,9 @@ def generate_data(samples: int = 50000, dimension: int = 2):
     # Build columns: t, x0, x1, ..., x(n-2)
     columns = np.zeros((NSAMPLE, dimension), dtype=np.float32)
     for i in range(dimension - 1):
-        columns[:, i + 1] = np.array([fuzzy_sine_function(t, scale=i) for t in t_data], dtype=np.float32)
+        columns[:, i + 1] = np.array(
+            [fuzzy_sine_function(t, scale=i) for t in t_data], dtype=np.float32
+        )
 
     # Compute time diffs
     dt = np.diff(t_data, prepend=t_data[0])
@@ -74,18 +76,25 @@ def get_config_data(config_path: str):
         click.secho(f"Error: Could not find config file '{config_path}'.", fg="red")
         raise click.Abort()
     except tomllib.TOMLDecodeError:
-        click.secho(f"Error: Configuration file '{config_path}' is not valid TOML format.", fg="red")
+        click.secho(
+            f"Error: Configuration file '{config_path}' is not valid TOML format.",
+            fg="red",
+        )
         raise click.Abort()
     return config_data
-    
+
 
 # MIDI mapping and message utilities
 
 
-def output_values_to_midi_messages(output_values: List[float], midi_mapping: dict) -> Dict[str, List[mido.Message]]:
+def output_values_to_midi_messages(
+    output_values: List[float], midi_mapping: dict
+) -> Dict[str, List[mido.Message]]:
     """Transforms a list of output values to a list of MIDI messages using a mapping."""
     output = {}
-    output_midi = list(map(int, (np.ceil(output_values * 127)))) # transform output values to MIDI 0-127.
+    output_midi = list(
+        map(int, (np.ceil(output_values * 127)))
+    )  # transform output values to MIDI 0-127.
     # print(output_midi)
     for o_port in midi_mapping:
         output_messages = []
@@ -94,7 +103,12 @@ def output_values_to_midi_messages(output_values: List[float], midi_mapping: dic
                 # note decremented channel (0-15)
                 # note velocity is maximum at 127
                 # print(f"midi note {output_midi[i]}, dest: {o_port}")
-                midi_msg = mido.Message("note_on", channel=midi_mapping[o_port][i][1] - 1, note=output_midi[i], velocity=127)
+                midi_msg = mido.Message(
+                    "note_on",
+                    channel=midi_mapping[o_port][i][1] - 1,
+                    note=output_midi[i],
+                    velocity=127,
+                )
                 output_messages.append(midi_msg)
             elif midi_mapping[o_port][i][0] == "control_change":
                 # note decremented channel (0-15)
@@ -102,9 +116,18 @@ def output_values_to_midi_messages(output_values: List[float], midi_mapping: dic
                 output_val = output_midi[i]
                 if len(midi_mapping[o_port][i]) == 5:
                     # process min/max if provided
-                    output_val = process_midi_min_max(output_val, midi_mapping[o_port][i][3], midi_mapping[o_port][i][4])
+                    output_val = process_midi_min_max(
+                        output_val,
+                        midi_mapping[o_port][i][3],
+                        midi_mapping[o_port][i][4],
+                    )
                 # print(f"midi value {output_val}, dest {o_port}")
-                midi_msg = mido.Message("control_change", channel=midi_mapping[o_port][i][1] - 1, control=midi_mapping[o_port][i][2], value=output_val)
+                midi_msg = mido.Message(
+                    "control_change",
+                    channel=midi_mapping[o_port][i][1] - 1,
+                    control=midi_mapping[o_port][i][2],
+                    value=output_val,
+                )
                 output_messages.append(midi_msg)
         output[o_port] = output_messages
     # return the MIDI messages
@@ -118,17 +141,26 @@ def process_midi_min_max(value: int, min_value: int, max_value: int) -> int:
     return new_value
 
 
-def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> Dict[str, List[mido.Message]]:
+def get_midi_note_offs(
+    midi_mapping: dict, last_midi_notes: dict
+) -> Dict[str, List[mido.Message]]:
     """Get a list of note_off messages for any MIDI channels that have been used for notes."""
     output = {}
-    
+
     for o_port in midi_mapping:
         output_messages = []
-        out_channels = [x[1] for x in midi_mapping[o_port] if x[0] == "note_on"] # just get channels associated with note_on messages.
+        out_channels = [
+            x[1] for x in midi_mapping[o_port] if x[0] == "note_on"
+        ]  # just get channels associated with note_on messages.
         for i in out_channels:
-            channel = i - 1 # decrement to get channel value 0-15
+            channel = i - 1  # decrement to get channel value 0-15
             if channel in last_midi_notes[o_port]:
-                midi_msg = mido.Message("note_off", channel=i - 1,  note=last_midi_notes[o_port][channel], velocity=0)
+                midi_msg = mido.Message(
+                    "note_off",
+                    channel=i - 1,
+                    note=last_midi_notes[o_port][channel],
+                    velocity=0,
+                )
                 output_messages.append(midi_msg)
         output[o_port] = output_messages
 
@@ -138,24 +170,24 @@ def get_midi_note_offs(midi_mapping: dict, last_midi_notes: dict) -> Dict[str, L
 def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int, float):
     """Takes a MIDO message and an input mapping and returns a tuple of index and value for sending to the IMPSY callback."""
     if msg.type == "note_on":
-        index = input_mapping.index(
-            ["note_on", msg.channel + 1]
-        )
+        index = input_mapping.index(["note_on", msg.channel + 1])
         value = msg.note / 127.0
     elif msg.type == "control_change":
-        index = input_mapping.index(
-            ["control_change", msg.channel + 1, msg.control]
-        )
+        index = input_mapping.index(["control_change", msg.channel + 1, msg.control])
         value = msg.value / 127.0
     else:
-        raise ValueError(f"Only note_on and control_change messages can be processed, this was a {msg.type} message.")
+        raise ValueError(
+            f"Only note_on and control_change messages can be processed, this was a {msg.type} message."
+        )
     return (index, value)
 
 
 def match_midi_port_to_list(port, port_list, verbose=True):
     """Return the closest actual MIDI port name given a partial match and a list."""
     if verbose:
-        click.secho(f"Matching MIDI port '{port}' to available ports {port_list}", fg="blue")
+        click.secho(
+            f"Matching MIDI port '{port}' to available ports {port_list}", fg="blue"
+        )
     if port in port_list:
         return port
     contains_list = [x for x in port_list if port in x]
@@ -165,9 +197,10 @@ def match_midi_port_to_list(port, port_list, verbose=True):
         return False
     else:
         return contains_list[0]
-    
+
 
 # Printing functions
+
 
 def print_io(label, values, colour):
     """Neatly prints an array of values with a label."""

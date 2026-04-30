@@ -12,22 +12,26 @@ def default_config():
     """get the default config file."""
     config_path = Path("configs") / "default.toml"
     config = utils.get_config_data(config_path)
-    return(config)
+    return config
+
 
 @pytest.fixture(scope="session")
 def midi_output_mapping(default_config):
     """get the default MIDI output mapping."""
-    return(default_config["midi"]["output"])
+    return default_config["midi"]["output"]
+
 
 @pytest.fixture(scope="session")
 def midi_input_mapping(default_config):
     """get the default MIDI input mapping."""
-    return(default_config["midi"]["input"])
+    return default_config["midi"]["input"]
+
 
 @pytest.fixture(scope="session")
 def output_values(default_config):
     dimension = default_config["model"]["dimension"]
     return np.random.rand(dimension - 1)
+
 
 @pytest.fixture(scope="session")
 def last_midi_notes_dict(midi_output_mapping):
@@ -35,15 +39,21 @@ def last_midi_notes_dict(midi_output_mapping):
     last_midi_notes = {}
     for o_port in midi_output_mapping:
         last_midi_notes[o_port] = {}
-        out_channels = [x[1] for x in midi_output_mapping[o_port] if x[0] == "note_on"] # just get channels associated with note_on messages.
+        out_channels = [
+            x[1] for x in midi_output_mapping[o_port] if x[0] == "note_on"
+        ]  # just get channels associated with note_on messages.
         for chan in out_channels:
-            last_midi_notes[o_port][chan] = 60 # played middle c on each output channel.
+            last_midi_notes[o_port][
+                chan
+            ] = 60  # played middle c on each output channel.
     return last_midi_notes
+
 
 @pytest.fixture(scope="session")
 def sparse_callback():
     def callback():
         return
+
     return callback
 
 
@@ -51,43 +61,50 @@ def sparse_callback():
 def dense_callback():
     def callback():
         return
+
     return callback
 
 
 # test utils.
 
+
 def test_midi_message_handling():
     # notes
-    input_mapping = [['note_on', 1]]
-    note_msg = mido.Message('note_on', channel=0, note=12, velocity=64)
+    input_mapping = [["note_on", 1]]
+    note_msg = mido.Message("note_on", channel=0, note=12, velocity=64)
     index, value = utils.midi_message_to_index_value(note_msg, input_mapping)
-    assert(index == 0 and value == 12/127)
+    assert index == 0 and value == 12 / 127
     # note off
-    note_off_msg = mido.Message('note_off', channel=0, note=12, velocity=0)
+    note_off_msg = mido.Message("note_off", channel=0, note=12, velocity=0)
     try:
         index, value = utils.midi_message_to_index_value(note_off_msg, input_mapping)
     except ValueError as e:
         # supposed to get a valueerror here.
         pass
     # cc
-    input_mapping = [['control_change', 1, 1]]
+    input_mapping = [["control_change", 1, 1]]
     cc_msg = mido.Message("control_change", channel=0, control=1, value=64)
     index, value = utils.midi_message_to_index_value(cc_msg, input_mapping)
-    assert(index == 0 and value == 64/127)
-
+    assert index == 0 and value == 64 / 127
 
 
 def test_midi_mapping_to_output(output_values, midi_output_mapping):
-    output_messages_dict = utils.output_values_to_midi_messages(output_values, midi_output_mapping)
+    output_messages_dict = utils.output_values_to_midi_messages(
+        output_values, midi_output_mapping
+    )
     for output_port in midi_output_mapping:
         output_messages = output_messages_dict[output_port]
-        assert len(output_messages) == len(output_values), "Number of output messages does not match number of output values"
+        assert len(output_messages) == len(
+            output_values
+        ), "Number of output messages does not match number of output values"
         for msg in output_messages:
             assert isinstance(msg, mido.Message), "msg is not a mido.Message object"
 
 
 def test_midi_note_off_generation(midi_output_mapping, last_midi_notes_dict):
-    output_messages_dict = utils.get_midi_note_offs(midi_output_mapping, last_midi_notes_dict)
+    output_messages_dict = utils.get_midi_note_offs(
+        midi_output_mapping, last_midi_notes_dict
+    )
     for output_port in midi_output_mapping:
         output_messages = output_messages_dict[output_port]
         for msg in output_messages:
@@ -102,6 +119,7 @@ def test_midi_note_off_generation(midi_output_mapping, last_midi_notes_dict):
 def io_config(default_config):
     """Config with unique ports to avoid conflicts with session-scoped interaction_server."""
     import copy
+
     config = copy.deepcopy(default_config)
     config["websocket"]["server_port"] = 5099
     config["osc"]["server_port"] = 6099
@@ -110,9 +128,7 @@ def io_config(default_config):
 
 
 def test_websocket_server(io_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.WebSocketServer(
-        io_config, sparse_callback, dense_callback
-    )
+    sender = impsio.WebSocketServer(io_config, sparse_callback, dense_callback)
     sender.connect()
     assert sender.ws_thread is not None
     assert sender.ws_thread.is_alive()
@@ -124,9 +140,7 @@ def test_websocket_server(io_config, sparse_callback, dense_callback, output_val
 
 
 def test_osc_server(io_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.OSCServer(
-        io_config, sparse_callback, dense_callback
-    )
+    sender = impsio.OSCServer(io_config, sparse_callback, dense_callback)
     sender.connect()
     assert sender.server_thread is not None
     assert sender.server_thread.is_alive()
@@ -138,9 +152,7 @@ def test_osc_server(io_config, sparse_callback, dense_callback, output_values):
 
 
 def test_serial_server(default_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.SerialServer(
-        default_config, sparse_callback, dense_callback
-    )
+    sender = impsio.SerialServer(default_config, sparse_callback, dense_callback)
     sender.connect()
     # Serial port likely won't open in test env, so serial should be None
     assert sender.serial is None
@@ -149,10 +161,10 @@ def test_serial_server(default_config, sparse_callback, dense_callback, output_v
     sender.disconnect()
 
 
-def test_serial_midi_server(default_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.SerialMIDIServer(
-        default_config, sparse_callback, dense_callback
-    )
+def test_serial_midi_server(
+    default_config, sparse_callback, dense_callback, output_values
+):
+    sender = impsio.SerialMIDIServer(default_config, sparse_callback, dense_callback)
     sender.connect()
     assert sender.serial is None
     sender.handle()
@@ -161,9 +173,7 @@ def test_serial_midi_server(default_config, sparse_callback, dense_callback, out
 
 
 def test_midi_server(default_config, sparse_callback, dense_callback, output_values):
-    sender = impsio.MIDIServer(
-        default_config, sparse_callback, dense_callback
-    )
+    sender = impsio.MIDIServer(default_config, sparse_callback, dense_callback)
     sender.connect()
     sender.handle()
     sender.send(output_values)
@@ -176,8 +186,10 @@ def test_midi_server(default_config, sparse_callback, dense_callback, output_val
 def test_osc_handle_interface_message(io_config, sparse_callback):
     """Test that OSC interface message handler calls dense_callback."""
     received = []
+
     def mock_dense_callback(values):
         received.append(values)
+
     with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"):
         sender = impsio.OSCServer(io_config, sparse_callback, mock_dense_callback)
     sender.handle_interface_message("/interface", 0.5, 0.6, 0.7)
@@ -205,8 +217,10 @@ def test_osc_handle_timescale_message(io_config, sparse_callback, dense_callback
 def test_serial_handle_with_mock_port(default_config, sparse_callback):
     """Test serial handle parses CSV lines correctly."""
     received = []
+
     def mock_dense_callback(values):
         received.append(values)
+
     sender = impsio.SerialServer(default_config, sparse_callback, mock_dense_callback)
     # Mock a serial connection
     mock_serial = MagicMock()
@@ -232,7 +246,9 @@ def test_serial_handle_invalid_csv(default_config, sparse_callback, dense_callba
     sender.handle()
 
 
-def test_serial_send_with_mock_port(default_config, sparse_callback, dense_callback, output_values):
+def test_serial_send_with_mock_port(
+    default_config, sparse_callback, dense_callback, output_values
+):
     """Test serial send writes CSV data."""
     sender = impsio.SerialServer(default_config, sparse_callback, dense_callback)
     mock_serial = MagicMock()
@@ -241,7 +257,7 @@ def test_serial_send_with_mock_port(default_config, sparse_callback, dense_callb
     mock_serial.write.assert_called_once()
     written_data = mock_serial.write.call_args[0][0]
     assert isinstance(written_data, bytes)
-    assert b'\n' in written_data
+    assert b"\n" in written_data
 
 
 # WebSocket send MIDI tests
@@ -270,7 +286,9 @@ def test_websocket_send_midi_formats(default_config, sparse_callback, dense_call
     mock_client.send.assert_called_with("/channel/1/cc/42/64")
 
 
-def test_websocket_send_midi_removes_dead_client(default_config, sparse_callback, dense_callback):
+def test_websocket_send_midi_removes_dead_client(
+    default_config, sparse_callback, dense_callback
+):
     """Test that dead websocket clients are removed."""
     sender = impsio.WebSocketServer(default_config, sparse_callback, dense_callback)
     mock_client = MagicMock()
@@ -284,7 +302,9 @@ def test_websocket_send_midi_removes_dead_client(default_config, sparse_callback
 # MIDI server feedback protection tests
 
 
-def test_midi_server_feedback_protection(default_config, sparse_callback, dense_callback):
+def test_midi_server_feedback_protection(
+    default_config, sparse_callback, dense_callback
+):
     """Test MIDIServer feedback protection configuration."""
     config = dict(default_config)
     config["midi"] = dict(default_config["midi"])
@@ -310,9 +330,12 @@ def test_midi_server_handle_port_none(default_config, sparse_callback, dense_cal
     sender.handle_port("test")
 
 
-def test_midi_server_handle_port_with_messages(default_config, sparse_callback, dense_callback):
+def test_midi_server_handle_port_with_messages(
+    default_config, sparse_callback, dense_callback
+):
     """Test MIDI handle_port processes messages via callback."""
     received = []
+
     def mock_callback(index, value):
         received.append((index, value))
         return np.random.rand(default_config["model"]["dimension"] - 1)
@@ -328,9 +351,16 @@ def test_midi_server_handle_port_with_messages(default_config, sparse_callback, 
     # Create a CC message matching the first mapping entry
     mapping_entry = input_mapping[0]
     if mapping_entry[0] == "control_change":
-        test_msg = mido.Message("control_change", channel=mapping_entry[1] - 1, control=mapping_entry[2], value=64)
+        test_msg = mido.Message(
+            "control_change",
+            channel=mapping_entry[1] - 1,
+            control=mapping_entry[2],
+            value=64,
+        )
     else:
-        test_msg = mido.Message("note_on", channel=mapping_entry[1] - 1, note=60, velocity=100)
+        test_msg = mido.Message(
+            "note_on", channel=mapping_entry[1] - 1, note=60, velocity=100
+        )
     mock_port.iter_pending.return_value = [test_msg]
     sender.midi_in_port[first_in_port] = mock_port
 
@@ -351,7 +381,9 @@ def test_serial_midi_send_midi_message(default_config, sparse_callback, dense_ca
     mock_serial.write.assert_called_once_with(msg.bin())
 
 
-def test_serial_midi_send_midi_message_no_serial(default_config, sparse_callback, dense_callback):
+def test_serial_midi_send_midi_message_no_serial(
+    default_config, sparse_callback, dense_callback
+):
     """Test SerialMIDI send_midi_message does nothing without serial connection."""
     sender = impsio.SerialMIDIServer(default_config, sparse_callback, dense_callback)
     sender.serial = None
@@ -363,6 +395,7 @@ def test_serial_midi_send_midi_message_no_serial(default_config, sparse_callback
 def test_serial_midi_handle_with_mock(default_config):
     """Test SerialMIDI handle processes MIDI messages from serial."""
     received = []
+
     def mock_callback(index, value):
         received.append((index, value))
         return np.zeros(default_config["model"]["dimension"] - 1)
@@ -378,9 +411,16 @@ def test_serial_midi_handle_with_mock(default_config):
     input_mapping = default_config["serialmidi"]["input"]
     mapping_entry = input_mapping[0]
     if mapping_entry[0] == "control_change":
-        test_msg = mido.Message("control_change", channel=mapping_entry[1] - 1, control=mapping_entry[2], value=64)
+        test_msg = mido.Message(
+            "control_change",
+            channel=mapping_entry[1] - 1,
+            control=mapping_entry[2],
+            value=64,
+        )
     else:
-        test_msg = mido.Message("note_on", channel=mapping_entry[1] - 1, note=60, velocity=100)
+        test_msg = mido.Message(
+            "note_on", channel=mapping_entry[1] - 1, note=60, velocity=100
+        )
 
     # Simulate reading 3 bytes
     mock_serial.in_waiting = 3

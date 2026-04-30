@@ -8,10 +8,11 @@ def time_network_build(dimension, size):
     model_config = mdrnn_config(size)
     start_build = time.time()
     from . import mdrnn
+
     mdrnn.build_mdrnn_model(
-        dimension=dimension, 
-        n_hidden_units=model_config["units"], 
-        n_mixtures=model_config["mixes"], 
+        dimension=dimension,
+        n_hidden_units=model_config["units"],
+        n_mixtures=model_config["mixes"],
         n_layers=model_config["layers"],
         inference=True,
     )

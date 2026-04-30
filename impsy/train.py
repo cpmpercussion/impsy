@@ -6,7 +6,6 @@ import random
 import click
 from pathlib import Path
 
-
 # Model training hyperparameters
 
 SEQ_LEN = 50
@@ -58,11 +57,10 @@ def train_mdrnn(
     save_location: str = "models",
     save_model: bool = True,
     save_weights: bool = False,
-    save_tflite: bool = True, 
+    save_tflite: bool = True,
 ):
     """Loads a dataset, creates a model and runs the training procedure."""
     from . import mdrnn
-
 
     model_config = mdrnn_config(model_size)
     mdrnn_units = model_config["units"]
@@ -150,7 +148,7 @@ def train_mdrnn(
         model_weights_file = save_location / f"{model_name}.weights.h5"
         training_mdrnn.model.save_weights(model_weights_file)
         output["weights_file"] = model_weights_file
-    
+
     if save_model:
         # Save .keras file
         trained_weights = training_mdrnn.model.get_weights()
@@ -163,6 +161,7 @@ def train_mdrnn(
     if save_tflite:
         # Save .tflite file
         from .tflite_converter import model_to_tflite
+
         tflite_file = model_to_tflite(inference_mdrnn.model, model_keras_file)
         output["tflite_file"] = tflite_file
 

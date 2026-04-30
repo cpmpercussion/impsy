@@ -15,7 +15,7 @@ def default_config():
     """get the default config file."""
     config_path = Path("configs") / "default.toml"
     config = utils.get_config_data(config_path)
-    return(config)
+    return config
 
 
 @pytest.fixture(scope="session")
@@ -23,7 +23,7 @@ def user_only_untrained_config():
     """get a config file without a neural network and in user-only mode."""
     config_path = Path("configs") / "user-only-example.toml"
     config = utils.get_config_data(config_path)
-    return(config)
+    return config
 
 
 @pytest.fixture(scope="session")
@@ -54,8 +54,8 @@ def default_neural_network(default_config):
 def test_build_network(default_neural_network, default_config):
     """Test that build_network returns a model with expected attributes."""
     net = default_neural_network
-    assert hasattr(net, 'dimension')
-    assert hasattr(net, 'generate')
+    assert hasattr(net, "dimension")
+    assert hasattr(net, "generate")
     assert net.dimension == default_config["model"]["dimension"]
     assert net.pi_temp == default_config["model"]["pitemp"]
     assert net.sigma_temp == default_config["model"]["sigmatemp"]
@@ -89,7 +89,9 @@ def test_build_network_missing_dimension():
 
 @pytest.fixture(scope="session")
 def interaction_server(default_config, log_location):
-    interaction_server = interaction.InteractionServer(default_config, log_location=log_location)
+    interaction_server = interaction.InteractionServer(
+        default_config, log_location=log_location
+    )
     return interaction_server
 
 

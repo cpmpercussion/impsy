@@ -1,9 +1,11 @@
 import click
 
+
 def test_train_inference_models(dimension, mdrnn_size):
     # import tensorflow as tf
     from impsy import mdrnn
     from impsy.utils import mdrnn_config
+
     click.secho(f"MDRNN size: {mdrnn_size}", fg="blue")
     SEQ_LEN = 50
     # get the params
@@ -33,9 +35,12 @@ def test_train_inference_models(dimension, mdrnn_size):
     assert train_mdrnn.model.count_params() == inference_mdrnn.model.count_params()
 
 
-def test_train_function(dimension, dataset_file, dataset_location, models_location, mdrnn_size):
+def test_train_function(
+    dimension, dataset_file, dataset_location, models_location, mdrnn_size
+):
     import os
     from impsy import train
+
     assert os.path.isfile(dataset_file)
     batch_size = 1
     epochs = 1
@@ -55,8 +60,8 @@ def test_train_function(dimension, dataset_file, dataset_location, models_locati
         save_tflite=False,
     )
     click.echo(train_output)
-    assert 'name' in train_output
-    assert 'history' in train_output
+    assert "name" in train_output
+    assert "history" in train_output
 
 
 # def test_get_trained_model(trained_model):

@@ -39,8 +39,8 @@ def test_training(sequence_length, batch_size, dimension, sequence_slices):
 
 def test_model_config():
     """Tests the model config function."""
-    conf = utils.mdrnn_config('s')
-    assert conf["units"] == utils.SIZE_TO_PARAMETERS['s']['units']
+    conf = utils.mdrnn_config("s")
+    assert conf["units"] == utils.SIZE_TO_PARAMETERS["s"]["units"]
 
 
 ### inference model tests.
@@ -50,6 +50,7 @@ def test_model_config():
 def tflite_model(tflite_file, dimension, units, mixtures, layers):
     model = mdrnn.TfliteMDRNN(tflite_file, dimension, units, mixtures, layers)
     return model
+
 
 def test_tflite_predictions(tflite_model: mdrnn.TfliteMDRNN):
     """Test inference from a TfliteMDRNN model"""
@@ -62,10 +63,12 @@ def test_tflite_predictions(tflite_model: mdrnn.TfliteMDRNN):
         value = mdrnn.proc_generated_touch(value, dimension)
         assert len(value) == dimension
 
+
 @pytest.fixture(scope="session")
 def keras_model(keras_file, dimension, units, mixtures, layers):
     model = mdrnn.KerasMDRNN(keras_file, dimension, units, mixtures, layers)
     return model
+
 
 def test_keras_predictions(keras_model: mdrnn.KerasMDRNN):
     """Test inference from a KerasMDRNN model"""
@@ -78,11 +81,13 @@ def test_keras_predictions(keras_model: mdrnn.KerasMDRNN):
         value = mdrnn.proc_generated_touch(value, dimension)
         assert len(value) == dimension
 
+
 @pytest.fixture(scope="session")
 def weights_model(weights_file, dimension, units, mixtures, layers):
     assert weights_file.suffix == ".h5", "has to be an .h5 weights"
     model = mdrnn.KerasMDRNN(weights_file, dimension, units, mixtures, layers)
     return model
+
 
 def test_weights_predictions(weights_model: mdrnn.KerasMDRNN):
     """Test inference from a KerasMDRNN model"""

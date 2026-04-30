@@ -13,6 +13,7 @@ import tensorflow as tf
 def get_tflite_interpreter(model_path: str):
     """Return a TFLite interpreter for inference."""
     from ai_edge_litert.interpreter import Interpreter
+
     return Interpreter(model_path=model_path)
 
 

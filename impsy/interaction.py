@@ -14,22 +14,22 @@ from pathlib import Path
 np.set_printoptions(precision=2)
 
 INTERACTION_MODES = {
-    "callresponse": { # user and model alternate control with RNN taking over after a threshold.
+    "callresponse": {  # user and model alternate control with RNN taking over after a threshold.
         "user_to_rnn": True,
         "rnn_to_rnn": False,
         "rnn_to_sound": False,
     },
-    "polyphony": { # user and model control at the same time, but model is not fed back into itself.
+    "polyphony": {  # user and model control at the same time, but model is not fed back into itself.
         "user_to_rnn": True,
         "rnn_to_rnn": False,
         "rnn_to_sound": True,
     },
-    "battle": { # user and model control at the same time but independently, with model fed back into itself.
+    "battle": {  # user and model control at the same time but independently, with model fed back into itself.
         "user_to_rnn": False,
         "rnn_to_rnn": True,
         "rnn_to_sound": True,
     },
-    "useronly": { # user control only, for logging without a model loaded.
+    "useronly": {  # user control only, for logging without a model loaded.
         "user_to_rnn": False,
         "rnn_to_rnn": False,
         "rnn_to_sound": False,
@@ -78,15 +78,21 @@ def build_network(config: dict):
     try:
         dimension = config["model"]["dimension"]
     except Exception as e:
-        click.secho(f"MDRNN: Couldn't find a dimension in your config. Please add one!", fg="red")
+        click.secho(
+            f"MDRNN: Couldn't find a dimension in your config. Please add one!",
+            fg="red",
+        )
         raise
 
     try:
-        model_size = config['model']['size']
+        model_size = config["model"]["size"]
         click.secho(f"MDRNN: Using {model_size} model.", fg="green")
     except Exception as e:
         model_size = "s"
-        click.secho(f"MDRNN: Couldn't find a model size in your config, using {model_size}.", fg="red")
+        click.secho(
+            f"MDRNN: Couldn't find a model size in your config, using {model_size}.",
+            fg="red",
+        )
 
     model_config = mdrnn_config(model_size)
     units = model_config["units"]
@@ -96,9 +102,12 @@ def build_network(config: dict):
     try:
         model_file = Path(config["model"]["file"])
     except Exception as e:
-        click.secho(f"MDRNN: Couldn't find a model file in your config. Loading dummy model.", fg="red")
+        click.secho(
+            f"MDRNN: Couldn't find a model file in your config. Loading dummy model.",
+            fg="red",
+        )
         model_file = Path(".")
-    
+
     if model_file.suffix == ".keras" or model_file.suffix == ".h5":
         click.secho(f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green")
         model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
@@ -152,16 +161,26 @@ class InteractionServer(object):
 
         if "osc" in self.config:
             osc_sender = impsio.OSCServer(
-                self.config, self.construct_input_list, self.dense_callback,
+                self.config,
+                self.construct_input_list,
+                self.dense_callback,
                 command_callback=self.handle_command,
             )
             self.senders.append(osc_sender)
 
         if "serial" in self.config:
-            self.senders.append(impsio.SerialServer(self.config, self.construct_input_list, self.dense_callback))
+            self.senders.append(
+                impsio.SerialServer(
+                    self.config, self.construct_input_list, self.dense_callback
+                )
+            )
 
         if "serialmidi" in self.config:
-            self.senders.append(impsio.SerialMIDIServer(self.config, self.construct_input_list, self.dense_callback))
+            self.senders.append(
+                impsio.SerialMIDIServer(
+                    self.config, self.construct_input_list, self.dense_callback
+                )
+            )
 
         # connect all the senders
         for sender in self.senders:
@@ -181,7 +200,9 @@ class InteractionServer(object):
         if self.mode in INTERACTION_MODES:
             mode_mapping = INTERACTION_MODES[self.mode]
         else:
-            click.secho(f"Warning: could not set {self.mode} mode, using default.", fg="yellow")
+            click.secho(
+                f"Warning: could not set {self.mode} mode, using default.", fg="yellow"
+            )
             mode_mapping = INTERACTION_MODES["useronly"]
         click.secho(f"Config: {self.mode} mode.", fg="blue")
         self.user_to_rnn = mode_mapping["user_to_rnn"]
@@ -216,7 +237,9 @@ class InteractionServer(object):
                 click.secho(f"Unknown mode: {new_mode}", fg="red")
         elif command == "pause" and args:
             self.paused = bool(args[0])
-            click.secho(f"{'Paused' if self.paused else 'Resumed'}", bg="yellow", fg="black")
+            click.secho(
+                f"{'Paused' if self.paused else 'Resumed'}", bg="yellow", fg="black"
+            )
         elif command == "reset":
             # Reset will be handled in the prediction loop where we have access to the network
             self._reset_requested = True
@@ -360,13 +383,11 @@ class InteractionServer(object):
                     log_interaction("rnn", x_pred, self.logger)
             self.rnn_output_buffer.task_done()
 
-
     def shutdown(self):
         """Close IO and logs and prepare to exit."""
         for sender in self.senders:
             sender.disconnect()
         close_log(self.logger)
-
 
     def serve_forever(self):
         """Run the interaction server opening required IO."""
@@ -404,8 +425,10 @@ class InteractionServer(object):
 
 
 @click.command(name="run")
-@click.option('--config', '-c', default='config.toml', help='Path to a .toml configuration file.')
-@click.option('--logdir', '-l', default='logs', help='Path to a directory for logs.')
+@click.option(
+    "--config", "-c", default="config.toml", help="Path to a .toml configuration file."
+)
+@click.option("--logdir", "-l", default="logs", help="Path to a directory for logs.")
 def run(config: str, logdir: str):
     """Run IMPSY interaction system with MIDI, WebSockets, and OSC."""
     click.secho("IMPSY Starting up...", fg="blue")

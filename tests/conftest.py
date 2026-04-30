@@ -5,7 +5,6 @@ import os
 import random
 import pytest
 
-
 ## MDRNN configuration
 
 
@@ -13,21 +12,25 @@ import pytest
 def dimension():
     return 8
 
+
 @pytest.fixture(scope="session")
 def mdrnn_size():
     return "xs"
 
+
 @pytest.fixture(scope="session")
 def units(mdrnn_size):
-    return utils.mdrnn_config(mdrnn_size)['units']
+    return utils.mdrnn_config(mdrnn_size)["units"]
+
 
 @pytest.fixture(scope="session")
 def mixtures(mdrnn_size):
-    return utils.mdrnn_config(mdrnn_size)['mixes']
+    return utils.mdrnn_config(mdrnn_size)["mixes"]
+
 
 @pytest.fixture(scope="session")
 def layers(mdrnn_size):
-    return utils.mdrnn_config(mdrnn_size)['layers']
+    return utils.mdrnn_config(mdrnn_size)["layers"]
 
 
 ## Training configuration
@@ -51,10 +54,12 @@ def dataset_location(tmp_path_factory):
     location = tmp_path_factory.mktemp("datasets")
     return location
 
+
 @pytest.fixture(scope="session")
 def log_location(tmp_path_factory):
     location = tmp_path_factory.mktemp("logs")
     return location
+
 
 @pytest.fixture(scope="session")
 def models_location(tmp_path_factory):
@@ -72,8 +77,12 @@ def log_files(log_location, dimension, number=20, events=49):
     print(f"dimension: {dimension}")
     test_log_files = []
     for i in range(number):
-        test_log_file = log_location / f"2024-06-{i:02d}T12-00-00-{dimension}d-mdrnn.log"
-        num_events = random.randint(events, events + 10) # generate a random number of events in a range of 10.
+        test_log_file = (
+            log_location / f"2024-06-{i:02d}T12-00-00-{dimension}d-mdrnn.log"
+        )
+        num_events = random.randint(
+            events, events + 10
+        )  # generate a random number of events in a range of 10.
         with open(test_log_file, "w") as file:
             for j in range(num_events):
                 nums = [random.random() for _ in range(dimension - 1)]
@@ -103,7 +112,9 @@ def sequence_slices(sequence_length, dimension, batch_size):
 
 
 @pytest.fixture(scope="session")
-def trained_model(dimension, dataset_file, dataset_location, models_location, mdrnn_size):
+def trained_model(
+    dimension, dataset_file, dataset_location, models_location, mdrnn_size
+):
     assert os.path.isfile(dataset_file)
     batch_size = 1
     epochs = 1
@@ -127,15 +138,14 @@ def trained_model(dimension, dataset_file, dataset_location, models_location, md
 
 @pytest.fixture(scope="session")
 def tflite_file(trained_model):
-    return trained_model['tflite_file']
+    return trained_model["tflite_file"]
 
 
 @pytest.fixture(scope="session")
 def weights_file(trained_model):
-    return trained_model['weights_file']
+    return trained_model["weights_file"]
 
 
 @pytest.fixture(scope="session")
 def keras_file(trained_model):
-    return trained_model['keras_file']
-
+    return trained_model["keras_file"]

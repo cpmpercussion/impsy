@@ -34,7 +34,9 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
 
     if optimise:
-        click.secho("Using default optimisations: this will reduce model size but may degrade performance.")
+        click.secho(
+            "Using default optimisations: this will reduce model size but may degrade performance."
+        )
         converter.optimizations = [get_tflite_optimize_default()]
 
     converter.inference_input_type = tf.float32
@@ -53,7 +55,7 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
     return output_file
 
 
-def model_file_to_tflite(filename, save_path = None, optimise=False):
+def model_file_to_tflite(filename, save_path=None, optimise=False):
     """Converts a given model"""
     import keras_mdn_layer as mdn_layer
 
@@ -62,11 +64,13 @@ def model_file_to_tflite(filename, save_path = None, optimise=False):
     loaded_model = tf.keras.models.load_model(
         filename, custom_objects={"MDN": mdn_layer.MDN}
     )
-    tflite_file = model_to_tflite(loaded_model, model_file, save_path=save_path, optimise=optimise)
+    tflite_file = model_to_tflite(
+        loaded_model, model_file, save_path=save_path, optimise=optimise
+    )
     return tflite_file
 
 
-def config_to_tflite(config_path, save_path = None, optimise=False):
+def config_to_tflite(config_path, save_path=None, optimise=False):
     """Converts the model specified in a config dictionary to tflite format."""
     import impsy.mdrnn as mdrnn
 
@@ -90,7 +94,7 @@ def config_to_tflite(config_path, save_path = None, optimise=False):
     return tflite_file
 
 
-def weights_file_to_model_file(weights_file, model_size, dimension, save_path = None):
+def weights_file_to_model_file(weights_file, model_size, dimension, save_path=None):
     """Constructs a model from a given weights file and saves as a .keras inference model."""
     import impsy.mdrnn as mdrnn
 
@@ -121,12 +125,18 @@ def weights_file_to_model_file(weights_file, model_size, dimension, save_path = 
 
 
 @click.command(name="convert-tflite")
-@click.option('--model', '-m', help='Path to a .keras model or .h5 weights')
-@click.option('--dimension', '-d', type=int, help='Dimension (only needed for h5 files)')
-@click.option('--size', '-s', help="Size, one of xs, s, m, l, (only needed for h5 files)")
-@click.option('--out_dir', '-o', help="Output location for tflite file.")
+@click.option("--model", "-m", help="Path to a .keras model or .h5 weights")
 @click.option(
-    "--optimise/--no-optimise", default=False, help="Use default optimisations in TFLite conversion (may degrade model performance, but reduce model size)."
+    "--dimension", "-d", type=int, help="Dimension (only needed for h5 files)"
+)
+@click.option(
+    "--size", "-s", help="Size, one of xs, s, m, l, (only needed for h5 files)"
+)
+@click.option("--out_dir", "-o", help="Output location for tflite file.")
+@click.option(
+    "--optimise/--no-optimise",
+    default=False,
+    help="Use default optimisations in TFLite conversion (may degrade model performance, but reduce model size).",
 )
 def convert_tflite(model, dimension, size, out_dir, optimise):
     """Convert existing IMPSY model to tflite format."""
@@ -138,7 +148,11 @@ def convert_tflite(model, dimension, size, out_dir, optimise):
     elif Path(model).suffix == ".h5":
         # it's an h5 file
         if dimension is not None and size is not None:
-            model_file = weights_file_to_model_file(model, size, dimension, save_path=out_dir)
+            model_file = weights_file_to_model_file(
+                model, size, dimension, save_path=out_dir
+            )
             model_file_to_tflite(model_file, save_path=out_dir, optimise=optimise)
         else:
-            click.secho("You need to specify a dimension and size to convert an h5 file.")
+            click.secho(
+                "You need to specify a dimension and size to convert an h5 file."
+            )

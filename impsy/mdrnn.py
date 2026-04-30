@@ -7,6 +7,7 @@ University of Oslo, Norway.
 import os
 import tensorflow as tf
 import keras_mdn_layer as mdn
+
 os.environ.pop("TF_USE_LEGACY_KERAS", None)
 import numpy as np
 import datetime
@@ -14,7 +15,6 @@ from pathlib import Path
 import abc
 import click
 from .compat import get_tflite_interpreter
-
 
 NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
@@ -56,7 +56,9 @@ def lstm_blank_states(layers: int, units: int):
     return states
 
 
-def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int) -> str:
+def mdrnn_model_name(
+    dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int
+) -> str:
     """Returns the name of a model using its parameters"""
     name = f"musicMDRNN"
     name += f"-dim{dimension}"
@@ -67,9 +69,16 @@ def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_m
     return name
 
 
-def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int, inference: bool, seq_length = 30):
+def build_mdrnn_model(
+    dimension: int,
+    n_hidden_units: int,
+    n_mixtures: int,
+    n_layers: int,
+    inference: bool,
+    seq_length=30,
+):
     """Builds a Keras MDRNN model with specified parameters.
-    Can either be a training model or inference model which affects the configured 
+    Can either be a training model or inference model which affects the configured
     sequence length and whether a loss function is added.
     """
     # Set parameters for inference/training versions.
@@ -128,9 +137,7 @@ def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_la
         inputs = data_input
         outputs = mdn_out
     name = mdrnn_model_name(dimension, n_layers, n_hidden_units, n_mixtures)
-    new_model = tf.keras.models.Model(
-        inputs=inputs, outputs=outputs, name=name
-    )
+    new_model = tf.keras.models.Model(inputs=inputs, outputs=outputs, name=name)
 
     if not inference:
         # only need loss function and compile when training
@@ -172,7 +179,7 @@ class PredictiveMusicMDRNN(object):
         self.n_hidden_units = n_hidden_units
         self.n_rnn_layers = layers
         self.n_mixtures = n_mixtures  # number of mixtures
-        self.sequence_length = sequence_length # only needed for training.
+        self.sequence_length = sequence_length  # only needed for training.
 
         # Sampling hyperparameters
         self.pi_temp = 1.5
@@ -185,16 +192,23 @@ class PredictiveMusicMDRNN(object):
         elif self.mode == NET_MODE_TRAIN:
             self.inference = False
             self.training = True
-        
-        self.model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_rnn_layers, self.inference, self.sequence_length)
-        self.model_name = mdrnn_model_name(self.dimension, self.n_rnn_layers, self.n_hidden_units, self.n_mixtures)
+
+        self.model = build_mdrnn_model(
+            self.dimension,
+            self.n_hidden_units,
+            self.n_mixtures,
+            self.n_rnn_layers,
+            self.inference,
+            self.sequence_length,
+        )
+        self.model_name = mdrnn_model_name(
+            self.dimension, self.n_rnn_layers, self.n_hidden_units, self.n_mixtures
+        )
         self.model.summary()
         self.reset_lstm_states()
 
-
     def reset_lstm_states(self):
         self.lstm_states = lstm_blank_states(self.n_rnn_layers, self.n_hidden_units)
-
 
     def load_model(self, model_file):
         try:
@@ -202,7 +216,6 @@ class PredictiveMusicMDRNN(object):
         except OSError as err:
             click.secho(f"Error loading MDRNN from file: {err}", fg="red")
             click.secho(f"Using untrained MDRNN", fg="red")
-
 
     def train(
         self,
@@ -274,7 +287,9 @@ class PredictiveMusicMDRNN(object):
             len(prev_sample) == self.dimension
         ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_sample)
-        prev_sample_tensor = tf.convert_to_tensor(prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR)
+        prev_sample_tensor = tf.convert_to_tensor(
+            prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
+        )
         input_list = [prev_sample_tensor] + self.lstm_states
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
@@ -322,23 +337,22 @@ class MDRNNInferenceModel(abc.ABC):
         self.n_hidden_units = n_hidden_units
         self.n_mixtures = n_mixtures
         self.n_layers = n_layers
-        self.model_name = mdrnn_model_name(self.dimension, self.n_layers, self.n_hidden_units, self.n_mixtures)
+        self.model_name = mdrnn_model_name(
+            self.dimension, self.n_layers, self.n_hidden_units, self.n_mixtures
+        )
         # sampling hyperparameters
         self.pi_temp = 1.5
         self.sigma_temp = 0.01
         self.reset_lstm_states()
-        self.prepare() # load the network files.
-
+        self.prepare()  # load the network files.
 
     def reset_lstm_states(self):
         self.lstm_states = lstm_blank_states(self.n_layers, self.n_hidden_units)
-    
 
     @abc.abstractmethod
     def prepare(self) -> None:
         """Prepare for making predictions."""
         pass
-
 
     @abc.abstractmethod
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
@@ -349,10 +363,15 @@ class MDRNNInferenceModel(abc.ABC):
 class TfliteMDRNN(MDRNNInferenceModel):
     """Loads an MDRNN from a tensorflow lite (.tflite) file for running predictions efficiently."""
 
-
-    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+    def __init__(
+        self,
+        file: Path,
+        dimension: int,
+        n_hidden_units: int,
+        n_mixtures: int,
+        n_layers: int,
+    ) -> None:
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
-    
 
     def _setup_interpreter(self) -> None:
         """Load the TFLite interpreter and discover inputs/outputs."""
@@ -366,26 +385,32 @@ class TfliteMDRNN(MDRNNInferenceModel):
             self.interpreter.allocate_tensors()
             # Build input index mapping expected names to tensor indices.
             # Input order is: inputs, state_h_0, state_c_0, state_h_1, state_c_1, ...
-            expected_names = ['inputs']
+            expected_names = ["inputs"]
             for i in range(self.n_layers):
-                expected_names.append(f'state_h_{i}')
-                expected_names.append(f'state_c_{i}')
-            input_details = sorted(self.interpreter.get_input_details(), key=lambda d: d['index'])
-            self._input_index = {name: d['index'] for name, d in zip(expected_names, input_details)}
+                expected_names.append(f"state_h_{i}")
+                expected_names.append(f"state_c_{i}")
+            input_details = sorted(
+                self.interpreter.get_input_details(), key=lambda d: d["index"]
+            )
+            self._input_index = {
+                name: d["index"] for name, d in zip(expected_names, input_details)
+            }
             # Build output index mapping by shape: MDN output has more columns than n_hidden_units.
             output_details = self.interpreter.get_output_details()
             self._mdn_output_index = None
             state_outputs = []
             for d in output_details:
-                if d['shape'][-1] != self.n_hidden_units:
-                    self._mdn_output_index = d['index']
+                if d["shape"][-1] != self.n_hidden_units:
+                    self._mdn_output_index = d["index"]
                 else:
-                    state_outputs.append(d['index'])
+                    state_outputs.append(d["index"])
             state_outputs.sort()
             self._state_output_indices = state_outputs
 
     def prepare(self) -> None:
-        assert self.model_file.suffix == ".tflite", "TfliteMDRNN only works on .tflite files."
+        assert (
+            self.model_file.suffix == ".tflite"
+        ), "TfliteMDRNN only works on .tflite files."
         try:
             self._setup_interpreter()
         except RuntimeError as e:
@@ -394,21 +419,35 @@ class TfliteMDRNN(MDRNNInferenceModel):
             # Find a sibling weights file (.h5 or .weights.h5) to rebuild from.
             h5_file = self.model_file.with_suffix(".h5")
             if not h5_file.exists():
-                h5_file = self.model_file.parent / (self.model_file.stem + ".weights.h5")
+                h5_file = self.model_file.parent / (
+                    self.model_file.stem + ".weights.h5"
+                )
             if not h5_file.exists():
                 raise RuntimeError(
                     f"TFLite model requires SELECT_TF_OPS and no .h5 weights file found to reconvert from."
                 ) from e
-            click.secho(f"TFLite model uses SELECT_TF_OPS; rebuilding from {h5_file}", fg="yellow")
+            click.secho(
+                f"TFLite model uses SELECT_TF_OPS; rebuilding from {h5_file}",
+                fg="yellow",
+            )
             training_model = build_mdrnn_model(
-                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=False
+                self.dimension,
+                self.n_hidden_units,
+                self.n_mixtures,
+                self.n_layers,
+                inference=False,
             )
             training_model.load_weights(str(h5_file))
             inference_model = build_mdrnn_model(
-                self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True
+                self.dimension,
+                self.n_hidden_units,
+                self.n_mixtures,
+                self.n_layers,
+                inference=True,
             )
             inference_model.set_weights(training_model.get_weights())
             from .tflite_converter import model_to_tflite
+
             model_to_tflite(inference_model, self.model_file)
             self._setup_interpreter()
 
@@ -423,10 +462,14 @@ class TfliteMDRNN(MDRNNInferenceModel):
         while LSTM states have shape (1, n_hidden_units).
         """
         # Do a dummy forward pass to get the output keys and shapes
-        dummy_input = {'inputs': np.zeros((1, 1, self.dimension), dtype=np.float32)}
+        dummy_input = {"inputs": np.zeros((1, 1, self.dimension), dtype=np.float32)}
         for i in range(self.n_layers):
-            dummy_input[f'state_h_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
-            dummy_input[f'state_c_{i}'] = np.zeros((1, self.n_hidden_units), dtype=np.float32)
+            dummy_input[f"state_h_{i}"] = np.zeros(
+                (1, self.n_hidden_units), dtype=np.float32
+            )
+            dummy_input[f"state_c_{i}"] = np.zeros(
+                (1, self.n_hidden_units), dtype=np.float32
+            )
         raw_out = self.runner(**dummy_input)
 
         # Identify MDN output by shape: it has more columns than n_hidden_units
@@ -448,23 +491,21 @@ class TfliteMDRNN(MDRNNInferenceModel):
             self._state_h_keys[i] = state_keys[2 * i]
             self._state_c_keys[i] = state_keys[2 * i + 1]
 
-
     def _to_numpy(self, x):
         """Convert a value to a numpy float32 array."""
-        if hasattr(x, 'numpy'):
+        if hasattr(x, "numpy"):
             return x.numpy()
         return np.asarray(x, dtype=np.float32)
 
-
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
         """makes a prediction. Needs to know the exact state names at the moment."""
-        input_value = prev_value.reshape(1,1,self.dimension) * SCALE_FACTOR
+        input_value = prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
         input_value = input_value.astype(np.float32, copy=False)
         ## Create the input dictionary:
-        runner_input = {'inputs': input_value}
+        runner_input = {"inputs": input_value}
         for i in range(self.n_layers):
-            runner_input[f'state_h_{i}'] = self.lstm_states[2 * i] # h
-            runner_input[f'state_c_{i}'] = self.lstm_states[2 * i + 1] # c
+            runner_input[f"state_h_{i}"] = self.lstm_states[2 * i]  # h
+            runner_input[f"state_c_{i}"] = self.lstm_states[2 * i + 1]  # c
         if self.runner is not None:
             ## Run inference via signature runner
             raw_out = self.runner(**runner_input)
@@ -476,13 +517,19 @@ class TfliteMDRNN(MDRNNInferenceModel):
         else:
             ## Run inference via standard interpreter API
             for name, value in runner_input.items():
-                self.interpreter.set_tensor(self._input_index[name], self._to_numpy(value))
+                self.interpreter.set_tensor(
+                    self._input_index[name], self._to_numpy(value)
+                )
             self.interpreter.invoke()
             ## Extract outputs by shape-based indices
             mdn_params = self.interpreter.get_tensor(self._mdn_output_index).squeeze()
             for i in range(self.n_layers):
-                self.lstm_states[2 * i] = self.interpreter.get_tensor(self._state_output_indices[2 * i])
-                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(self._state_output_indices[2 * i + 1])
+                self.lstm_states[2 * i] = self.interpreter.get_tensor(
+                    self._state_output_indices[2 * i]
+                )
+                self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(
+                    self._state_output_indices[2 * i + 1]
+                )
         # sample from the MDN:
         new_sample = (
             mdn.sample_from_output(
@@ -500,30 +547,48 @@ class TfliteMDRNN(MDRNNInferenceModel):
         return new_sample
 
 
-class  KerasMDRNN(MDRNNInferenceModel):
+class KerasMDRNN(MDRNNInferenceModel):
     """Loads an MDRNN in inference mode from a .keras file."""
 
-
-    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+    def __init__(
+        self,
+        file: Path,
+        dimension: int,
+        n_hidden_units: int,
+        n_mixtures: int,
+        n_layers: int,
+    ) -> None:
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
 
-
     def prepare(self) -> None:
-        assert self.model_file.suffix == ".keras" or self.model_file.suffix == ".h5", "KerasMDRNN only works on .keras or .h5 files."
+        assert (
+            self.model_file.suffix == ".keras" or self.model_file.suffix == ".h5"
+        ), "KerasMDRNN only works on .keras or .h5 files."
         if self.model_file.suffix == ".keras":
             # Loading model for .keras files
             self.model = tf.keras.models.load_model(
-                str(self.model_file),
-                custom_objects={"MDN": mdn.MDN}
+                str(self.model_file), custom_objects={"MDN": mdn.MDN}
             )
         elif self.model_file.suffix == ".h5":
             # .h5 weights are saved from training models (with TimeDistributed),
             # so load into a training model first, then transfer to inference model.
-            training_model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=False)
+            training_model = build_mdrnn_model(
+                self.dimension,
+                self.n_hidden_units,
+                self.n_mixtures,
+                self.n_layers,
+                inference=False,
+            )
             training_model.load_weights(self.model_file)
-            self.model = build_mdrnn_model(self.dimension, self.n_hidden_units, self.n_mixtures, self.n_layers, inference=True, seq_length=1)
+            self.model = build_mdrnn_model(
+                self.dimension,
+                self.n_hidden_units,
+                self.n_mixtures,
+                self.n_layers,
+                inference=True,
+                seq_length=1,
+            )
             self.model.set_weights(training_model.get_weights())
-
 
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
         """Generate one forward prediction from a previous sample in format
@@ -533,7 +598,9 @@ class  KerasMDRNN(MDRNNInferenceModel):
         ), "Only works with samples of the same dimension as the network"
         # print("Input sample", prev_value)
         input_list = [
-            tf.convert_to_tensor(prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR)
+            tf.convert_to_tensor(
+                prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
+            )
         ] + self.lstm_states
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
@@ -562,15 +629,18 @@ class  KerasMDRNN(MDRNNInferenceModel):
 class DummyMDRNN(MDRNNInferenceModel):
     """A dummy MDRNN for use if there is no model available (yet or ever). It just generates the same value over and over again."""
 
-
-    def __init__(self, file: Path, dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int) -> None:
+    def __init__(
+        self,
+        file: Path,
+        dimension: int,
+        n_hidden_units: int,
+        n_mixtures: int,
+        n_layers: int,
+    ) -> None:
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
-
 
     def prepare(self) -> None:
         self.output_value = random_sample(out_dim=self.dimension)
 
-
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
         return self.output_value
-    

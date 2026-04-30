@@ -9,7 +9,9 @@ def test_mdn_builder_function():
 
     SCALE_FACTOR = 10
 
-    def mdrnn_model_name(dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int) -> str:
+    def mdrnn_model_name(
+        dimension: int, n_rnn_layers: int, n_hidden_units: int, n_mixtures: int
+    ) -> str:
         """Returns the name of a model using its parameters"""
         name = f"musicMDRNN"
         name += f"-dim{dimension}"
@@ -19,9 +21,16 @@ def test_mdn_builder_function():
         name += f"-scale{SCALE_FACTOR}"
         return name
 
-    def build_mdrnn_model(dimension: int, n_hidden_units: int, n_mixtures: int, n_layers: int, inference: bool, seq_length = 30):
+    def build_mdrnn_model(
+        dimension: int,
+        n_hidden_units: int,
+        n_mixtures: int,
+        n_layers: int,
+        inference: bool,
+        seq_length=30,
+    ):
         """Builds a Keras MDRNN model with specified parameters.
-        Can either be a training model or inference model which affects the configured 
+        Can either be a training model or inference model which affects the configured
         sequence length and whether a loss function is added.
         """
         # Set parameters for inference/training versions.
@@ -69,8 +78,14 @@ def test_mdn_builder_function():
         # mdn layer
         mdn_layer = mdn.MDN(dimension, n_mixtures, name="mdn_outputs")
         click.secho(f"MDN layer type is: {type(mdn_layer)}", fg="blue")
-        click.secho(f"Is MDN a tf.keras.layer.Layer? {isinstance(mdn_layer, tf.keras.layers.Layer)}", fg="blue")
-        click.secho(f"MDN layer shape: {mdn_layer.compute_output_shape(lstm_out.shape)}", fg="blue")
+        click.secho(
+            f"Is MDN a tf.keras.layer.Layer? {isinstance(mdn_layer, tf.keras.layers.Layer)}",
+            fg="blue",
+        )
+        click.secho(
+            f"MDN layer shape: {mdn_layer.compute_output_shape(lstm_out.shape)}",
+            fg="blue",
+        )
         if time_dist:
             mdn_layer = tf.keras.layers.TimeDistributed(mdn_layer, name="td_mdn")
         mdn_out = mdn_layer(lstm_out)  # apply mdn
@@ -83,9 +98,7 @@ def test_mdn_builder_function():
             inputs = data_input
             outputs = mdn_out
         name = mdrnn_model_name(dimension, n_layers, n_hidden_units, n_mixtures)
-        new_model = tf.keras.models.Model(
-            inputs=inputs, outputs=outputs, name=name
-        )
+        new_model = tf.keras.models.Model(inputs=inputs, outputs=outputs, name=name)
 
         if not inference:
             # only need loss function and compile when training
@@ -96,7 +109,7 @@ def test_mdn_builder_function():
         #     new_model.compile()  # no loss or optimizer needed for inference.
         new_model.summary()
         return new_model
-    
+
     # run the tests.
     n_hidden_units = 32
     dimension = 8
@@ -104,10 +117,24 @@ def test_mdn_builder_function():
     n_layers = 2
 
     # build a training model
-    train_model = build_mdrnn_model(dimension, n_hidden_units, n_mixtures, n_layers=n_layers, inference=False, seq_length=50)
+    train_model = build_mdrnn_model(
+        dimension,
+        n_hidden_units,
+        n_mixtures,
+        n_layers=n_layers,
+        inference=False,
+        seq_length=50,
+    )
     assert isinstance(train_model, tf.keras.models.Model)
     # build an inference model
-    inference_model = build_mdrnn_model(dimension, n_hidden_units, n_mixtures, n_layers=n_layers, inference=True, seq_length = 1)
+    inference_model = build_mdrnn_model(
+        dimension,
+        n_hidden_units,
+        n_mixtures,
+        n_layers=n_layers,
+        inference=True,
+        seq_length=1,
+    )
     assert isinstance(inference_model, tf.keras.models.Model)
     print(f"Train Model Parameters: {train_model.count_params()}")
     print(f"Inference Model Parameters: {inference_model.count_params()}")
