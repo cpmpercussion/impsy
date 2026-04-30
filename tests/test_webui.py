@@ -271,3 +271,42 @@ def test_compute_channel_labels_pads_when_mapping_too_short():
     }
     labels = compute_channel_labels(cfg)
     assert labels == ["Note ch1", "CC1:7", "Ch 2", "Ch 3"]
+
+
+def test_realtime_data_returns_listener_state(client):
+    """/realtime/data returns the listener's latest values plus age in ms."""
+    from impsy import web_interface
+
+    web_interface._monitor_listener = web_interface.MonitorListener(port=14012)
+    web_interface._monitor_listener.latest_in = [0.1, 0.2]
+    web_interface._monitor_listener.latest_out = [0.3, 0.4]
+    web_interface._monitor_listener.in_updated_at = time.time()
+    web_interface._monitor_listener.out_updated_at = time.time() - 0.5
+    try:
+        response = client.get("/realtime/data")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["in"] == [0.1, 0.2]
+        assert data["out"] == [0.3, 0.4]
+        assert 0 <= data["in_age_ms"] < 200
+        assert 400 <= data["out_age_ms"] < 800
+    finally:
+        web_interface._monitor_listener.stop()
+        web_interface._monitor_listener = None
+
+
+def test_realtime_data_returns_nulls_when_empty(client):
+    """If no packets seen yet, /realtime/data returns null arrays."""
+    from impsy import web_interface
+
+    web_interface._monitor_listener = web_interface.MonitorListener(port=14013)
+    try:
+        response = client.get("/realtime/data")
+        data = response.get_json()
+        assert data["in"] is None
+        assert data["out"] is None
+        assert data["in_age_ms"] is None
+        assert data["out_age_ms"] is None
+    finally:
+        web_interface._monitor_listener.stop()
+        web_interface._monitor_listener = None

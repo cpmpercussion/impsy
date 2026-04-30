@@ -583,6 +583,25 @@ def setup_config():
     return render_template("setup.html", active_page="config")
 
 
+@app.route("/realtime/data")
+def realtime_data():
+    """Return the latest in/out values plus their age in ms."""
+    listener = _ensure_monitor_listener()
+    now = time.time()
+
+    def age_ms(values, updated_at):
+        if values is None:
+            return None
+        return int((now - updated_at) * 1000)
+
+    return {
+        "in": listener.latest_in,
+        "out": listener.latest_out,
+        "in_age_ms": age_ms(listener.latest_in, listener.in_updated_at),
+        "out_age_ms": age_ms(listener.latest_out, listener.out_updated_at),
+    }
+
+
 @app.route("/commands", methods=["GET", "POST"])
 def commands():
     """Send OSC commands to the running interaction server."""
