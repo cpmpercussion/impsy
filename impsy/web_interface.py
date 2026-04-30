@@ -5,9 +5,12 @@ import psutil
 import shutil
 import platform
 import os
+import time
 import tomllib
+from threading import Lock, Thread
 from impsy.dataset import generate_dataset
 from pathlib import Path
+from pythonosc import dispatcher, osc_server
 from datetime import datetime
 
 app = Flask(__name__)
@@ -195,6 +198,86 @@ def allowed_log_file(filename):
 
 def allowed_dataset_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"npz"}
+
+
+class MonitorListener:
+    """Lazily-started OSC listener that mirrors IMPSY's /monitor/{in,out} stream.
+
+    Stores the most recently received input/output vectors and timestamps so the
+    /realtime page can render them. UDP packets that arrive when no listener is
+    running are silently lost; that's intentional — the monitor is non-essential.
+    """
+
+    def __init__(self, port: int):
+        self.port = port
+        self.latest_in = None
+        self.latest_out = None
+        self.in_updated_at = 0.0
+        self.out_updated_at = 0.0
+        self._server = None
+        self._thread = None
+
+    def start(self) -> None:
+        if self._server is not None:
+            return  # idempotent
+        disp = dispatcher.Dispatcher()
+        disp.map("/monitor/in", self._on_in)
+        disp.map("/monitor/out", self._on_out)
+        self._server = osc_server.ThreadingOSCUDPServer(
+            ("127.0.0.1", self.port), disp
+        )
+        self._thread = Thread(
+            target=self._server.serve_forever,
+            name="webui_monitor_thread",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._server is None:
+            return
+        self._server.shutdown()
+        try:
+            self._server.socket.close()
+        except Exception:
+            pass
+        self._server = None
+        self._thread = None
+
+    def _on_in(self, address, *args):
+        self.latest_in = list(args)
+        self.in_updated_at = time.time()
+
+    def _on_out(self, address, *args):
+        self.latest_out = list(args)
+        self.out_updated_at = time.time()
+
+
+_monitor_listener: MonitorListener | None = None
+_monitor_listener_lock = Lock()
+
+
+def _ensure_monitor_listener():
+    """Lazily build and start the module-level monitor listener.
+
+    Flask defaults to threaded=True, so two simultaneous first requests could
+    otherwise race here and double-construct the listener (the second start()
+    would fail with port-already-bound). The lock keeps init single-threaded.
+    """
+    global _monitor_listener
+    with _monitor_listener_lock:
+        if _monitor_listener is not None:
+            return _monitor_listener
+        port = 4001
+        try:
+            with open(CONFIG_FILE, "rb") as f:
+                cfg = tomllib.load(f)
+            port = cfg.get("webui", {}).get("monitor_port", 4001)
+        except Exception:
+            pass
+        _monitor_listener = MonitorListener(port)
+        _monitor_listener.start()
+        return _monitor_listener
 
 
 # === Routes ===

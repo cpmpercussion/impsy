@@ -1,7 +1,9 @@
 import pytest
 import os
 import io
+import time
 from pathlib import Path
+from pythonosc import udp_client
 from impsy.web_interface import (
     app,
     allowed_model_file,
@@ -174,3 +176,40 @@ def test_setup_post(client):
         if config_backup is not None:
             with open(CONFIG_FILE, "w") as f:
                 f.write(config_backup)
+
+
+def test_monitor_listener_roundtrip():
+    """A real /monitor/in or /monitor/out packet updates the listener's state."""
+    from impsy.web_interface import MonitorListener
+
+    listener = MonitorListener(port=14010)
+    listener.start()
+    try:
+        client = udp_client.SimpleUDPClient("127.0.0.1", 14010)
+        client.send_message("/monitor/in", [0.1, 0.2, 0.3])
+        # UDP is async — wait briefly for the receiver thread
+        deadline = time.time() + 1.0
+        while time.time() < deadline and listener.latest_in is None:
+            time.sleep(0.02)
+        assert listener.latest_in == pytest.approx([0.1, 0.2, 0.3], rel=1e-5)
+        assert listener.in_updated_at > 0
+
+        client.send_message("/monitor/out", [0.4, 0.5])
+        deadline = time.time() + 1.0
+        while time.time() < deadline and listener.latest_out is None:
+            time.sleep(0.02)
+        assert listener.latest_out == pytest.approx([0.4, 0.5], rel=1e-5)
+    finally:
+        listener.stop()
+
+
+def test_monitor_listener_start_is_idempotent():
+    """Calling start() twice must not raise (port already in use)."""
+    from impsy.web_interface import MonitorListener
+
+    listener = MonitorListener(port=14011)
+    listener.start()
+    try:
+        listener.start()  # second call is a no-op
+    finally:
+        listener.stop()
