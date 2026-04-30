@@ -571,6 +571,12 @@ def setup_config():
                 f"baudrate = 115200",
             ]
 
+        config_lines += [
+            "",
+            "[webui]",
+            "monitor_port = 4001  # Localhost port the webui's Realtime page listens on.",
+        ]
+
         config_text = "\n".join(config_lines) + "\n"
         with open(CONFIG_FILE, "w") as f:
             f.write(config_text)

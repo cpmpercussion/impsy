@@ -106,3 +106,6 @@ output = [ # Volca FM
   ["control_change", 1, 47], # LFO depth
   ["control_change", 1, 48], # Algorithm
 ]
+
+[webui]
+monitor_port = 4001  # Localhost port the webui's Realtime page listens on.
