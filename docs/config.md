@@ -167,7 +167,7 @@ A WebSocket server (`websockets` library) that exchanges MIDI-shaped messages wi
 | `input` | array of arrays | yes | Mapping for incoming WebSocket messages, same format as [MIDI mappings](#midi-mapping-format). Length = `dimension - 1`. |
 | `output` | array of arrays | yes | Mapping for outgoing WebSocket messages, same format as MIDI. Length = `dimension - 1`. |
 
-Messages are slash-separated strings. Outgoing format: `/channel/{ch}/noteon/{note}/{velocity}`, `/channel/{ch}/noteoff/{note}/{velocity}`, `/channel/{ch}/cc/{ctrl}/{value}`. Incoming uses the same shape.
+Messages are slash-separated strings. Outgoing format: `/channel/{ch}/noteon/{note}/{velocity}`, `/channel/{ch}/noteoff/{note}/{velocity}`, `/channel/{ch}/cc/{ctrl}/{value}`. Incoming uses the same shape — clients can echo messages straight back. `{ch}` is **1-based** to match the channel numbers used in `[websocket].input` and the MIDI config tables (so `channel = 1` is MIDI channel 1, not channel 2).
 
 ## `[serial]`
 

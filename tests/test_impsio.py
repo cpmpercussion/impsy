@@ -292,26 +292,68 @@ def test_serial_send_with_mock_port(
 
 
 def test_websocket_send_midi_formats(default_config, sparse_callback, dense_callback):
-    """Test websocket MIDI message formatting."""
+    """Test websocket MIDI message formatting.
+
+    Wire channels are 1-based (mido channel + 1) so they match the channel
+    numbers used in MIDI config mappings.
+    """
     sender = impsio.WebSocketServer(default_config, sparse_callback, dense_callback)
     # Add a mock client
     mock_client = MagicMock()
     sender.ws_clients.add(mock_client)
 
-    # Test note_on
+    # mido channel=0 (MIDI channel 1) → wire "/channel/1/..."
     msg = mido.Message("note_on", channel=0, note=60, velocity=100)
     sender.websocket_send_midi(msg)
-    mock_client.send.assert_called_with("/channel/0/noteon/60/100")
+    mock_client.send.assert_called_with("/channel/1/noteon/60/100")
 
-    # Test note_off
     msg = mido.Message("note_off", channel=0, note=60, velocity=0)
     sender.websocket_send_midi(msg)
-    mock_client.send.assert_called_with("/channel/0/noteoff/60/0")
+    mock_client.send.assert_called_with("/channel/1/noteoff/60/0")
 
-    # Test cc
+    # mido channel=1 (MIDI channel 2) → wire "/channel/2/..."
     msg = mido.Message("control_change", channel=1, control=42, value=64)
     sender.websocket_send_midi(msg)
-    mock_client.send.assert_called_with("/channel/1/cc/42/64")
+    mock_client.send.assert_called_with("/channel/2/cc/42/64")
+
+
+def test_websocket_handler_roundtrip(default_config):
+    """Outgoing wire format must be parseable by the input handler.
+
+    Regression for the old TODO at impsio.py:325 — outgoing was 0-based but
+    incoming looked up against 1-based config, breaking echo-back clients.
+    Also locks in that the handler reads the [websocket].input mapping (not
+    [midi].input, which since multi-port support is a per-device dict).
+    """
+    sender = impsio.WebSocketServer(default_config, lambda i, v: None, lambda v: None)
+    received = []
+    sender.callback = lambda index, value: received.append((index, value))
+
+    # Pick the first cc entry from [websocket].input — channel is 1-based in config
+    cfg_entry = next(
+        e for e in default_config["websocket"]["input"] if e[0] == "control_change"
+    )
+    cfg_chan, cfg_ctrl = cfg_entry[1], cfg_entry[2]
+    expected_index = default_config["websocket"]["input"].index(cfg_entry)
+
+    # Build the wire message via websocket_send_midi
+    mido_chan = cfg_chan - 1  # mido stores channel as 0-based
+    msg = mido.Message(
+        "control_change", channel=mido_chan, control=cfg_ctrl, value=64
+    )
+    captured = []
+    mock_client = MagicMock(send=lambda s: captured.append(s))
+    sender.ws_clients.add(mock_client)
+    sender.websocket_send_midi(msg)
+    wire = captured[0]
+
+    # Feed the same wire bytes back through the handler — should round-trip
+    class FakeWs:
+        def __iter__(self):
+            return iter([wire])
+
+    sender.websocket_handler(FakeWs())
+    assert received == [(expected_index, pytest.approx(64 / 127.0))]
 
 
 def test_websocket_send_midi_removes_dead_client(

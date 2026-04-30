@@ -240,6 +240,7 @@ class WebSocketServer(IOServer):
 
     def __init__(self, config, callback, dense_callback) -> None:
         super().__init__(config, callback, dense_callback)
+        self.verbose = self.config["verbose"]
         self.ws_clients = set()  # storage for potential ws clients.
         self.ws_thread = None
         self.ws_server = None
@@ -291,17 +292,18 @@ class WebSocketServer(IOServer):
             self.ws_server.socket.close()
 
     def websocket_send_midi(self, message):
-        """Sends a mido MIDI message via websockets if available."""
+        """Sends a mido MIDI message via websockets if available.
+
+        Wire channels are 1-based (matching the user-facing MIDI convention used
+        in config mappings); mido's 0-based channel is incremented for transport.
+        """
+        channel = message.channel + 1
         if message.type == "note_on":
-            ws_msg = (
-                f"/channel/{message.channel}/noteon/{message.note}/{message.velocity}"
-            )
+            ws_msg = f"/channel/{channel}/noteon/{message.note}/{message.velocity}"
         elif message.type == "note_off":
-            ws_msg = (
-                f"/channel/{message.channel}/noteoff/{message.note}/{message.velocity}"
-            )
+            ws_msg = f"/channel/{channel}/noteoff/{message.note}/{message.velocity}"
         elif message.type == "control_change":
-            ws_msg = f"/channel/{message.channel}/cc/{message.control}/{message.value}"
+            ws_msg = f"/channel/{channel}/cc/{message.control}/{message.value}"
         else:
             return
         # click.secho(f"WS out: {ws_msg}")
@@ -313,31 +315,32 @@ class WebSocketServer(IOServer):
                 self.ws_clients.remove(ws_client)
 
     def websocket_handler(self, websocket):
-        """Handle websocket input messages that might arrive"""
+        """Handle websocket input messages that might arrive.
+
+        Expected wire format mirrors websocket_send_midi:
+          /channel/<ch1based>/noteon/<note>/<velocity>
+          /channel/<ch1based>/cc/<controller>/<value>
+        """
         self.ws_clients.add(websocket)  # add websocket to the client list.
-        # do the actual handling
         for message in websocket:
-            click.secho(
-                f"WS: {message}", fg="red"
-            )  # TODO: fine for debug, but should be removed really.
+            if self.verbose:
+                click.secho(f"WS in: {message}", fg="blue")
             m = message.split("/")[1:]
             msg_type = m[2]
-            chan = int(m[1])  # TODO: should this be chan+1 or -1 or something.
+            chan = int(m[1])
             note = int(m[3])
             vel = int(m[4])
             if msg_type == "noteon":
-                # note_on
                 try:
-                    index = self.config["midi"]["input"].index(["note_on", chan])
+                    index = self.midi_input_mapping.index(["note_on", chan])
                     value = note / 127.0
                     self.callback(index, value)
                 except ValueError:
                     click.secho(f"WS in: exception with message {message}", fg="red")
                     pass
             elif msg_type == "cc":
-                # cc
                 try:
-                    index = self.config["midi"]["input"].index(
+                    index = self.midi_input_mapping.index(
                         ["control_change", chan, note]
                     )
                     value = vel / 127.0
@@ -345,10 +348,6 @@ class WebSocketServer(IOServer):
                 except ValueError:
                     click.secho(f"WS in: exception with message {message}", fg="red")
                     pass
-            # global websocket
-            # ws_msg = f"/channel/{message.channel}/noteon/{message.note}/{message.velocity}"
-            # ws_msg = f"/channel/{message.channel}/noteoff/{message.note}/{message.velocity}"
-            # ws_msg = f"/channel/{message.channel}/cc/{message.control}/{message.value}"
 
     def websocket_serve_loop(self):
         """Threading websockets server following https://websockets.readthedocs.io/en/stable/reference/sync/server.html"""
