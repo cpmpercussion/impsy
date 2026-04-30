@@ -145,8 +145,9 @@ IMPSY listens on these OSC addresses (not configurable):
 | Address | Type tag | Purpose |
 |---|---|---|
 | `/interface` | `f f ...` | Inbound interaction values. The number of floats must equal `dimension - 1`; values are expected in `[0, 1]`. |
-| `/temperature` | `f f` | Live update of `sigmatemp` and `pitemp`. |
-| `/timescale` | `f` | Live update of `timescale`. |
+| `/impsy/sigmatemp` | `f` | Live update of `[model].sigmatemp`. |
+| `/impsy/pitemp` | `f` | Live update of `[model].pitemp`. |
+| `/impsy/timescale` | `f` | Live update of `[model].timescale`. |
 | `/impsy/mode` | `s` | Switch interaction mode (`callresponse` / `polyphony` / `battle` / `useronly`). |
 | `/impsy/reset` | `i` | Clear the LSTM hidden state. Argument is unused. |
 | `/impsy/pause` | `i` | `1` to pause prediction, `0` to resume. |
@@ -213,7 +214,5 @@ Channels are 1-based in the config (matching standard MIDI conventions); they're
 - **`size` must match the model file.** If you load `musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite`, set `size = "s"` (64 units, 2 layers). Mismatches cause loading errors.
 
 - **An empty `model.file` is valid.** It loads a `DummyMDRNN` that returns random samples. Useful for testing I/O wiring without a trained model, or for `useronly` mode.
-
-- **Live OSC updates are partially wired.** `/temperature` and `/timescale` print but don't currently update the live model state — those handlers have `TODO` markers. Mode/reset/pause are fully wired.
 
 - **Saving from the web UI overwrites the file verbatim.** The Configure page is a plain text editor; it does not validate TOML beyond what `tomllib` does on the next load. Keep a copy in `configs/` if you've spent time on a mapping.

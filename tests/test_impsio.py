@@ -197,18 +197,46 @@ def test_osc_handle_interface_message(io_config, sparse_callback):
     assert received[0] == [0.5, 0.6, 0.7]
 
 
-def test_osc_handle_temperature_message(io_config, sparse_callback, dense_callback):
-    """Test OSC temperature message handler doesn't crash."""
+def test_osc_handle_sigmatemp_message(io_config, sparse_callback, dense_callback):
+    """Test OSC sigmatemp message routes through command_callback."""
+    received = []
     with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"):
-        sender = impsio.OSCServer(io_config, sparse_callback, dense_callback)
-    sender.handle_temperature_message("/temperature", 0.5, 1.0)
+        sender = impsio.OSCServer(
+            io_config,
+            sparse_callback,
+            dense_callback,
+            command_callback=lambda c, a: received.append((c, a)),
+        )
+    sender.handle_sigmatemp_message("/impsy/sigmatemp", 0.05)
+    assert received == [("sigmatemp", [0.05])]
+
+
+def test_osc_handle_pitemp_message(io_config, sparse_callback, dense_callback):
+    """Test OSC pitemp message routes through command_callback."""
+    received = []
+    with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"):
+        sender = impsio.OSCServer(
+            io_config,
+            sparse_callback,
+            dense_callback,
+            command_callback=lambda c, a: received.append((c, a)),
+        )
+    sender.handle_pitemp_message("/impsy/pitemp", 1.5)
+    assert received == [("pitemp", [1.5])]
 
 
 def test_osc_handle_timescale_message(io_config, sparse_callback, dense_callback):
-    """Test OSC timescale message handler doesn't crash."""
+    """Test OSC timescale message routes through command_callback."""
+    received = []
     with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"):
-        sender = impsio.OSCServer(io_config, sparse_callback, dense_callback)
-    sender.handle_timescale_message("/timescale", 2.0)
+        sender = impsio.OSCServer(
+            io_config,
+            sparse_callback,
+            dense_callback,
+            command_callback=lambda c, a: received.append((c, a)),
+        )
+    sender.handle_timescale_message("/impsy/timescale", 2.0)
+    assert received == [("timescale", [2.0])]
 
 
 # Serial handler tests

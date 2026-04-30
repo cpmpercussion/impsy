@@ -220,6 +220,7 @@ class InteractionServer(object):
         )
         self.call_response_mode = "call"
         self._reset_requested = False
+        self.net = None  # populated in serve_forever; OSC commands tolerate None
 
     def handle_command(self, command: str, args: list):
         """Handle incoming commands from OSC or other sources."""
@@ -244,6 +245,29 @@ class InteractionServer(object):
             # Reset will be handled in the prediction loop where we have access to the network
             self._reset_requested = True
             click.secho("LSTM reset requested", bg="red", fg="white")
+        elif command == "sigmatemp" and args:
+            if self.net is None:
+                click.secho("Network not ready, sigmatemp not applied.", fg="yellow")
+            else:
+                self.net.sigma_temp = float(args[0])
+                click.secho(
+                    f"Sigma temp set to {self.net.sigma_temp}", bg="blue", fg="white"
+                )
+        elif command == "pitemp" and args:
+            if self.net is None:
+                click.secho("Network not ready, pitemp not applied.", fg="yellow")
+            else:
+                self.net.pi_temp = float(args[0])
+                click.secho(
+                    f"Pi temp set to {self.net.pi_temp}", bg="blue", fg="white"
+                )
+        elif command == "timescale" and args:
+            self.config["model"]["timescale"] = float(args[0])
+            click.secho(
+                f"Timescale set to {self.config['model']['timescale']}",
+                bg="blue",
+                fg="white",
+            )
 
     def send_back_values(self, output_values):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""
@@ -392,7 +416,7 @@ class InteractionServer(object):
     def serve_forever(self):
         """Run the interaction server opening required IO."""
         click.secho("Preparing MDRNN.", fg="yellow")
-        net = build_network(self.config)
+        self.net = build_network(self.config)
 
         # Threads
         click.secho("Preparing MDRNN thread.", fg="yellow")
@@ -407,11 +431,11 @@ class InteractionServer(object):
             while True:
                 # Handle LSTM reset requests from OSC commands
                 if self._reset_requested:
-                    net.reset_lstm_states()
+                    self.net.reset_lstm_states()
                     self._reset_requested = False
                     click.secho("LSTM states reset.", fg="green")
                 if not self.paused:
-                    self.make_prediction(net)
+                    self.make_prediction(self.net)
                 if self.mode == "callresponse":
                     for sender in self.senders:
                         sender.handle()  # handle incoming inputs

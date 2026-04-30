@@ -371,8 +371,9 @@ class OSCServer(IOServer):
     # Details for OSC output
     INPUT_MESSAGE_ADDRESS = "/interface"
     OUTPUT_MESSAGE_ADDRESS = "/impsy"
-    TEMPERATURE_MESSAGE_ADDRESS = "/temperature"
-    TIMESCALE_MESSAGE_ADDRESS = "/timescale"
+    SIGMA_TEMP_MESSAGE_ADDRESS = "/impsy/sigmatemp"
+    PI_TEMP_MESSAGE_ADDRESS = "/impsy/pitemp"
+    TIMESCALE_MESSAGE_ADDRESS = "/impsy/timescale"
     MODE_MESSAGE_ADDRESS = "/impsy/mode"
     RESET_MESSAGE_ADDRESS = "/impsy/reset"
     PAUSE_MESSAGE_ADDRESS = "/impsy/pause"
@@ -392,7 +393,10 @@ class OSCServer(IOServer):
             OSCServer.INPUT_MESSAGE_ADDRESS, self.handle_interface_message
         )
         self.dispatcher.map(
-            OSCServer.TEMPERATURE_MESSAGE_ADDRESS, self.handle_temperature_message
+            OSCServer.SIGMA_TEMP_MESSAGE_ADDRESS, self.handle_sigmatemp_message
+        )
+        self.dispatcher.map(
+            OSCServer.PI_TEMP_MESSAGE_ADDRESS, self.handle_pitemp_message
         )
         self.dispatcher.map(
             OSCServer.TIMESCALE_MESSAGE_ADDRESS, self.handle_timescale_message
@@ -407,24 +411,26 @@ class OSCServer(IOServer):
     def handle_interface_message(self, address: str, *osc_arguments) -> None:
         self.dense_callback([*osc_arguments])
 
-    def handle_temperature_message(self, address: str, *osc_arguments) -> None:
-        """Handler for temperature messages from the interface: format is ff [sigma temp, pi temp]"""
-        new_sigma_temp = osc_arguments[0]
-        new_pi_temp = osc_arguments[1]
-        if self.verbose:
-            click.secho(
-                f"Temperature -- Sigma: {new_sigma_temp}, Pi: {new_pi_temp}", fg="blue"
-            )
-        # TODO, set the network temperature somehow.
-        # net.sigma_temp = new_sigma_temp
-        # net.pi_temp = new_pi_temp
+    def handle_sigmatemp_message(self, address: str, *osc_arguments) -> None:
+        """Handler for sigma temperature messages: format is f [sigma_temp]"""
+        if osc_arguments and self.command_callback:
+            new_sigma_temp = float(osc_arguments[0])
+            click.secho(f"OSC: Sigma temp set to {new_sigma_temp}", fg="blue")
+            self.command_callback("sigmatemp", [new_sigma_temp])
+
+    def handle_pitemp_message(self, address: str, *osc_arguments) -> None:
+        """Handler for pi temperature messages: format is f [pi_temp]"""
+        if osc_arguments and self.command_callback:
+            new_pi_temp = float(osc_arguments[0])
+            click.secho(f"OSC: Pi temp set to {new_pi_temp}", fg="blue")
+            self.command_callback("pitemp", [new_pi_temp])
 
     def handle_timescale_message(self, address: str, *osc_arguments) -> None:
         """Handler for timescale messages: format is f [timescale]"""
-        new_timescale = osc_arguments[0]
-        if self.verbose:
-            click.secho(f"Timescale: {new_timescale}", fg="blue")
-        # TODO: do something with this information...
+        if osc_arguments and self.command_callback:
+            new_timescale = float(osc_arguments[0])
+            click.secho(f"OSC: Timescale set to {new_timescale}", fg="blue")
+            self.command_callback("timescale", [new_timescale])
 
     def handle_mode_message(self, address: str, *osc_arguments) -> None:
         """Handler for mode change messages: format is s [mode_name]"""

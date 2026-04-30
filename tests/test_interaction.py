@@ -299,3 +299,31 @@ def test_construct_input_list_updates_state(interaction_server, default_dimensio
     # Drain the queue
     while not interaction_server.interface_input_queue.empty():
         interaction_server.interface_input_queue.get_nowait()
+
+
+def test_handle_command_sigmatemp(interaction_server, default_neural_network):
+    """Test that the sigmatemp command updates the live network."""
+    interaction_server.net = default_neural_network
+    interaction_server.handle_command("sigmatemp", [0.07])
+    assert interaction_server.net.sigma_temp == 0.07
+
+
+def test_handle_command_pitemp(interaction_server, default_neural_network):
+    """Test that the pitemp command updates the live network."""
+    interaction_server.net = default_neural_network
+    interaction_server.handle_command("pitemp", [1.5])
+    assert interaction_server.net.pi_temp == 1.5
+
+
+def test_handle_command_timescale(interaction_server):
+    """Test that the timescale command updates the config used by playback."""
+    interaction_server.handle_command("timescale", [2.5])
+    assert interaction_server.config["model"]["timescale"] == 2.5
+
+
+def test_handle_command_temp_before_network_loaded(interaction_server):
+    """Test that temperature commands are tolerated before the network is built."""
+    interaction_server.net = None
+    # Should not raise
+    interaction_server.handle_command("sigmatemp", [0.05])
+    interaction_server.handle_command("pitemp", [1.0])
