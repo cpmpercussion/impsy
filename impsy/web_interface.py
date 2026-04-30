@@ -95,9 +95,9 @@ def compute_channel_labels(config: dict) -> list[str]:
     for i in range(n):
         if i < len(mapping):
             entry = mapping[i]
-            if entry[0] == "note_on":
+            if entry[0] == "note_on" and len(entry) >= 2:
                 labels.append(f"Note ch{entry[1]}")
-            elif entry[0] == "control_change":
+            elif entry[0] == "control_change" and len(entry) >= 3:
                 labels.append(f"CC{entry[1]}:{entry[2]}")
             else:
                 labels.append(f"Ch {i}")

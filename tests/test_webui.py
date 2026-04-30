@@ -273,6 +273,27 @@ def test_compute_channel_labels_pads_when_mapping_too_short():
     assert labels == ["Note ch1", "CC1:7", "Ch 2", "Ch 3"]
 
 
+def test_compute_channel_labels_handles_malformed_entry():
+    """Truncated/malformed mapping entries fall back to numeric labels rather
+    than crashing the realtime page with an IndexError."""
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {
+        "model": {"dimension": 4},
+        "midi": {
+            "input": {
+                "Foo": [
+                    ["note_on"],            # missing channel
+                    ["control_change", 1],  # missing controller number
+                    ["unknown_kind", 1, 2],  # unrecognised type
+                ]
+            }
+        },
+    }
+    labels = compute_channel_labels(cfg)
+    assert labels == ["Ch 0", "Ch 1", "Ch 2"]
+
+
 def test_realtime_data_returns_listener_state(client):
     """/realtime/data returns the listener's latest values plus age in ms."""
     from impsy import web_interface
