@@ -189,6 +189,24 @@ def test_dense_callback(interaction_server, default_dimension):
         interaction_server.interface_input_queue.get_nowait()
 
 
+def test_dense_callback_broadcasts_in(
+    interaction_server, default_dimension, monkeypatch
+):
+    """dense_callback should fire _broadcast_monitor with direction='in'."""
+    sent = []
+    monkeypatch.setattr(
+        interaction_server,
+        "_broadcast_monitor",
+        lambda d, v: sent.append((d, list(v))),
+    )
+    values = list(np.random.rand(default_dimension - 1))
+    interaction_server.dense_callback(values)
+    assert sent == [("in", values)]
+    # drain the queue dense_callback populated
+    while not interaction_server.interface_input_queue.empty():
+        interaction_server.interface_input_queue.get_nowait()
+
+
 def test_send_values(interaction_server, default_dimension):
     """Test that send_back_values clips output to [0, 1]."""
     # Values outside [0,1] should be clipped

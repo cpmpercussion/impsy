@@ -298,6 +298,7 @@ class InteractionServer(object):
     def dense_callback(self, values) -> None:
         """insert a dense input list into the interaction stream (e.g., when receiving OSC)."""
         values_arr = np.array(values)
+        self._broadcast_monitor("in", values_arr)
         if self.verbose:
             print_io("in", values_arr, "yellow")
         log_interaction("interface", values_arr, self.logger)
