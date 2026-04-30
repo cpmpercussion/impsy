@@ -384,8 +384,16 @@ class OSCServer(IOServer):
             "dimension"
         ]  # retrieve dimension from the config file.
         self.verbose = config["verbose"]
+        client_ip = config["osc"]["client_ip"]
+        if client_ip in ("0.0.0.0", "::", ""):
+            click.secho(
+                f"OSC: client_ip {client_ip!r} is not a valid send destination; "
+                "coercing to 127.0.0.1.",
+                fg="yellow",
+            )
+            client_ip = "127.0.0.1"
         self.osc_client = udp_client.SimpleUDPClient(
-            config["osc"]["client_ip"], config["osc"]["client_port"]
+            client_ip, config["osc"]["client_port"]
         )
         self.dispatcher = dispatcher.Dispatcher()
         self.dispatcher.map(

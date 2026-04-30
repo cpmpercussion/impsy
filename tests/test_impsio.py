@@ -239,6 +239,33 @@ def test_osc_handle_timescale_message(io_config, sparse_callback, dense_callback
     assert received == [("timescale", [2.0])]
 
 
+@pytest.mark.parametrize("bad_ip", ["0.0.0.0", "::", ""])
+def test_osc_client_ip_wildcard_coerced_to_localhost(
+    io_config, sparse_callback, dense_callback, bad_ip
+):
+    """OSCServer must coerce wildcard client_ip values to 127.0.0.1 — sending
+    UDP to 0.0.0.0 / :: / empty raises 'No route to host' on macOS.
+    """
+    io_config["osc"]["client_ip"] = bad_ip
+    with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"), patch(
+        "impsy.impsio.udp_client.SimpleUDPClient"
+    ) as mock_client:
+        impsio.OSCServer(io_config, sparse_callback, dense_callback)
+    mock_client.assert_called_with("127.0.0.1", io_config["osc"]["client_port"])
+
+
+def test_osc_client_ip_concrete_address_passed_through(
+    io_config, sparse_callback, dense_callback
+):
+    """Concrete (non-wildcard) client_ip values must be used as-is."""
+    io_config["osc"]["client_ip"] = "192.168.1.50"
+    with patch("impsy.impsio.osc_server.ThreadingOSCUDPServer"), patch(
+        "impsy.impsio.udp_client.SimpleUDPClient"
+    ) as mock_client:
+        impsio.OSCServer(io_config, sparse_callback, dense_callback)
+    mock_client.assert_called_with("192.168.1.50", io_config["osc"]["client_port"])
+
+
 # Serial handler tests
 
 
