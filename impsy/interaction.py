@@ -10,6 +10,7 @@ import click
 from .utils import mdrnn_config, get_config_data, print_io
 import impsy.impsio as impsio
 from pathlib import Path
+from pythonosc import udp_client
 
 np.set_printoptions(precision=2)
 
@@ -220,6 +221,10 @@ class InteractionServer(object):
         )
         self.call_response_mode = "call"
         self._reset_requested = False
+        self._monitor_port = self.config.get("webui", {}).get("monitor_port", 4001)
+        self._monitor_client = udp_client.SimpleUDPClient(
+            "127.0.0.1", self._monitor_port
+        )
         self.net = None  # populated in serve_forever; OSC commands tolerate None
 
     def handle_command(self, command: str, args: list):
@@ -268,6 +273,17 @@ class InteractionServer(object):
                 bg="blue",
                 fg="white",
             )
+
+    def _broadcast_monitor(self, direction: str, values) -> None:
+        """Send a copy of the latest in/out vector to the localhost monitor port.
+
+        Failures are swallowed: a non-running webui must never break IMPSY.
+        """
+        addr = "/monitor/in" if direction == "in" else "/monitor/out"
+        try:
+            self._monitor_client.send_message(addr, list(values))
+        except Exception:
+            pass
 
     def send_back_values(self, output_values):
         """sends back sound commands to the MIDI/OSC/WebSockets outputs"""

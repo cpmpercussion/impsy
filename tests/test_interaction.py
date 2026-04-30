@@ -7,7 +7,6 @@ import numpy as np
 import logging
 import time
 import queue
-import copy
 
 
 @pytest.fixture(scope="session")
@@ -327,3 +326,65 @@ def test_handle_command_temp_before_network_loaded(interaction_server):
     # Should not raise
     interaction_server.handle_command("sigmatemp", [0.05])
     interaction_server.handle_command("pitemp", [1.0])
+
+
+def test_broadcast_monitor_sends_in(interaction_server, monkeypatch):
+    """_broadcast_monitor with direction='in' should send /monitor/in."""
+    sent = []
+    monkeypatch.setattr(
+        interaction_server._monitor_client,
+        "send_message",
+        lambda addr, vals: sent.append((addr, list(vals))),
+    )
+    interaction_server._broadcast_monitor("in", [0.1, 0.2, 0.3])
+    assert sent == [("/monitor/in", [0.1, 0.2, 0.3])]
+
+
+def test_broadcast_monitor_sends_out(interaction_server, monkeypatch):
+    """_broadcast_monitor with direction='out' should send /monitor/out."""
+    sent = []
+    monkeypatch.setattr(
+        interaction_server._monitor_client,
+        "send_message",
+        lambda addr, vals: sent.append((addr, list(vals))),
+    )
+    interaction_server._broadcast_monitor("out", [0.4, 0.5])
+    assert sent == [("/monitor/out", [0.4, 0.5])]
+
+
+def test_broadcast_monitor_swallows_errors(interaction_server, monkeypatch):
+    """A failing send (no listener) must not propagate."""
+    def boom(addr, vals):
+        raise OSError("no listener")
+
+    monkeypatch.setattr(interaction_server._monitor_client, "send_message", boom)
+    # Must not raise:
+    interaction_server._broadcast_monitor("in", [0.1])
+
+
+def test_monitor_port_defaults_to_4001(interaction_server):
+    """When [webui] is missing the monitor port falls back to 4001."""
+    assert interaction_server._monitor_port == 4001
+
+
+def test_monitor_port_read_from_config(log_location):
+    """When [webui].monitor_port is set the InteractionServer uses it."""
+    config = {
+        "model": {
+            "dimension": 4,
+            "size": "xs",
+            "pitemp": 1.0,
+            "sigmatemp": 0.01,
+            "timescale": 1,
+        },
+        "verbose": False,
+        "log_input": True,
+        "log_predictions": False,
+        "interaction": {"mode": "useronly", "threshold": 0.1, "input_thru": False},
+        "webui": {"monitor_port": 4042},
+    }
+    server = interaction.InteractionServer(config, log_location=log_location)
+    try:
+        assert server._monitor_port == 4042
+    finally:
+        server.shutdown()
