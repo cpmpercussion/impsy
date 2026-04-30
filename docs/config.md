@@ -151,6 +151,8 @@ IMPSY listens on these OSC addresses (not configurable):
 | `/impsy/mode` | `s` | Switch interaction mode (`callresponse` / `polyphony` / `battle` / `useronly`). |
 | `/impsy/reset` | `i` | Clear the LSTM hidden state. Argument is unused. |
 | `/impsy/pause` | `i` | `1` to pause prediction, `0` to resume. |
+| `/monitor/in` | `f f ...` | Internal — emitted by IMPSY on `127.0.0.1:[webui].monitor_port` whenever an input vector lands. Consumed by the webui's `/realtime` page. |
+| `/monitor/out` | `f f ...` | Internal — emitted by IMPSY before sending output values to configured I/O. Consumed by the webui's `/realtime` page. |
 
 Outbound predictions are sent as `/impsy` followed by `dimension - 1` floats.
 
@@ -192,6 +194,14 @@ Raw MIDI bytes over serial — for Raspberry Pi UART → DIN-MIDI breakouts.
 The serial port itself is taken from `[serial].port` (not from `[serialmidi]`), and the baud rate is fixed at `31250`. This means `[serialmidi]` cannot be used in isolation — `[serial]` must also be present so the port path can be resolved.
 
 > **Known TODO:** because the runtime activates both servers whenever their tables exist, having `[serial]` and `[serialmidi]` together opens *two* readers against the same port. They will fight. A clean serial-MIDI-only path is missing today; the safest route is to use `[serial]` (CSV) or `[serialmidi]` (MIDI) but not both, and accept that "MIDI-only" still requires a stub `[serial]` table you ignore.
+
+## `[webui]`
+
+Optional. Settings used by the webui's `/realtime` page when it monitors a running interaction server.
+
+| Key | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `monitor_port` | int | no | `4001` | Localhost UDP port. IMPSY broadcasts every input and output vector here as `/monitor/in <f f ...>` and `/monitor/out <f f ...>`; the webui's `/realtime` page binds to the same port to display them. Sender and receiver are always `127.0.0.1`. If the section is omitted both sides default to `4001`, so existing configs work without edits. |
 
 ## MIDI mapping format
 
