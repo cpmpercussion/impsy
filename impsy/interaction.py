@@ -290,6 +290,7 @@ class InteractionServer(object):
         if self.paused:
             return
         output = np.minimum(np.maximum(output_values, 0), 1)
+        self._broadcast_monitor("out", output)
         if self.verbose:
             print_io("out", output, "green")
         for sender in self.senders:

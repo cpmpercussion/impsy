@@ -219,7 +219,10 @@ def test_construct_input_list_broadcasts_in(interaction_server, monkeypatch):
         lambda d, v: sent.append((d, list(v))),
     )
     interaction_server.construct_input_list(0, 0.5)
-    assert len(sent) == 1
+    # At least one broadcast — the 'in' event. The default fixture has
+    # input_thru=true, so a downstream send_back_values may add an 'out'.
+    # Bound from above so accidental extra broadcasts get caught.
+    assert 1 <= len(sent) <= 2
     assert sent[0][0] == "in"
     # values[0] = 0.5 should appear in the broadcasted vector
     assert sent[0][1][0] == 0.5
@@ -234,6 +237,40 @@ def test_send_values(interaction_server, default_dimension):
     values = np.array([-0.5] + [1.5] * (default_dimension - 2))
     interaction_server.send_back_values(values)
     # No crash means it worked; values get clipped in send_back_values
+
+
+def test_send_back_values_broadcasts_out(
+    interaction_server, default_dimension, monkeypatch
+):
+    """send_back_values should fire _broadcast_monitor with direction='out'."""
+    sent = []
+    monkeypatch.setattr(
+        interaction_server,
+        "_broadcast_monitor",
+        lambda d, v: sent.append((d, list(v))),
+    )
+    interaction_server.paused = False
+    values = np.array([0.2] * (default_dimension - 1))
+    interaction_server.send_back_values(values)
+    assert len(sent) == 1
+    assert sent[0][0] == "out"
+    assert sent[0][1] == [0.2] * (default_dimension - 1)
+
+
+def test_send_back_values_skips_broadcast_when_paused(
+    interaction_server, default_dimension, monkeypatch
+):
+    """When paused, send_back_values returns early — no broadcast."""
+    sent = []
+    monkeypatch.setattr(
+        interaction_server,
+        "_broadcast_monitor",
+        lambda d, v: sent.append((d, list(v))),
+    )
+    interaction_server.paused = True
+    interaction_server.send_back_values(np.array([0.5] * (default_dimension - 1)))
+    assert sent == []
+    interaction_server.paused = False
 
 
 def test_invalid_mode_fallback(log_location):
