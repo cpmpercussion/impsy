@@ -65,3 +65,8 @@ output."S-1" = [
 
   # ["control_change", 3, 13], # osc lfo
 
+[osc]
+server_ip = "0.0.0.0" # Address of IMPSY
+server_port = 6000 # Port IMPSY listens on
+client_ip = "0.0.0.0" # Address of the output device
+client_port = 6001 # Port of the output device
