@@ -71,14 +71,20 @@ def get_osc_config():
             config = tomllib.load(f)
         osc = config.get("osc", {})
         if osc:
+            # server_ip is IMPSY's bind address; for sending commands from this
+            # co-located webui, wildcard binds must be redirected to localhost
+            # (macOS rejects sends to 0.0.0.0 with "No route to host").
+            host = osc.get("server_ip", "127.0.0.1")
+            if host in ("0.0.0.0", "::", ""):
+                host = "127.0.0.1"
             return {
                 "enabled": True,
-                "host": osc.get("server_ip", "localhost"),
+                "host": host,
                 "port": osc.get("server_port", 6000),
             }
     except Exception:
         pass
-    return {"enabled": False, "host": "localhost", "port": 6000}
+    return {"enabled": False, "host": "127.0.0.1", "port": 6000}
 
 
 def format_file_size(size_bytes):
