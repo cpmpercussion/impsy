@@ -319,6 +319,7 @@ class InteractionServer(object):
         # set up dense interaction list
         values = self.last_user_interaction_data[1:]
         values[index] = value
+        self._broadcast_monitor("in", values)
         # log
         if self.verbose:
             print_io("in", values, "yellow")

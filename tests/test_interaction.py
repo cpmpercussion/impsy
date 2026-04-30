@@ -207,6 +207,27 @@ def test_dense_callback_broadcasts_in(
         interaction_server.interface_input_queue.get_nowait()
 
 
+def test_construct_input_list_broadcasts_in(interaction_server, monkeypatch):
+    """construct_input_list should fire _broadcast_monitor with direction='in'.
+
+    The broadcasted vector must reflect the just-applied (index, value) update.
+    """
+    sent = []
+    monkeypatch.setattr(
+        interaction_server,
+        "_broadcast_monitor",
+        lambda d, v: sent.append((d, list(v))),
+    )
+    interaction_server.construct_input_list(0, 0.5)
+    assert len(sent) == 1
+    assert sent[0][0] == "in"
+    # values[0] = 0.5 should appear in the broadcasted vector
+    assert sent[0][1][0] == 0.5
+    # drain
+    while not interaction_server.interface_input_queue.empty():
+        interaction_server.interface_input_queue.get_nowait()
+
+
 def test_send_values(interaction_server, default_dimension):
     """Test that send_back_values clips output to [0, 1]."""
     # Values outside [0,1] should be clipped
