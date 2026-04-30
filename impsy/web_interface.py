@@ -23,6 +23,10 @@ CONFIG_FILE = "config.toml"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 4000
 
+# Pause toggle state mirrored locally — IMPSY has no return channel, so the
+# webui tracks the last commanded state. One click re-syncs if it drifts.
+_pause_state = False
+
 
 def get_version():
     """Get project version from pyproject.toml."""
@@ -468,6 +472,7 @@ def setup_config():
 @app.route("/commands", methods=["GET", "POST"])
 def commands():
     """Send OSC commands to the running interaction server."""
+    global _pause_state
     osc_config = get_osc_config()
 
     if request.method == "POST":
@@ -484,6 +489,12 @@ def commands():
             elif command == "reset":
                 client.send_message("/impsy/reset", 1)
                 flash("Sent LSTM reset command.", "success")
+            elif command == "pause":
+                _pause_state = not _pause_state
+                client.send_message("/impsy/pause", 1 if _pause_state else 0)
+                flash(
+                    f"{'Paused' if _pause_state else 'Resumed'} IMPSY.", "success"
+                )
             else:
                 flash(f"Unknown command: {command}", "error")
         except ImportError:
@@ -498,6 +509,7 @@ def commands():
         active_page="commands",
         osc_host=osc_config["host"],
         osc_port=osc_config["port"],
+        pause_active=_pause_state,
     )
 
 

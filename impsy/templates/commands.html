@@ -44,12 +44,23 @@
 <div class="card">
     <div class="card-body">
         <h5 class="card-title">Actions</h5>
-        <form method="POST">
-            <button type="submit" name="command" value="reset" class="btn btn-outline-warning py-3 px-4">
-                <strong class="d-block">Reset LSTM</strong>
-                <small class="text-secondary">Clear the neural network state</small>
-            </button>
-        </form>
+        <div class="d-flex flex-wrap gap-2">
+            <form method="POST">
+                <button type="submit" name="command" value="pause"
+                        class="btn {{ 'btn-info' if pause_active else 'btn-outline-info' }} py-3 px-4">
+                    <strong class="d-block">{{ 'Paused' if pause_active else 'Pause' }}</strong>
+                    <small class="{{ '' if pause_active else 'text-secondary' }}">
+                        {{ 'Click to resume IMPSY' if pause_active else 'Halt the prediction loop' }}
+                    </small>
+                </button>
+            </form>
+            <form method="POST">
+                <button type="submit" name="command" value="reset" class="btn btn-outline-warning py-3 px-4">
+                    <strong class="d-block">Reset LSTM</strong>
+                    <small class="text-secondary">Clear the neural network state</small>
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
