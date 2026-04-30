@@ -213,3 +213,61 @@ def test_monitor_listener_start_is_idempotent():
         listener.start()  # second call is a no-op
     finally:
         listener.stop()
+
+
+def test_compute_channel_labels_midi_note_and_cc():
+    """MIDI note_on/control_change entries get readable labels."""
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {
+        "model": {"dimension": 4},
+        "midi": {
+            "input": {
+                "Foo": [
+                    ["note_on", 1],
+                    ["control_change", 2, 19],
+                    ["control_change", 3, 20, 0, 127],
+                ]
+            }
+        },
+    }
+    labels = compute_channel_labels(cfg)
+    assert labels == ["Note ch1", "CC2:19", "CC3:20"]
+
+
+def test_compute_channel_labels_picks_first_port_alphabetically():
+    """Multi-port MIDI configs use the first port (sorted by name) for labels."""
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {
+        "model": {"dimension": 3},
+        "midi": {
+            "input": {
+                "Zzz Last": [["note_on", 9]],
+                "Aaa First": [["note_on", 1], ["control_change", 1, 7]],
+            }
+        },
+    }
+    labels = compute_channel_labels(cfg)
+    assert labels == ["Note ch1", "CC1:7"]
+
+
+def test_compute_channel_labels_falls_back_to_numeric():
+    """OSC-only or empty-MIDI configs return Ch 0..Ch N-1."""
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {"model": {"dimension": 5}, "osc": {"server_port": 6000}}
+    labels = compute_channel_labels(cfg)
+    assert labels == ["Ch 0", "Ch 1", "Ch 2", "Ch 3"]
+
+
+def test_compute_channel_labels_pads_when_mapping_too_short():
+    """If MIDI mapping is shorter than dimension-1, pad the rest with Ch N."""
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {
+        "model": {"dimension": 5},
+        "midi": {"input": {"Foo": [["note_on", 1], ["control_change", 1, 7]]}},
+    }
+    labels = compute_channel_labels(cfg)
+    assert labels == ["Note ch1", "CC1:7", "Ch 2", "Ch 3"]

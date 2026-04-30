@@ -75,6 +75,37 @@ def get_workflow_status():
     }
 
 
+def compute_channel_labels(config: dict) -> list[str]:
+    """Return `dimension - 1` human-readable labels for the realtime sliders.
+
+    Pulled from the first MIDI input port's mapping when [midi] is present;
+    falls back to "Ch N" for any positions not covered by the mapping or when
+    no MIDI config exists.
+    """
+    dimension = config.get("model", {}).get("dimension", 0)
+    n = max(0, dimension - 1)
+    midi_input = config.get("midi", {}).get("input", {})
+    if isinstance(midi_input, dict) and midi_input:
+        first_port = sorted(midi_input.keys())[0]
+        mapping = midi_input[first_port]
+    else:
+        mapping = []
+
+    labels: list[str] = []
+    for i in range(n):
+        if i < len(mapping):
+            entry = mapping[i]
+            if entry[0] == "note_on":
+                labels.append(f"Note ch{entry[1]}")
+            elif entry[0] == "control_change":
+                labels.append(f"CC{entry[1]}:{entry[2]}")
+            else:
+                labels.append(f"Ch {i}")
+        else:
+            labels.append(f"Ch {i}")
+    return labels
+
+
 def get_osc_config():
     """Get OSC configuration if available."""
     try:
