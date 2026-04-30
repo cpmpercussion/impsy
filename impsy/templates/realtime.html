@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}IMPSY - Realtime{% endblock %}
+{% block content %}
+<h1 class="mb-2">Realtime Monitor</h1>
+<p class="text-secondary mb-4">
+  Live values flowing through IMPSY. Cyan = inputs (incoming from controllers),
+  green = outputs (predictions and thru). Listening on UDP port
+  <code>{{ monitor_port }}</code>.
+</p>
+
+<div id="status" class="alert alert-info">Waiting for data&hellip;</div>
+
+<table class="table table-sm align-middle" id="channels">
+  <thead>
+    <tr>
+      <th style="width: 12rem;">Channel</th>
+      <th>In</th>
+      <th>Out</th>
+      <th class="text-end" style="width: 9rem;">Values</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for label in labels %}
+    <tr data-channel="{{ loop.index0 }}">
+      <td><code>{{ label }}</code></td>
+      <td>
+        <div class="progress" style="height: 1rem;">
+          <div class="progress-bar bg-info bar-in" style="width: 0%"></div>
+        </div>
+      </td>
+      <td>
+        <div class="progress" style="height: 1rem;">
+          <div class="progress-bar bg-success bar-out" style="width: 0%"></div>
+        </div>
+      </td>
+      <td class="text-end font-monospace small">
+        <span class="val-in">&mdash;</span> /
+        <span class="val-out">&mdash;</span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function poll() {
+  try {
+    const resp = await fetch('/realtime/data');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const status = document.getElementById('status');
+    if (data.in === null && data.out === null) {
+      status.textContent = 'Waiting for data…';
+      status.className = 'alert alert-info';
+      return;
+    }
+    const inAge = data.in_age_ms ?? Infinity;
+    const outAge = data.out_age_ms ?? Infinity;
+    status.textContent = `Streaming. in age ${data.in_age_ms ?? '—'}ms, out age ${data.out_age_ms ?? '—'}ms`;
+    status.className = 'alert alert-success';
+
+    document.querySelectorAll('#channels tbody tr').forEach(row => {
+      const idx = parseInt(row.dataset.channel);
+      const inVal = data.in ? data.in[idx] : null;
+      const outVal = data.out ? data.out[idx] : null;
+      row.querySelector('.bar-in').style.width = (inVal != null ? Math.max(0, Math.min(1, inVal)) * 100 : 0) + '%';
+      row.querySelector('.bar-out').style.width = (outVal != null ? Math.max(0, Math.min(1, outVal)) * 100 : 0) + '%';
+      row.querySelector('.val-in').textContent = inVal != null ? inVal.toFixed(3) : '—';
+      row.querySelector('.val-out').textContent = outVal != null ? outVal.toFixed(3) : '—';
+      row.style.opacity = (inAge > 2000 && outAge > 2000) ? 0.5 : 1.0;
+    });
+  } catch (e) {
+    console.error('poll failed', e);
+  }
+}
+setInterval(poll, 100);
+poll();
+</script>
+{% endblock %}

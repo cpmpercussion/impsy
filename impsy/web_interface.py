@@ -583,6 +583,25 @@ def setup_config():
     return render_template("setup.html", active_page="config")
 
 
+@app.route("/realtime")
+def realtime():
+    """Live in/out monitoring page."""
+    listener = _ensure_monitor_listener()
+    cfg = {}
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            cfg = tomllib.load(f)
+    except Exception:
+        pass
+    labels = compute_channel_labels(cfg)
+    return render_template(
+        "realtime.html",
+        active_page="realtime",
+        monitor_port=listener.port,
+        labels=labels,
+    )
+
+
 @app.route("/realtime/data")
 def realtime_data():
     """Return the latest in/out values plus their age in ms."""

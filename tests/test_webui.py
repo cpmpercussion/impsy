@@ -310,3 +310,21 @@ def test_realtime_data_returns_nulls_when_empty(client):
     finally:
         web_interface._monitor_listener.stop()
         web_interface._monitor_listener = None
+
+
+def test_realtime_route_renders(client):
+    """/realtime returns 200 and includes the channel label table."""
+    from impsy import web_interface
+
+    web_interface._monitor_listener = web_interface.MonitorListener(port=14014)
+    try:
+        response = client.get("/realtime")
+        assert response.status_code == 200
+        assert b"Realtime" in response.data
+        # the page should mention the monitor port it's listening on
+        assert b"14014" in response.data or b"4001" in response.data
+        # at least one channel row
+        assert b"progress-bar" in response.data
+    finally:
+        web_interface._monitor_listener.stop()
+        web_interface._monitor_listener = None

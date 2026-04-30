@@ -39,6 +39,9 @@
                             Models {% if workflow.models %}<span class="badge bg-success rounded-pill">&#10003;</span>{% endif %}
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'realtime' %}active{% endif %}" href="{{ url_for('realtime') }}">Realtime</a>
+                    </li>
                     {% if osc_enabled %}
                     <li class="nav-item">
                         <a class="nav-link {% if active_page == 'commands' %}active{% endif %}" href="{{ url_for('commands') }}">Commands</a>
