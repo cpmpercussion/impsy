@@ -129,6 +129,22 @@ def get_osc_config():
     return {"enabled": False, "host": "127.0.0.1", "port": 6000}
 
 
+def get_command_target():
+    """Localhost (host, port) for the webui->run command channel.
+
+    Always 127.0.0.1; the port comes from [webui].command_port (default 4002).
+    Independent of [osc] so the /commands page works in MIDI/serial-only setups.
+    """
+    port = 4002
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            cfg = tomllib.load(f)
+        port = cfg.get("webui", {}).get("command_port", 4002)
+    except Exception:
+        pass
+    return {"host": "127.0.0.1", "port": port}
+
+
 def format_file_size(size_bytes):
     """Format file size in human-readable form."""
     for unit in ["B", "KB", "MB", "GB"]:
@@ -575,6 +591,7 @@ def setup_config():
             "",
             "[webui]",
             "monitor_port = 4001  # Localhost port the webui's Realtime page listens on.",
+            "command_port = 4002  # Localhost port IMPSY listens on for webui /commands.",
         ]
 
         config_text = "\n".join(config_lines) + "\n"
@@ -631,14 +648,14 @@ def realtime_data():
 def commands():
     """Send OSC commands to the running interaction server."""
     global _pause_state
-    osc_config = get_osc_config()
+    cmd_target = get_command_target()
 
     if request.method == "POST":
         command = request.form.get("command", "")
         try:
             from pythonosc import udp_client
 
-            client = udp_client.SimpleUDPClient(osc_config["host"], osc_config["port"])
+            client = udp_client.SimpleUDPClient(cmd_target["host"], cmd_target["port"])
 
             if command.startswith("mode:"):
                 mode = command.split(":", 1)[1]
@@ -665,8 +682,8 @@ def commands():
     return render_template(
         "commands.html",
         active_page="commands",
-        osc_host=osc_config["host"],
-        osc_port=osc_config["port"],
+        command_host=cmd_target["host"],
+        command_port=cmd_target["port"],
         pause_active=_pause_state,
     )
 

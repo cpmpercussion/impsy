@@ -10,7 +10,7 @@ import click
 from .utils import mdrnn_config, get_config_data, print_io
 import impsy.impsio as impsio
 from pathlib import Path
-from pythonosc import udp_client
+from pythonosc import udp_client, dispatcher, osc_server
 
 np.set_printoptions(precision=2)
 
@@ -225,6 +225,10 @@ class InteractionServer(object):
         self._monitor_client = udp_client.SimpleUDPClient(
             "127.0.0.1", self._monitor_port
         )
+        self._command_port = self.config.get("webui", {}).get("command_port", 4002)
+        self._command_server = None
+        self._command_thread = None
+        self._start_command_listener()
         self.net = None  # populated in serve_forever; OSC commands tolerate None
 
     def handle_command(self, command: str, args: list):
@@ -273,6 +277,76 @@ class InteractionServer(object):
                 bg="blue",
                 fg="white",
             )
+
+    def _start_command_listener(self) -> None:
+        """Bind a localhost OSC listener that mirrors /impsy/* commands into handle_command.
+
+        Dedicated to the webui's /commands page so it works regardless of whether
+        [osc] is configured for music IO. Bind failures are non-fatal: the run
+        loop continues and external [osc] clients (e.g., Pd) can still drive
+        commands through the OSCServer.
+        """
+        disp = dispatcher.Dispatcher()
+        disp.map(
+            "/impsy/mode",
+            lambda addr, *args: self.handle_command("mode", [str(args[0])])
+            if args
+            else None,
+        )
+        disp.map("/impsy/reset", lambda addr, *args: self.handle_command("reset", []))
+        disp.map(
+            "/impsy/pause",
+            lambda addr, *args: self.handle_command("pause", [int(args[0])])
+            if args
+            else None,
+        )
+        disp.map(
+            "/impsy/sigmatemp",
+            lambda addr, *args: self.handle_command("sigmatemp", [float(args[0])])
+            if args
+            else None,
+        )
+        disp.map(
+            "/impsy/pitemp",
+            lambda addr, *args: self.handle_command("pitemp", [float(args[0])])
+            if args
+            else None,
+        )
+        disp.map(
+            "/impsy/timescale",
+            lambda addr, *args: self.handle_command("timescale", [float(args[0])])
+            if args
+            else None,
+        )
+        try:
+            self._command_server = osc_server.ThreadingOSCUDPServer(
+                ("127.0.0.1", self._command_port), disp
+            )
+            self._command_thread = Thread(
+                target=self._command_server.serve_forever,
+                name="webui_command_thread",
+                daemon=True,
+            )
+            self._command_thread.start()
+        except Exception as e:
+            click.secho(
+                f"Could not bind webui command listener on 127.0.0.1:{self._command_port}: {e}. "
+                "The webui /commands page will not be able to send commands.",
+                fg="yellow",
+            )
+            self._command_server = None
+            self._command_thread = None
+
+    def _stop_command_listener(self) -> None:
+        if self._command_server is None:
+            return
+        self._command_server.shutdown()
+        try:
+            self._command_server.socket.close()
+        except Exception:
+            pass
+        self._command_server = None
+        self._command_thread = None
 
     def _broadcast_monitor(self, direction: str, values) -> None:
         """Send a copy of the latest in/out vector to the localhost monitor port.
@@ -429,6 +503,7 @@ class InteractionServer(object):
         """Close IO and logs and prepare to exit."""
         for sender in self.senders:
             sender.disconnect()
+        self._stop_command_listener()
         close_log(self.logger)
 
     def serve_forever(self):

@@ -7,6 +7,7 @@ import numpy as np
 import logging
 import time
 import queue
+from pythonosc import udp_client
 
 
 @pytest.fixture(scope="session")
@@ -464,3 +465,79 @@ def test_monitor_port_read_from_config(log_location):
         assert server._monitor_port == 4042
     finally:
         server.shutdown()
+
+
+def test_command_port_defaults_to_4002(interaction_server):
+    """When [webui].command_port is missing, it falls back to 4002."""
+    assert interaction_server._command_port == 4002
+
+
+def test_command_port_read_from_config(log_location):
+    """When [webui].command_port is set the InteractionServer binds to it."""
+    config = {
+        "model": {
+            "dimension": 4,
+            "size": "xs",
+            "pitemp": 1.0,
+            "sigmatemp": 0.01,
+            "timescale": 1,
+        },
+        "verbose": False,
+        "log_input": True,
+        "log_predictions": False,
+        "interaction": {"mode": "useronly", "threshold": 0.1, "input_thru": False},
+        "webui": {"command_port": 14043},
+    }
+    server = interaction.InteractionServer(config, log_location=log_location)
+    try:
+        assert server._command_port == 14043
+        assert server._command_server is not None
+    finally:
+        server.shutdown()
+
+
+def test_command_listener_dispatches_to_handle_command(interaction_server, monkeypatch):
+    """An OSC packet to /impsy/mode should call handle_command on the server."""
+    received = []
+    monkeypatch.setattr(
+        interaction_server,
+        "handle_command",
+        lambda cmd, args: received.append((cmd, list(args))),
+    )
+    client = udp_client.SimpleUDPClient(
+        "127.0.0.1", interaction_server._command_port
+    )
+    client.send_message("/impsy/mode", "polyphony")
+    deadline = time.time() + 1.0
+    while time.time() < deadline and not received:
+        time.sleep(0.02)
+    assert received == [("mode", ["polyphony"])]
+
+
+def test_command_listener_bind_failure_is_non_fatal(log_location):
+    """If the command port is in use, InteractionServer constructs anyway."""
+    from pythonosc import dispatcher as _disp, osc_server as _osc
+
+    busy = _osc.ThreadingOSCUDPServer(("127.0.0.1", 14044), _disp.Dispatcher())
+    config = {
+        "model": {
+            "dimension": 4,
+            "size": "xs",
+            "pitemp": 1.0,
+            "sigmatemp": 0.01,
+            "timescale": 1,
+        },
+        "verbose": False,
+        "log_input": True,
+        "log_predictions": False,
+        "interaction": {"mode": "useronly", "threshold": 0.1, "input_thru": False},
+        "webui": {"command_port": 14044},
+    }
+    try:
+        server = interaction.InteractionServer(config, log_location=log_location)
+        try:
+            assert server._command_server is None
+        finally:
+            server.shutdown()
+    finally:
+        busy.server_close()

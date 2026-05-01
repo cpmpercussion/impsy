@@ -109,3 +109,4 @@ output = [ # Volca FM
 
 [webui]
 monitor_port = 4001  # Localhost port the webui's Realtime page listens on.
+command_port = 4002  # Localhost port IMPSY listens on for webui /commands.

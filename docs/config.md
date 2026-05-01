@@ -156,7 +156,7 @@ IMPSY listens on these OSC addresses (not configurable):
 
 Outbound predictions are sent as `/impsy` followed by `dimension - 1` floats.
 
-> **Note on macOS:** the web UI sends commands to the OSC server. If `server_ip = "0.0.0.0"`, the web UI rewrites the destination to `127.0.0.1` because macOS rejects sends to `0.0.0.0`. This is transparent — no config change needed.
+The webui's `/commands` page does **not** send to this `[osc]` server. It targets a dedicated localhost-only listener on `[webui].command_port` (default `4002`) so it works whether or not `[osc]` is configured. The same `/impsy/*` addresses are accepted on both ports; external OSC clients (e.g., Pd) keep using `[osc].server_port`.
 
 ## `[websocket]`
 
@@ -202,6 +202,7 @@ Optional. Settings used by the webui's `/realtime` page when it monitors a runni
 | Key | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `monitor_port` | int | no | `4001` | Localhost UDP port. IMPSY broadcasts every input and output vector here as `/monitor/in <f f ...>` and `/monitor/out <f f ...>`; the webui's `/realtime` page binds to the same port to display them. Sender and receiver are always `127.0.0.1`. If the section is omitted both sides default to `4001`, so existing configs work without edits. |
+| `command_port` | int | no | `4002` | Localhost UDP port. IMPSY's run loop binds an OSC listener here and dispatches `/impsy/mode`, `/impsy/reset`, `/impsy/pause`, `/impsy/sigmatemp`, `/impsy/pitemp`, `/impsy/timescale` to the same handlers as the `[osc]` IO server. The webui's `/commands` page sends to this port, so it works regardless of whether `[osc]` is configured. External OSC clients (Pd, etc.) can still drive the same addresses through `[osc]`. Both sides default to `4002` if the key is omitted. |
 
 ## MIDI mapping format
 
