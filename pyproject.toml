@@ -1,6 +1,6 @@
 [project]
 name = "impsy"
-version = "1.0.0"
+version = "1.0.1"
 description = "IMPSY is the Interactive Musical Prediction SYstem, a tool for creative interactive intelligent musical instruments using a recurrent mixture density neural network."
 authors = [{ name = "Charles Martin", email = "cpm@charlesmartin.au" }]
 license = { text = "MIT" }
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/cpmpercussion/impsy"
+homepage = "https://charlesmartin.au/impsy-homepage/"
 repository = "https://github.com/cpmpercussion/impsy"
 
 [tool.poetry.group.dev.dependencies]
