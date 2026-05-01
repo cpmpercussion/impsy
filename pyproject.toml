@@ -9,7 +9,7 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
     "tensorflow>=2.20.0,<2.21",
     "ai-edge-litert (>=2.1.0,<3)",
-    "keras-mdn-layer @ git+https://github.com/cpmpercussion/keras-mdn-layer.git@v0.7.0-alpha",
+    "keras-mdn-layer>=1.0.0,<2",
     "h5py>=3.11,<4",
     "python-osc>=1.8.3,<2",
     "pyserial>=3.5,<4",

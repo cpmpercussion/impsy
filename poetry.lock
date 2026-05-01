@@ -770,23 +770,19 @@ rich = "*"
 
 [[package]]
 name = "keras-mdn-layer"
-version = "0.7.0-alpha"
+version = "1.0.0"
 description = "An MDN Layer for Keras"
 optional = false
-python-versions = ">=3.11,<4.0"
+python-versions = "<4.0,>=3.11"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "keras_mdn_layer-1.0.0-py3-none-any.whl", hash = "sha256:09335a2c5f10a99af8e7f4e37f5a681514a48c40fa96c649bfb039558448ff02"},
+    {file = "keras_mdn_layer-1.0.0.tar.gz", hash = "sha256:1b1d37b3c5a28a8fd093a08c71fadf0e335bca137acf7b31d080ea0b122554bf"},
+]
 
 [package.dependencies]
 keras = ">=3.0,<4.0"
 numpy = ">=1.26.4,<3.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/cpmpercussion/keras-mdn-layer.git"
-reference = "v0.7.0-alpha"
-resolved_reference = "47b7a94936ea7f64f6ca2f9d68a5c0c0a1c1ca7b"
 
 [[package]]
 name = "libclang"
@@ -2195,4 +2191,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "375d1c94fd068ba1cedc8a2c87a847ecf4b23c67a815cf1b5100b4d9492810f2"
+content-hash = "cf129b6789bdee364df7d08bb7be3befe2dce9dd610e663629442e048c11a2fc"
