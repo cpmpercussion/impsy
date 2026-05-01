@@ -648,16 +648,35 @@ class MIDIServer(IOServer):
 
     def disconnect(self) -> None:
         self.send_midi_note_offs()
-        try:
-            for in_port in self.midi_in_port.values():
-                in_port.close()
-        except:
-            pass
-        try:
-            for out_port in self.midi_out_port.values():
+        # Close outputs first so we stop generating notes that a synth with
+        # MIDI Thru / soft-thru could echo back into our input port mid-close.
+        for out_port in self.midi_out_port.values():
+            try:
                 out_port.close()
-        except:
-            pass
+            except Exception:
+                pass
+        # python-rtmidi can deadlock when closePort() races a callback in
+        # flight (mido's parser-queue lock vs the C++ callback teardown).
+        # Run input close in a daemon worker with a timeout so a wedged
+        # close cannot stall process exit; the daemon dies with the process.
+        closer = Thread(
+            target=self._close_input_ports,
+            name="midi_input_closer",
+            daemon=True,
+        )
+        closer.start()
+        closer.join(timeout=1.0)
+
+    def _close_input_ports(self) -> None:
+        for in_port in self.midi_in_port.values():
+            try:
+                in_port.callback = None  # detach rtmidi callback before close
+            except Exception:
+                pass
+            try:
+                in_port.close()
+            except Exception:
+                pass
 
     def send_midi_message(self, message: mido.Message, output_port: str):
         """Send a MIDI message across all required outputs"""
