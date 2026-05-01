@@ -16,6 +16,7 @@ The example configurations in [`configs/`](../configs/) are real, working setups
 - [`[websocket]`](#websocket)
 - [`[serial]`](#serial)
 - [`[serialmidi]`](#serialmidi)
+- [`[webui]`](#webui)
 - [MIDI mapping format](#midi-mapping-format)
 - [Notes & quirks](#notes--quirks)
 
@@ -63,6 +64,8 @@ The presence of a top-level table activates the matching I/O server — there's 
 | `[serialmidi]` | `SerialMIDIServer` (MIDI over serial, e.g. RPi GPIO) | bidirectional |
 
 If you don't want a channel, leave its section out. `useronly` mode (see `[interaction].mode`) is fine with no I/O channels at all if you only want to log a controller.
+
+`[webui]` is the one section that does *not* activate an external I/O channel — it's read by both `impsy run` and `impsy webui` to wire up the localhost-only OSC channel they use to talk to each other. See [`[webui]`](#webui).
 
 ## Top-level keys
 
@@ -135,7 +138,7 @@ Bidirectional OSC, using `python-osc`. Used for talking to Pd/Max/SC, or for the
 |---|---|---|---|
 | `server_ip` | string | yes | The address IMPSY *listens on*. `"0.0.0.0"` accepts on all interfaces (recommended). |
 | `server_port` | int | yes | Port IMPSY listens on. |
-| `client_ip` | string | yes | Address to *send* predictions to. Use `"127.0.0.1"` (or `"localhost"`) for the same machine, the LAN address of the target device, or `"host.docker.internal"` from inside a Docker container. |
+| `client_ip` | string | yes | Address to *send* predictions to. Use `"127.0.0.1"` (or `"localhost"`) for the same machine, the LAN address of the target device, or `"host.docker.internal"` from inside a Docker container. A wildcard value (`"0.0.0.0"`, `"::"`, or `""`) is coerced to `"127.0.0.1"` at startup with a warning, since wildcards are not valid send destinations and macOS rejects them outright. |
 | `client_port` | int | yes | Port on the client to send to. |
 
 ### OSC addresses
@@ -197,7 +200,7 @@ The serial port itself is taken from `[serial].port` (not from `[serialmidi]`), 
 
 ## `[webui]`
 
-Optional. Settings used by the webui's `/realtime` page when it monitors a running interaction server.
+Optional. Localhost-only ports the `impsy webui` Flask app and the `impsy run` interaction loop use to talk to each other: an outbound monitor channel (`run` → `webui`, drives the `/realtime` page) and an inbound command channel (`webui` → `run`, drives the `/commands` page). Both are bound to `127.0.0.1` only — no external traffic is ever accepted on these ports. If the section is missing both sides fall back to the defaults below, so existing configs work without edits.
 
 | Key | Type | Required | Default | Notes |
 |---|---|---|---|---|
