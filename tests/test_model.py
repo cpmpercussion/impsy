@@ -33,7 +33,7 @@ def test_training(sequence_length, batch_size, dimension, sequence_slices):
         layers=1,
     )
     Xs, ys = train.seq_to_overlapping_format(sequence_slices)
-    history = net.train(Xs, ys, batch_size=batch_size, epochs=num_epochs, logging=False)
+    history = net.train(Xs, ys, batch_size=batch_size, epochs=num_epochs)
     assert len(history.history["loss"]) == num_epochs
 
 
