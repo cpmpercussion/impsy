@@ -10,7 +10,6 @@ import keras_mdn_layer as mdn
 
 os.environ.pop("TF_USE_LEGACY_KERAS", None)
 import numpy as np
-import datetime
 from pathlib import Path
 import abc
 import click
@@ -228,11 +227,8 @@ class PredictiveMusicMDRNN(object):
         save_location="models",
         validation_split=0.1,
         patience=10,
-        logging=True,
     ):
         """Train the network for a number of epochs with a specific dataset."""
-        # Setup callbacks
-        date_string = datetime.datetime.today().strftime("%Y%m%d-%H_%M_%S")
         save_location = Path(save_location)
         checkpoint_path = save_location / f"{self.model_name}-ckpt.keras"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -246,19 +242,11 @@ class PredictiveMusicMDRNN(object):
         early_stopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor="val_loss", mode="min", verbose=1, patience=patience
         )
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=save_location / f"{date_string}{self.model_name}",
-            histogram_freq=0,
-            write_graph=True,
-            update_freq="epoch",
-        )
         callbacks = [terminateOnNaN]
         if checkpointing:
             callbacks.append(checkpoint_callback)
         if early_stopping:
             callbacks.append(early_stopping_callback)
-        if logging:
-            callbacks.append(tensorboard_callback)
 
         # Do the data scaling in here.
         X = np.array(X) * SCALE_FACTOR
