@@ -81,4 +81,6 @@ Fixtures in `tests/conftest.py` provide: synthetic log files, generated datasets
 
 ### Python & TensorFlow Compatibility
 
-Supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0. TFLite inference uses `ai-edge-litert` (successor to `tensorflow-lite`). CI runs a full matrix across all three Python versions on Ubuntu, macOS, and Windows.
+Supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.21. TFLite inference uses `ai-edge-litert` (successor to `tensorflow-lite`). CI runs a full matrix across all three Python versions on Ubuntu, macOS, and Windows.
+
+TF 2.21 dropped `tensorboard` from its required deps, so the TF-specific `tf.keras.callbacks.TensorBoard` callback was removed from `mdrnn.py` — training history still comes back from `model.fit()` via Keras. TF 2.21 wheels also raise the manylinux floor to `manylinux_2_27` (glibc ≥ 2.27); Raspberry Pi OS Buster and later are fine.

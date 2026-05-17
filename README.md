@@ -28,7 +28,7 @@ The `impsy-pi` image loads IMPSY automatically at boot and can be configured rem
 
 If you wish to install IMPSY on a regular computer, or from scratch on a single-board computer here are the instructions. IMPSY is distributed as python software so you will need to use command-line interface to install it.
 
-IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.20.0 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
+IMPSY is written in Python with Keras and TensorFlow, so it should work on any platform where TensorFlow can be installed. Python 3 is required and we use [Poetry](https://python-poetry.org) for managing dependencies. IMPSY currently supports Python 3.11, 3.12, and 3.13 with TensorFlow 2.21 and keras-mdn-layer. You can see the dependencies in `pyproject.toml`.
 
 To install IMPSY, first **ensure that you have Python 3.11, 3.12, or 3.13** available, you might want to use [pyenv](https://github.com/pyenv/pyenv) to manage different Python versions. Then you need to install [Poetry](https://python-poetry.org). The poetry install instructions vary depending on your preferences for a python setup this is likely to work on Linux, macOS or Windows:
 
