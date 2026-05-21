@@ -46,7 +46,10 @@ def transform_log_to_sequence_example(logfile: str, dimension: int):
 
 
 def generate_dataset(
-    dimension: int, source: str = "logs", destination: str = "datasets"
+    dimension: int,
+    source: str = "logs",
+    destination: str = "datasets",
+    filename: str | None = None,
 ):
     """Generate a dataset from .log files in the log directory."""
     # Load up the performances
@@ -66,7 +69,7 @@ def generate_dataset(
                 print("Processing failed for", local_file)
 
     # Save Performance Data in a compressed numpy file.
-    dataset_name = f"training-dataset-{dimension}d.npz"
+    dataset_name = filename if filename else f"training-dataset-{dimension}d.npz"
     dataset_file = Path(destination) / dataset_name
 
     # Input format is:
@@ -118,6 +121,20 @@ def generate_dataset(
     default="logs",
     help="The source directory to obtain .log files.",
 )
-def dataset(dimension: int, source: str):
+@click.option(
+    "-O",
+    "--destination",
+    type=str,
+    default="datasets",
+    help="The destination directory to write the dataset to.",
+)
+@click.option(
+    "-F",
+    "--filename",
+    type=str,
+    default=None,
+    help="The output filename (defaults to training-dataset-{dimension}d.npz).",
+)
+def dataset(dimension: int, source: str, destination: str, filename: str | None):
     """Generate a dataset from .log files in the log directory."""
-    generate_dataset(dimension, source)
+    generate_dataset(dimension, source, destination, filename)
