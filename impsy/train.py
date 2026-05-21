@@ -210,6 +210,13 @@ def train_mdrnn(
     default=64,
     help="Batch size for training, default=64.",
 )
+@click.option(
+    "-O",
+    "--destination",
+    type=str,
+    default="models",
+    help="The destination directory to write trained model files to.",
+)
 def train(
     dimension: int,
     source: str,
@@ -218,6 +225,7 @@ def train(
     patience: int,
     numepochs: int,
     batchsize: int,
+    destination: str,
 ):
     """Trains an IMPSY MDRNN model based on an existing dataset (run dataset command first!)."""
     click.secho(
@@ -225,6 +233,13 @@ def train(
         fg="green",
     )
     train_mdrnn(
-        dimension, source, modelsize, earlystopping, patience, numepochs, batchsize
+        dimension,
+        source,
+        modelsize,
+        earlystopping,
+        patience,
+        numepochs,
+        batchsize,
+        save_location=destination,
     )
     click.secho("IMPSY: training completed.", fg="green")
