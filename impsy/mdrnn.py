@@ -357,6 +357,13 @@ def introspect_tflite_params(file: Path) -> tuple[int, int, int, int]:
     - MDN output last dim = n_mixtures * (2 * dimension + 1)
     """
     interpreter = get_tflite_interpreter(model_path=str(file))
+    # Some interpreter backends only expose reliable tensor shapes after
+    # allocate_tensors(); SELECT_TF_OPS models can't allocate without flex
+    # delegates but still publish input/output metadata, so we tolerate failure.
+    try:
+        interpreter.allocate_tensors()
+    except (RuntimeError, ValueError):
+        pass
     input_details = interpreter.get_input_details()
     dimension = None
     n_hidden_units = None
