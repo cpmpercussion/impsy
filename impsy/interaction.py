@@ -73,55 +73,54 @@ def close_log(logger: logging.Logger):
 
 
 def build_network(config: dict):
-    """Build the MDRNN, uses a high-level size parameter and dimension."""
+    """Build the MDRNN from config.
+
+    For .tflite files the dimension, units, mixtures, and layers are introspected
+    from the file. Other model types (.keras, .h5) and the dummy fallback use
+    the [model] dimension/size from config.
+    """
     from . import mdrnn
 
-    try:
-        dimension = config["model"]["dimension"]
-    except Exception as e:
-        click.secho(
-            f"MDRNN: Couldn't find a dimension in your config. Please add one!",
-            fg="red",
-        )
-        raise
+    model_file_str = config.get("model", {}).get("file")
+    model_file = Path(model_file_str) if model_file_str else Path(".")
 
-    try:
-        model_size = config["model"]["size"]
-        click.secho(f"MDRNN: Using {model_size} model.", fg="green")
-    except Exception as e:
-        model_size = "s"
-        click.secho(
-            f"MDRNN: Couldn't find a model size in your config, using {model_size}.",
-            fg="red",
-        )
-
-    model_config = mdrnn_config(model_size)
-    units = model_config["units"]
-    mixtures = model_config["mixes"]
-    layers = model_config["layers"]
-
-    try:
-        model_file = Path(config["model"]["file"])
-    except Exception as e:
-        click.secho(
-            f"MDRNN: Couldn't find a model file in your config. Loading dummy model.",
-            fg="red",
-        )
-        model_file = Path(".")
-
-    if model_file.suffix == ".keras" or model_file.suffix == ".h5":
-        click.secho(f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green")
-        model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
-    elif model_file.suffix == ".tflite":
+    if model_file.suffix == ".tflite" and model_file.exists():
         click.secho(f"MDRNN Loading from .tflite file: {model_file}", fg="green")
-        model = mdrnn.TfliteMDRNN(model_file, dimension, units, mixtures, layers)
+        model = mdrnn.TfliteMDRNN.from_file(model_file)
+        click.secho(
+            f"MDRNN: introspected dimension={model.dimension}, "
+            f"units={model.n_hidden_units}, layers={model.n_layers}, "
+            f"mixtures={model.n_mixtures}.",
+            fg="green",
+        )
     else:
-        click.secho(f"MDRNN Loading dummy model: {model_file}", fg="yellow")
-        model = mdrnn.DummyMDRNN(model_file, dimension, units, mixtures, layers)
+        try:
+            dimension = config["model"]["dimension"]
+        except Exception:
+            click.secho(
+                "MDRNN: Couldn't find a dimension in your config. Please add one!",
+                fg="red",
+            )
+            raise
+
+        model_size = config.get("model", {}).get("size", "s")
+        model_config = mdrnn_config(model_size)
+        units = model_config["units"]
+        mixtures = model_config["mixes"]
+        layers = model_config["layers"]
+
+        if model_file.suffix in (".keras", ".h5") and model_file.exists():
+            click.secho(
+                f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green"
+            )
+            model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
+        else:
+            click.secho(f"MDRNN Loading dummy model: {model_file}", fg="yellow")
+            model = mdrnn.DummyMDRNN(model_file, dimension, units, mixtures, layers)
 
     model.pi_temp = config["model"]["pitemp"]
     model.sigma_temp = config["model"]["sigmatemp"]
-    click.secho(f"MDRNN Loaded.", fg="green")
+    click.secho("MDRNN Loaded.", fg="green")
     return model
 
 
@@ -541,15 +540,128 @@ class InteractionServer(object):
             click.secho("\nIMPSY has shut down. Bye!", fg="red")
 
 
+def _apply_cli_overrides(config_data: dict, overrides: dict) -> dict:
+    """Apply CLI overrides onto a config dict in place.
+
+    `overrides` keys are dotted paths into config_data (e.g. "interaction.mode",
+    "model.file"). Values of None are skipped, so omitting a CLI flag preserves
+    whatever the config file already had.
+    """
+    for dotted, value in overrides.items():
+        if value is None:
+            continue
+        keys = dotted.split(".")
+        cursor = config_data
+        for key in keys[:-1]:
+            cursor = cursor.setdefault(key, {})
+        cursor[keys[-1]] = value
+    return config_data
+
+
 @click.command(name="run")
 @click.option(
     "--config", "-c", default="config.toml", help="Path to a .toml configuration file."
 )
 @click.option("--logdir", "-l", default="logs", help="Path to a directory for logs.")
-def run(config: str, logdir: str):
-    """Run IMPSY interaction system with MIDI, WebSockets, and OSC."""
+@click.option(
+    "--dimension",
+    "-d",
+    type=int,
+    default=None,
+    help="Override [model] dimension. Only used for the dummy fallback; .tflite files self-report.",
+)
+@click.option(
+    "--mode",
+    type=click.Choice(["callresponse", "polyphony", "battle", "useronly"]),
+    default=None,
+    help="Override [interaction] mode.",
+)
+@click.option(
+    "--threshold",
+    type=float,
+    default=None,
+    help="Override [interaction] threshold (call-response delay in seconds).",
+)
+@click.option(
+    "--input-thru/--no-input-thru",
+    "input_thru",
+    default=None,
+    help="Override [interaction] input_thru.",
+)
+@click.option(
+    "--sigma-temp",
+    "sigma_temp",
+    type=float,
+    default=None,
+    help="Override [model] sigmatemp.",
+)
+@click.option(
+    "--pi-temp", "pi_temp", type=float, default=None, help="Override [model] pitemp."
+)
+@click.option(
+    "--timescale",
+    type=float,
+    default=None,
+    help="Override [model] timescale.",
+)
+@click.option(
+    "--verbose/--quiet", "verbose", default=None, help="Override top-level verbose."
+)
+@click.option(
+    "--log-input/--no-log-input",
+    "log_input",
+    default=None,
+    help="Override top-level log_input.",
+)
+@click.option(
+    "--log-predictions/--no-log-predictions",
+    "log_predictions",
+    default=None,
+    help="Override top-level log_predictions.",
+)
+@click.argument(
+    "model_file",
+    required=False,
+    type=click.Path(exists=True, dir_okay=False),
+)
+def run(
+    config: str,
+    logdir: str,
+    dimension,
+    mode,
+    threshold,
+    input_thru,
+    sigma_temp,
+    pi_temp,
+    timescale,
+    verbose,
+    log_input,
+    log_predictions,
+    model_file,
+):
+    """Run IMPSY interaction system with MIDI, WebSockets, and OSC.
+
+    MODEL_FILE is an optional positional .tflite file; if given it overrides
+    [model] file in the config. With no model file (and none in config), IMPSY
+    runs the dummy network so you can collect interaction logs.
+    """
     click.secho("IMPSY Starting up...", fg="blue")
     config_data = get_config_data(config)
-    # TODO: have some way set log dir in config as well?
+    _apply_cli_overrides(
+        config_data,
+        {
+            "model.file": model_file,
+            "model.dimension": dimension,
+            "model.sigmatemp": sigma_temp,
+            "model.pitemp": pi_temp,
+            "model.timescale": timescale,
+            "interaction.mode": mode,
+            "interaction.threshold": threshold,
+            "interaction.input_thru": input_thru,
+            "verbose": verbose,
+            "log_input": log_input,
+            "log_predictions": log_predictions,
+        },
+    )
     interaction_server = InteractionServer(config_data, log_location=logdir)
     interaction_server.serve_forever()

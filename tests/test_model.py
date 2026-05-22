@@ -107,3 +107,26 @@ def test_dummy_model():
     value = mdrnn.random_sample(out_dim=dimension)
     value = model.generate(value)
     assert len(value) == dimension
+
+
+def test_introspect_tflite_params(tflite_file, dimension, units, mixtures, layers):
+    """introspect_tflite_params should recover (dim, units, mixes, layers) from a .tflite file."""
+    got_dim, got_units, got_mixes, got_layers = mdrnn.introspect_tflite_params(
+        tflite_file
+    )
+    assert got_dim == dimension
+    assert got_units == units
+    assert got_mixes == mixtures
+    assert got_layers == layers
+
+
+def test_tflite_from_file(tflite_file, dimension, units, mixtures, layers):
+    """TfliteMDRNN.from_file should build an inference-ready model with introspected params."""
+    model = mdrnn.TfliteMDRNN.from_file(tflite_file)
+    assert model.dimension == dimension
+    assert model.n_hidden_units == units
+    assert model.n_mixtures == mixtures
+    assert model.n_layers == layers
+    value = mdrnn.random_sample(out_dim=dimension)
+    out = model.generate(value)
+    assert len(out) == dimension
