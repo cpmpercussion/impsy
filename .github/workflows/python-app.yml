@@ -77,6 +77,9 @@ jobs:
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
         poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Run tests
-      run: poetry run pytest
+      env:
+        PYTHONUNBUFFERED: "1"
+        PYTHONFAULTHANDLER: "1"
+      run: poetry run pytest -v --tb=short
     - name: Verify CLI
       run: poetry run python ./start_impsy.py --help
