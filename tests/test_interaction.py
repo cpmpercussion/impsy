@@ -87,6 +87,180 @@ def test_build_network_missing_dimension():
         interaction.build_network(config)
 
 
+def test_build_network_from_tflite_introspects(tflite_file):
+    """build_network should introspect a .tflite without needing dimension/size in config."""
+    config = {
+        "model": {
+            "file": str(tflite_file),
+            "pitemp": 1.0,
+            "sigmatemp": 0.05,
+        },
+        "verbose": False,
+    }
+    net = interaction.build_network(config)
+    assert isinstance(net, mdrnn.TfliteMDRNN)
+    # introspected from the file, not from config
+    assert net.dimension > 0
+    assert net.pi_temp == 1.0
+    assert net.sigma_temp == 0.05
+
+
+def test_apply_cli_overrides_skips_none():
+    """None CLI values must not overwrite existing config keys."""
+    config = {"model": {"pitemp": 1.5, "file": "from-config.tflite"}, "verbose": True}
+    interaction._apply_cli_overrides(
+        config,
+        {"model.pitemp": None, "model.file": None, "verbose": None},
+    )
+    assert config["model"]["pitemp"] == 1.5
+    assert config["model"]["file"] == "from-config.tflite"
+    assert config["verbose"] is True
+
+
+def test_apply_cli_overrides_sets_nested():
+    """A dotted key creates intermediate dicts when missing."""
+    config = {}
+    interaction._apply_cli_overrides(
+        config,
+        {
+            "model.file": "cli.tflite",
+            "interaction.mode": "battle",
+            "verbose": False,
+        },
+    )
+    assert config["model"]["file"] == "cli.tflite"
+    assert config["interaction"]["mode"] == "battle"
+    assert config["verbose"] is False
+
+
+def test_apply_cli_overrides_precedence():
+    """CLI value should win over an existing config value."""
+    config = {"model": {"file": "config.tflite", "pitemp": 1.0}}
+    interaction._apply_cli_overrides(
+        config, {"model.file": "cli.tflite", "model.pitemp": 2.0}
+    )
+    assert config["model"]["file"] == "cli.tflite"
+    assert config["model"]["pitemp"] == 2.0
+
+
+def test_run_command_threads_overrides(monkeypatch, tmp_path, tflite_file):
+    """The run command should apply CLI overrides before constructing the server."""
+    from click.testing import CliRunner
+
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "verbose = false\n"
+        "log_input = true\n"
+        "log_predictions = false\n"
+        "[interaction]\n"
+        'mode = "useronly"\n'
+        "threshold = 0.1\n"
+        "input_thru = false\n"
+        "[model]\n"
+        "dimension = 4\n"
+        'size = "xs"\n'
+        'file = "missing.tflite"\n'
+        "pitemp = 1.0\n"
+        "sigmatemp = 0.01\n"
+        "timescale = 1\n"
+    )
+
+    captured = {}
+
+    class FakeServer:
+        def __init__(self, config, log_location):
+            captured["config"] = config
+            captured["log_location"] = log_location
+
+        def serve_forever(self):
+            captured["served"] = True
+
+    monkeypatch.setattr(interaction, "InteractionServer", FakeServer)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        interaction.run,
+        [
+            "-c",
+            str(config_file),
+            "-l",
+            str(tmp_path / "logs"),
+            "--mode",
+            "polyphony",
+            "--threshold",
+            "0.25",
+            "--pi-temp",
+            "2.5",
+            "--sigma-temp",
+            "0.07",
+            "--timescale",
+            "1.5",
+            "--input-thru",
+            "--verbose",
+            "--log-predictions",
+            str(tflite_file),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    cfg = captured["config"]
+    # positional MODEL_FILE overrides [model] file
+    assert cfg["model"]["file"] == str(tflite_file)
+    # options thread through
+    assert cfg["interaction"]["mode"] == "polyphony"
+    assert cfg["interaction"]["threshold"] == 0.25
+    assert cfg["interaction"]["input_thru"] is True
+    assert cfg["model"]["pitemp"] == 2.5
+    assert cfg["model"]["sigmatemp"] == 0.07
+    assert cfg["model"]["timescale"] == 1.5
+    assert cfg["verbose"] is True
+    assert cfg["log_predictions"] is True
+    assert captured["log_location"] == str(tmp_path / "logs")
+    assert captured.get("served") is True
+
+
+def test_run_command_preserves_config_when_no_overrides(monkeypatch, tmp_path):
+    """Without CLI flags, the config values should be left alone."""
+    from click.testing import CliRunner
+
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "verbose = true\n"
+        "log_input = true\n"
+        "log_predictions = false\n"
+        "[interaction]\n"
+        'mode = "callresponse"\n'
+        "threshold = 0.5\n"
+        "input_thru = false\n"
+        "[model]\n"
+        "dimension = 4\n"
+        'size = "xs"\n'
+        'file = "from-config.tflite"\n'
+        "pitemp = 1.1\n"
+        "sigmatemp = 0.02\n"
+        "timescale = 1\n"
+    )
+
+    captured = {}
+
+    class FakeServer:
+        def __init__(self, config, log_location):
+            captured["config"] = config
+
+        def serve_forever(self):
+            pass
+
+    monkeypatch.setattr(interaction, "InteractionServer", FakeServer)
+
+    runner = CliRunner()
+    result = runner.invoke(interaction.run, ["-c", str(config_file)])
+    assert result.exit_code == 0, result.output
+    cfg = captured["config"]
+    assert cfg["model"]["file"] == "from-config.tflite"
+    assert cfg["interaction"]["mode"] == "callresponse"
+    assert cfg["model"]["pitemp"] == 1.1
+    assert cfg["verbose"] is True
+
+
 @pytest.fixture(scope="session")
 def interaction_server(default_config, log_location):
     interaction_server = interaction.InteractionServer(

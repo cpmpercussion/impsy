@@ -348,6 +348,58 @@ class MDRNNInferenceModel(abc.ABC):
         pass
 
 
+def introspect_tflite_params(file: Path) -> tuple[int, int, int, int]:
+    """Introspect (dimension, n_hidden_units, n_mixtures, n_layers) from a .tflite file.
+
+    Reads the interpreter's input/output tensor shapes:
+    - input "inputs" tensor has shape (1, 1, dimension)
+    - each state tensor has shape (1, n_hidden_units); a pair (h, c) per layer
+    - MDN output last dim = n_mixtures * (2 * dimension + 1)
+    """
+    interpreter = get_tflite_interpreter(model_path=str(file))
+    # Some interpreter backends only expose reliable tensor shapes after
+    # allocate_tensors(); SELECT_TF_OPS models can't allocate without flex
+    # delegates but still publish input/output metadata, so we tolerate failure.
+    try:
+        interpreter.allocate_tensors()
+    except (RuntimeError, ValueError):
+        pass
+    input_details = interpreter.get_input_details()
+    dimension = None
+    n_hidden_units = None
+    state_count = 0
+    for d in input_details:
+        shape = d["shape"]
+        if len(shape) == 3:
+            dimension = int(shape[-1])
+        elif len(shape) == 2:
+            n_hidden_units = int(shape[-1])
+            state_count += 1
+    if dimension is None or n_hidden_units is None or state_count == 0:
+        raise ValueError(f"Could not introspect inputs from TFLite model: {file}")
+    if state_count % 2 != 0:
+        raise ValueError(
+            f"Expected paired LSTM state tensors in {file}, found {state_count}"
+        )
+    n_layers = state_count // 2
+
+    output_details = interpreter.get_output_details()
+    mdn_dim = None
+    for d in output_details:
+        if int(d["shape"][-1]) != n_hidden_units:
+            mdn_dim = int(d["shape"][-1])
+            break
+    if mdn_dim is None:
+        raise ValueError(f"Could not find MDN output in TFLite model: {file}")
+    params_per_mixture = 2 * dimension + 1
+    if mdn_dim % params_per_mixture != 0:
+        raise ValueError(
+            f"MDN output dim {mdn_dim} not divisible by (2*{dimension}+1) in {file}"
+        )
+    n_mixtures = mdn_dim // params_per_mixture
+    return dimension, n_hidden_units, n_mixtures, n_layers
+
+
 class TfliteMDRNN(MDRNNInferenceModel):
     """Loads an MDRNN from a tensorflow lite (.tflite) file for running predictions efficiently."""
 
@@ -360,6 +412,12 @@ class TfliteMDRNN(MDRNNInferenceModel):
         n_layers: int,
     ) -> None:
         super().__init__(file, dimension, n_hidden_units, n_mixtures, n_layers)
+
+    @classmethod
+    def from_file(cls, file: Path) -> "TfliteMDRNN":
+        """Construct a TfliteMDRNN by introspecting its parameters from the file."""
+        dimension, n_hidden_units, n_mixtures, n_layers = introspect_tflite_params(file)
+        return cls(file, dimension, n_hidden_units, n_mixtures, n_layers)
 
     def _setup_interpreter(self) -> None:
         """Load the TFLite interpreter and discover inputs/outputs."""

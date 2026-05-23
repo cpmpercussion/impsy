@@ -14,13 +14,14 @@ def cli():
     pass
 
 
+cli.add_command(dataset)
+cli.add_command(train)
+cli.add_command(run)
+cli.add_command(test_mdrnn)
+cli.add_command(convert_tflite)
+cli.add_command(webui)
+
+
 def main():
     """The entry point function for IMPSY, this just passes through the interfaces for each command"""
-    cli.add_command(dataset)
-    cli.add_command(train)
-    cli.add_command(run)
-    cli.add_command(test_mdrnn)
-    cli.add_command(convert_tflite)
-    cli.add_command(webui)
-    # runs the command line interface
     cli()
