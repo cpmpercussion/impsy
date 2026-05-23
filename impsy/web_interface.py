@@ -8,8 +8,8 @@ import os
 import time
 import tomllib
 from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, version as _pkg_version
-from importlib.resources import files as _pkg_files
 from threading import Lock, Thread
+from impsy.data import default_config_template
 from impsy.dataset import generate_dataset
 from pathlib import Path
 from pythonosc import dispatcher, osc_server
@@ -58,17 +58,13 @@ def set_workspace(path) -> None:
     _refresh_layout(Path(path).expanduser().resolve())
 
 
-def _default_config_template() -> str | None:
-    """Return the bundled default config template as text, or None if missing."""
-    try:
-        return _pkg_files("impsy.data").joinpath("default.toml").read_text(encoding="utf-8")
-    except (FileNotFoundError, ModuleNotFoundError):
-        return None
+# Backwards-compatible alias kept for tests that imported this earlier.
+_default_config_template = default_config_template
 
 
 def _create_default_config() -> bool:
     """Write the bundled default template to CONFIG_FILE. Returns True on success."""
-    template = _default_config_template()
+    template = default_config_template()
     if template is None:
         return False
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
