@@ -9,6 +9,8 @@ from impsy.web_interface import (
     allowed_model_file,
     allowed_log_file,
     allowed_dataset_file,
+    get_version,
+    get_software_info,
 )
 
 
@@ -24,6 +26,34 @@ def test_index_route(client):
     assert response.status_code == 200
     assert b"IMPSY" in response.data
     assert b"Dashboard" in response.data
+
+
+def test_get_version_reads_package_metadata():
+    """get_version returns the installed package version, independent of CWD."""
+    v = get_version()
+    assert v, "expected a non-empty version string from importlib.metadata"
+    # Version follows PEP 440 prefix conventions; we just check it has digits/dots.
+    assert any(ch.isdigit() for ch in v)
+
+
+def test_get_software_info_reads_package_metadata():
+    """get_software_info pulls Name/Version/Summary/Authors/URLs from metadata."""
+    info = get_software_info()
+    assert info["Project"] == "impsy"
+    assert info["Version"] == get_version()
+    assert info["Description"]
+    assert info["Authors"]
+    assert info["Homepage"]
+    assert info["Repository"]
+
+
+def test_get_version_independent_of_cwd(tmp_path, monkeypatch):
+    """The version lookup must not depend on a pyproject.toml in CWD."""
+    monkeypatch.chdir(tmp_path)
+    assert not (tmp_path / "pyproject.toml").exists()
+    assert get_version()  # still resolves from installed metadata
+    info = get_software_info()
+    assert info.get("Project") == "impsy"
 
 
 def test_logs_route(client):
