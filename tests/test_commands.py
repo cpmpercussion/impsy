@@ -120,6 +120,12 @@ def test_run_command_invokes_server(monkeypatch, tmp_path):
     assert served["config"]["interaction"]["mode"] == "useronly"
 
 
-def test_webui_command():
+def test_webui_command_help():
+    """`impsy webui --help` should exit 0 — invoking `webui` without --help
+    would start a blocking Flask server, which is what hung CI on PR #78
+    before subcommands were registered at module import time."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["webui"])
+    result = runner.invoke(cli, ["webui", "--help"])
+    assert result.exit_code == 0
+    assert "--host" in result.output
+    assert "--port" in result.output
