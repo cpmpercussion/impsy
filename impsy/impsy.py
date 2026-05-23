@@ -2,6 +2,7 @@
 
 import click
 from .dataset import dataset
+from .init import init
 from .train import train
 from .interaction import run
 from .tflite_converter import convert_tflite
@@ -14,6 +15,7 @@ def cli():
     pass
 
 
+cli.add_command(init)
 cli.add_command(dataset)
 cli.add_command(train)
 cli.add_command(run)
