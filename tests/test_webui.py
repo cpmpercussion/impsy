@@ -11,7 +11,11 @@ from impsy.web_interface import (
     allowed_dataset_file,
     get_version,
     get_software_info,
+    set_workspace,
+    _default_config_template,
+    _detect_workspace,
 )
+from impsy import web_interface as webui_mod
 
 
 @pytest.fixture
@@ -54,6 +58,62 @@ def test_get_version_independent_of_cwd(tmp_path, monkeypatch):
     assert get_version()  # still resolves from installed metadata
     info = get_software_info()
     assert info.get("Project") == "impsy"
+
+
+@pytest.fixture
+def restored_workspace():
+    """Restore the module-level workspace after a test mutates it."""
+    saved = webui_mod.PROJECT_ROOT
+    yield
+    set_workspace(saved)
+
+
+def test_default_config_template_is_packaged():
+    """The bundled default.toml must be readable via importlib.resources."""
+    template = _default_config_template()
+    assert template is not None
+    # Sanity: it should look like a TOML config with the expected top-level sections
+    assert "[interaction]" in template
+    assert "[model]" in template
+
+
+def test_set_workspace_relocates_all_paths(tmp_path, restored_workspace):
+    """set_workspace() must update every workspace-relative module global."""
+    set_workspace(tmp_path)
+    assert webui_mod.PROJECT_ROOT == tmp_path.resolve()
+    assert webui_mod.LOGS_DIR == tmp_path.resolve() / "logs"
+    assert webui_mod.MODEL_DIR == tmp_path.resolve() / "models"
+    assert webui_mod.DATASET_DIR == tmp_path.resolve() / "datasets"
+    assert webui_mod.CONFIG_FILE == tmp_path.resolve() / "config.toml"
+
+
+def test_detect_workspace_uses_env_var(tmp_path, monkeypatch):
+    """IMPSY_WORKDIR env var takes precedence over auto-detection."""
+    monkeypatch.setenv("IMPSY_WORKDIR", str(tmp_path))
+    assert _detect_workspace() == tmp_path.resolve()
+
+
+def test_detect_workspace_falls_back_to_cwd(tmp_path, monkeypatch):
+    """Without env var or source-tree pyproject.toml, workspace = CWD."""
+    monkeypatch.delenv("IMPSY_WORKDIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    # Move the package's source-tree pyproject.toml temporarily out of view by
+    # pointing the detector at a fake CURRENT_DIR whose parent has no pyproject.
+    fake_pkg = tmp_path / "fake_site_packages" / "impsy"
+    fake_pkg.mkdir(parents=True)
+    monkeypatch.setattr(webui_mod, "CURRENT_DIR", str(fake_pkg))
+    assert _detect_workspace() == tmp_path.resolve()
+
+
+def test_create_default_config_writes_template(tmp_path, restored_workspace):
+    """_create_default_config writes the bundled template into CONFIG_FILE."""
+    set_workspace(tmp_path)
+    assert not webui_mod.CONFIG_FILE.exists()
+    assert webui_mod._create_default_config() is True
+    assert webui_mod.CONFIG_FILE.exists()
+    content = webui_mod.CONFIG_FILE.read_text()
+    assert "[interaction]" in content
+    assert "[model]" in content
 
 
 def test_logs_route(client):
