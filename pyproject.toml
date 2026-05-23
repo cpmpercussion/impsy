@@ -25,6 +25,9 @@ dependencies = [
 homepage = "https://charlesmartin.au/impsy-homepage/"
 repository = "https://github.com/cpmpercussion/impsy"
 
+[project.scripts]
+impsy = "impsy.impsy:main"
+
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0.3,<10"
 flake8 = ">=7.0.0,<8"

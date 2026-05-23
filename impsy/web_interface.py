@@ -7,6 +7,7 @@ import platform
 import os
 import time
 import tomllib
+from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, version as _pkg_version
 from threading import Lock, Thread
 from impsy.dataset import generate_dataset
 from pathlib import Path
@@ -32,12 +33,10 @@ _pause_state = False
 
 
 def get_version():
-    """Get project version from pyproject.toml."""
+    """Get the installed impsy package version."""
     try:
-        with open("pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
-        return data.get("project", {}).get("version", "")
-    except Exception:
+        return _pkg_version("impsy")
+    except PackageNotFoundError:
         return ""
 
 
@@ -215,19 +214,25 @@ def get_hardware_info():
 
 
 def get_software_info():
-    with open("pyproject.toml", "rb") as f:
-        pyproject_data = tomllib.load(f)
-    project = pyproject_data.get("project", {})
-    urls = project.get("urls", {})
-    authors = project.get("authors", [])
-    author_names = [a.get("name", "") for a in authors if isinstance(a, dict)]
+    """Return human-readable project metadata from the installed package."""
+    try:
+        meta = _pkg_metadata("impsy")
+    except PackageNotFoundError:
+        return {}
+    project_urls = {}
+    for entry in meta.get_all("Project-URL") or []:
+        label, _, url = entry.partition(",")
+        if url:
+            project_urls[label.strip().lower()] = url.strip()
+    authors = meta.get("Author") or ""
+    author_names = [a.strip() for a in authors.split(",") if a.strip()]
     return {
-        "Project": project.get("name"),
-        "Version": project.get("version"),
-        "Description": project.get("description"),
+        "Project": meta["Name"],
+        "Version": meta["Version"],
+        "Description": meta["Summary"],
         "Authors": author_names if author_names else None,
-        "Homepage": urls.get("homepage"),
-        "Repository": urls.get("repository"),
+        "Homepage": project_urls.get("homepage"),
+        "Repository": project_urls.get("repository"),
     }
 
 
