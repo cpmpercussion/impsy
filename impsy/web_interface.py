@@ -8,6 +8,7 @@ import os
 import time
 import tomllib
 from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, version as _pkg_version
+from importlib.resources import files as _pkg_files
 from threading import Lock, Thread
 from impsy.dataset import generate_dataset
 from pathlib import Path
@@ -18,12 +19,65 @@ app = Flask(__name__)
 app.secret_key = "impsywebui"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = Path(os.path.dirname(CURRENT_DIR))
-LOGS_DIR = PROJECT_ROOT / "logs"
-MODEL_DIR = PROJECT_ROOT / "models"
-DATASET_DIR = PROJECT_ROOT / "datasets"
-CONFIGS_DIR = PROJECT_ROOT / "configs"
-CONFIG_FILE = "config.toml"
+
+
+def _detect_workspace() -> Path:
+    """Detect the IMPSY workspace directory.
+
+    Precedence:
+    1. `IMPSY_WORKDIR` environment variable, if set.
+    2. The package's parent directory, if it contains `pyproject.toml`
+       (source-tree clone — preserves the dev experience).
+    3. The current working directory (pip-installed users).
+    """
+    env = os.environ.get("IMPSY_WORKDIR")
+    if env:
+        return Path(env).expanduser().resolve()
+    source_root = Path(CURRENT_DIR).resolve().parent
+    if (source_root / "pyproject.toml").exists():
+        return source_root
+    return Path.cwd().resolve()
+
+
+def _refresh_layout(root: Path) -> None:
+    """Recompute the workspace-relative path globals from `root`."""
+    global PROJECT_ROOT, LOGS_DIR, MODEL_DIR, DATASET_DIR, CONFIGS_DIR, CONFIG_FILE
+    PROJECT_ROOT = root
+    LOGS_DIR = root / "logs"
+    MODEL_DIR = root / "models"
+    DATASET_DIR = root / "datasets"
+    CONFIGS_DIR = root / "configs"
+    CONFIG_FILE = root / "config.toml"
+
+
+def set_workspace(path) -> None:
+    """Override the IMPSY workspace directory at runtime.
+
+    Used by `impsy webui --workdir` and may be useful for tests.
+    """
+    _refresh_layout(Path(path).expanduser().resolve())
+
+
+def _default_config_template() -> str | None:
+    """Return the bundled default config template as text, or None if missing."""
+    try:
+        return _pkg_files("impsy.data").joinpath("default.toml").read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError):
+        return None
+
+
+def _create_default_config() -> bool:
+    """Write the bundled default template to CONFIG_FILE. Returns True on success."""
+    template = _default_config_template()
+    if template is None:
+        return False
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_FILE.write_text(template, encoding="utf-8")
+    return True
+
+
+_refresh_layout(_detect_workspace())
+
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 4000
 
@@ -505,9 +559,7 @@ def edit_config():
 @app.route("/config/create-default", methods=["POST"])
 def create_default_config():
     """Create config.toml from the default template."""
-    default_config = CONFIGS_DIR / "default.toml"
-    if default_config.exists():
-        shutil.copy2(default_config, CONFIG_FILE)
+    if _create_default_config():
         flash(
             "Created config.toml from default template. Edit it to match your setup.",
             "success",
@@ -695,15 +747,12 @@ def commands():
 
 def run_web_interface(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=True):
     """Runs the Flask web interface."""
-    # Auto-create config.toml from default if it doesn't exist
-    if not os.path.exists(CONFIG_FILE):
-        default_config = CONFIGS_DIR / "default.toml"
-        if default_config.exists():
-            shutil.copy2(default_config, CONFIG_FILE)
-            click.secho(f"Created config.toml from default template", fg="green")
+    # Auto-create config.toml from the bundled default template if absent.
+    if not CONFIG_FILE.exists() and _create_default_config():
+        click.secho("Created config.toml from default template", fg="green")
 
+    click.secho(f"Workspace: {PROJECT_ROOT}", fg="blue")
     click.secho(f"Starting web interface at http://{host}:{port}", fg="blue")
-    click.secho(f"Log path: {LOGS_DIR}", fg="blue")
     app.run(host=host, port=port, debug=debug)
 
 
@@ -711,6 +760,16 @@ def run_web_interface(host=DEFAULT_HOST, port=DEFAULT_PORT, debug=True):
 @click.option("--host", default=DEFAULT_HOST, help="The host to bind to.")
 @click.option("--port", default=DEFAULT_PORT, help="The port to bind to.")
 @click.option("--debug", is_flag=True, help="Enable debug mode.")
-def webui(host, port, debug):
+@click.option(
+    "--workdir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="IMPSY workspace directory (where logs/, models/, datasets/, config.toml live). "
+    "Defaults to the source-tree root when running from a clone, otherwise the current directory.",
+)
+def webui(host, port, debug, workdir):
     """Run IMPSY Web UI giving access to files and other commands."""
+    if workdir is not None:
+        workdir.mkdir(parents=True, exist_ok=True)
+        set_workspace(workdir)
     run_web_interface(host, port, debug)
