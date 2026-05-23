@@ -18,6 +18,26 @@ Whenever you use IMPSY, your input data is logged to build up a training corpus 
 - Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
 - IMPSY's homepage, workshop materials, and research and artistic documentation is at: <https://charlesmartin.au/impsy-homepage/>
 
+## Quickstart with pip
+
+The fastest way to try IMPSY on macOS, Linux, or Windows is to install it from PyPI into a virtual environment and scaffold a workspace. Python 3.11, 3.12, or 3.13 is required.
+
+    python -m venv impsy-env
+    source impsy-env/bin/activate    # Windows: impsy-env\Scripts\activate
+    pip install impsy
+    mkdir my-impsy && cd my-impsy
+    impsy init
+
+`impsy init` creates `logs/`, `datasets/`, and `models/` and writes a default `config.toml` in the current directory. Edit `config.toml` to match your I/O setup — MIDI, OSC, WebSocket, or serial. See [`docs/config.md`](docs/config.md) for the full configuration reference.
+
+Then log some interactions, build a dataset, and train a model:
+
+    impsy run        # log interactions (Ctrl+C to stop)
+    impsy dataset    # collate logs into a .npz dataset
+    impsy train      # train an MDRNN model
+
+`impsy --help` lists every available command. To use a saved model for predictions, set `model.file` in `config.toml` and run `impsy run` again.
+
 ## Raspberry Pi Setup
 
 We have pre-built SD card images for running IMPSY on a Raspberry Pi. See the [impsy-pi](https://github.com/cpmpercussion/impsy-pi) repository for details.
