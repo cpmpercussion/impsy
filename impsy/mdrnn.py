@@ -249,8 +249,8 @@ class PredictiveMusicMDRNN(object):
             callbacks.append(early_stopping_callback)
 
         # Do the data scaling in here.
-        X = np.array(X) * SCALE_FACTOR
-        y = np.array(y) * SCALE_FACTOR
+        X = np.array(X, dtype=np.float32) * SCALE_FACTOR
+        y = np.array(y, dtype=np.float32) * SCALE_FACTOR
 
         ## print out stats.
         print("Number of training examples:")
