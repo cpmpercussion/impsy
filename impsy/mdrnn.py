@@ -5,8 +5,6 @@ University of Oslo, Norway.
 """
 
 import os
-import tensorflow as tf
-import keras_mdn_layer as mdn
 
 os.environ.pop("TF_USE_LEGACY_KERAS", None)
 import numpy as np
@@ -19,6 +17,71 @@ NET_MODE_TRAIN = "train"
 NET_MODE_RUN = "run"
 LOG_PATH = "./logs/"
 SCALE_FACTOR = 10  # scales input and output from the model. Should be the same between training and inference.
+
+_TRAIN_EXTRA_HINT = (
+    "TensorFlow is required for this feature. "
+    "Install the training extra: `pip install impsy[train]`."
+)
+
+
+def _require_tensorflow():
+    """Import tensorflow lazily with a friendly error if the [train] extra is missing."""
+    try:
+        import tensorflow as tf  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(_TRAIN_EXTRA_HINT) from exc
+    return tf
+
+
+def _require_keras_mdn():
+    """Import keras_mdn_layer lazily with a friendly error if the [train] extra is missing."""
+    try:
+        import keras_mdn_layer as mdn  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(_TRAIN_EXTRA_HINT) from exc
+    return mdn
+
+
+def _split_mixture_params(params, output_dim, num_mixes):
+    """Split a flat MDN parameter vector into mus, sigmas, and pi-logits."""
+    assert len(params) == num_mixes + (output_dim * 2 * num_mixes), (
+        "MDN params length does not match the configured mixture/dimension"
+    )
+    mus = params[: num_mixes * output_dim]
+    sigs = params[num_mixes * output_dim : 2 * num_mixes * output_dim]
+    pi_logits = params[-num_mixes:]
+    return mus, sigs, pi_logits
+
+
+def _softmax_with_temp(w, t=1.0):
+    """Temperature-scaled, numerically-stable softmax over a 1D vector."""
+    e = np.asarray(w, dtype=np.float64) / t
+    e -= e.max()
+    e = np.exp(e)
+    return e / np.sum(e)
+
+
+def _sample_from_categorical(dist):
+    """Sample one index from a categorical distribution given as a probability vector."""
+    return int(np.random.choice(len(dist), p=dist))
+
+
+def sample_mdn_output(params, output_dim, num_mixes, temp=1.0, sigma_temp=1.0):
+    """Sample one point from an MDN output vector using ancestral sampling.
+
+    Functionally identical to ``keras_mdn_layer.sample_from_output`` but inlined
+    here in pure NumPy so that inference does not depend on Keras / TensorFlow.
+    """
+    mus, sigs, pi_logits = _split_mixture_params(params, output_dim, num_mixes)
+    pis = _softmax_with_temp(pi_logits, t=temp)
+    m = _sample_from_categorical(pis)
+    mus_vector = mus[m * output_dim : (m + 1) * output_dim]
+    sig_vector = sigs[m * output_dim : (m + 1) * output_dim]
+    scale_matrix = np.identity(output_dim) * sig_vector
+    cov_matrix = scale_matrix @ scale_matrix.T
+    cov_matrix = cov_matrix * sigma_temp
+    sample = np.random.multivariate_normal(mus_vector, cov_matrix, 1)
+    return sample[0]
 
 
 def random_sample(out_dim=2):
@@ -42,12 +105,16 @@ def proc_generated_touch(x_input, out_dim=2):
 
 
 def lstm_blank_states(layers: int, units: int):
-    """Create blank LSTM states for a networks with a number of layers and the same number of LSTM units in each layer"""
+    """Create blank LSTM states for a network with `layers` layers and `units` LSTM units in each.
+
+    Returns NumPy arrays — Keras and TFLite both accept these as inputs, and using
+    NumPy avoids dragging TensorFlow into the inference-only install path.
+    """
     states = []
-    for i in range(layers):
+    for _ in range(layers):
         states += [
-            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
-            tf.convert_to_tensor(np.zeros((1, units), dtype=np.float32)),
+            np.zeros((1, units), dtype=np.float32),
+            np.zeros((1, units), dtype=np.float32),
         ]
     assert (
         len(states) == layers * 2
@@ -79,7 +146,11 @@ def build_mdrnn_model(
     """Builds a Keras MDRNN model with specified parameters.
     Can either be a training model or inference model which affects the configured
     sequence length and whether a loss function is added.
+
+    Requires the `[train]` extra (TensorFlow + keras-mdn-layer).
     """
+    tf = _require_tensorflow()
+    mdn = _require_keras_mdn()
     # Set parameters for inference/training versions.
     if inference:
         state_input_output = True
@@ -171,7 +242,11 @@ class PredictiveMusicMDRNN(object):
         n_mixtures : number of mixture components (5-10 is good)
         layers : number of layers (2 is good)
         seq_len : sequence length to unroll
+
+        Requires the `[train]` extra (TensorFlow + keras-mdn-layer).
         """
+        _require_tensorflow()
+        _require_keras_mdn()
         # network parameters
         self.dimension = dimension
         self.mode = mode
@@ -229,6 +304,7 @@ class PredictiveMusicMDRNN(object):
         patience=10,
     ):
         """Train the network for a number of epochs with a specific dataset."""
+        tf = _require_tensorflow()
         save_location = Path(save_location)
         checkpoint_path = save_location / f"{self.model_name}-ckpt.keras"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -271,24 +347,23 @@ class PredictiveMusicMDRNN(object):
     def generate(self, prev_sample):
         """Generate one forward prediction from a previous sample in format
         (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
+        _require_tensorflow()
         assert (
             len(prev_sample) == self.dimension
         ), "Only works with samples of the same dimension as the network"
-        # print("Input sample", prev_sample)
-        prev_sample_tensor = tf.convert_to_tensor(
+        prev_sample_input = (
             prev_sample.reshape(1, 1, self.dimension) * SCALE_FACTOR
-        )
-        input_list = [prev_sample_tensor] + self.lstm_states
+        ).astype(np.float32, copy=False)
+        input_list = [prev_sample_input] + [
+            np.asarray(s, dtype=np.float32) for s in self.lstm_states
+        ]
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
-        # model_output = self.model.predict(input_list)
         mdn_params = model_output[0][0].numpy()
-        # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
 
-        # sample from the MDN:
         new_sample = (
-            mdn.sample_from_output(
+            sample_mdn_output(
                 mdn_params,
                 self.dimension,
                 self.n_mixtures,
@@ -576,9 +651,8 @@ class TfliteMDRNN(MDRNNInferenceModel):
                 self.lstm_states[2 * i + 1] = self.interpreter.get_tensor(
                     self._state_output_indices[2 * i + 1]
                 )
-        # sample from the MDN:
         new_sample = (
-            mdn.sample_from_output(
+            sample_mdn_output(
                 mdn_params,
                 self.dimension,
                 self.n_mixtures,
@@ -610,6 +684,8 @@ class KerasMDRNN(MDRNNInferenceModel):
         assert (
             self.model_file.suffix == ".keras" or self.model_file.suffix == ".h5"
         ), "KerasMDRNN only works on .keras or .h5 files."
+        tf = _require_tensorflow()
+        mdn = _require_keras_mdn()
         if self.model_file.suffix == ".keras":
             # Loading model for .keras files
             self.model = tf.keras.models.load_model(
@@ -639,25 +715,23 @@ class KerasMDRNN(MDRNNInferenceModel):
     def generate(self, prev_value: np.ndarray) -> np.ndarray:
         """Generate one forward prediction from a previous sample in format
         (dt, x_1,...,x_n). Pi and Sigma temperature are adjustable."""
+        _require_tensorflow()
         assert (
             len(prev_value) == self.dimension
         ), "Only works with samples of the same dimension as the network"
-        # print("Input sample", prev_value)
-        input_list = [
-            tf.convert_to_tensor(
-                prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
-            )
-        ] + self.lstm_states
+        prev_value_input = (
+            prev_value.reshape(1, 1, self.dimension) * SCALE_FACTOR
+        ).astype(np.float32, copy=False)
+        input_list = [prev_value_input] + [
+            np.asarray(s, dtype=np.float32) for s in self.lstm_states
+        ]
         model_output = self.model(input_list)
         # Note that we have confirmed that model.__call__() is way faster than model.predict().
-        # model_output = self.model.predict(input_list)
         mdn_params = model_output[0][0].numpy()
-        # mdn_params = model_output[0][0]
         self.lstm_states = model_output[1:]  # update storage of LSTM state
 
-        # sample from the MDN:
         new_sample = (
-            mdn.sample_from_output(
+            sample_mdn_output(
                 mdn_params,
                 self.dimension,
                 self.n_mixtures,
