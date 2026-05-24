@@ -28,13 +28,19 @@ The fastest way to try IMPSY on macOS, Linux, or Windows is to install it from P
     mkdir my-impsy && cd my-impsy
     impsy init
 
+The base install runs `.tflite` models for inference and logs interaction data — no TensorFlow required. To train new models or convert `.keras`/`.h5` files to `.tflite`, install the `train` extra:
+
+    pip install "impsy[train]"
+
+The base install is lightweight enough for Raspberry Pi and dedicated performance rigs that only load pre-trained models; the `[train]` extra is for laptops and workstations doing the training.
+
 `impsy init` creates `logs/`, `datasets/`, and `models/` and writes a default `config.toml` in the current directory. Edit `config.toml` to match your I/O setup — MIDI, OSC, WebSocket, or serial. See [`docs/config.md`](docs/config.md) for the full configuration reference.
 
 Then log some interactions, build a dataset, and train a model:
 
     impsy run        # log interactions (Ctrl+C to stop)
     impsy dataset    # collate logs into a .npz dataset
-    impsy train      # train an MDRNN model
+    impsy train      # train an MDRNN model — needs the [train] extra
 
 `impsy --help` lists every available command. To use a saved model for predictions, set `model.file` in `config.toml` and run `impsy run` again.
 
@@ -59,7 +65,11 @@ Then you should clone this repository or download it to your computer:
     git clone https://github.com/cpmpercussion/impsy.git
     cd impsy
 
-Then you can install the dependencies using Poetry:
+Then you can install the dependencies using Poetry. Use `--extras train` if you want to train new models from the same checkout (otherwise the base install is inference-only):
+
+    poetry install --extras train
+
+Or, for an inference-only setup (e.g., on a Raspberry Pi loading pre-trained `.tflite` models), omit the extra:
 
     poetry install
 
