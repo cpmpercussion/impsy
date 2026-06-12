@@ -6,7 +6,7 @@ permalink: /get-started/
 description: How to install IMPSY, capture gesture data, train a mixture density RNN, and route predictions back into your instrument.
 ---
 
-IMPSY is a Python project. There are two main paths: a **desktop install** for development, training, and recording, and the **IMPSYpi** distribution for running an intelligent instrument on a Raspberry Pi.
+IMPSY is a Python project. There are three main paths: a **desktop install** for development, training, and recording; the **IMPSYpi** distribution for running an intelligent instrument on a Raspberry Pi; and the **[IMPSY AUv3 app]({{ site.links.auv3 }})** for playing IMPSY models inside a DAW (or standalone) on iOS and macOS.
 
 > **Looking for the most complete walkthrough?** The [IMPSYpi Workshop]({{ '/workshop/' | relative_url }}) takes you end-to-end: Docker install on a laptop, training your own MDRNN, flashing the Raspberry Pi image, and connecting IMPSY to a micro:bit or Pure Data instrument. The page below is the short version — if you want the full guided tour, start there.
 
@@ -54,6 +54,12 @@ Once you have a trained model, IMPSY can run in *call-and-response* mode (the mo
 [IMPSYpi]({{ site.links.pi }}) is a Raspberry Pi distribution that ships IMPSY pre-configured for embedded use: it boots quickly, exposes the web interface on the local network, and is designed to live inside an instrument enclosure. It targets Raspberry Pi 4 and 5 (Pi 3 and Zero 2 W also work).
 
 The IMPSYpi repository contains the build scripts, image notes, and example deployments — start there if your goal is a standalone, untethered intelligent instrument.
+
+## In your DAW: the IMPSY AUv3 app
+
+[IMPSY AUv3]({{ site.links.auv3 }}) is a native iOS/macOS app that runs IMPSY's TFLite models as an AUv3 MIDI processor — load it in AUM, Logic Pro, or any other AUv3 host, or run it standalone with virtual MIDI ports. It plays in call-and-response mode, imports and exports the same TOML mappings as the Python toolkit, and can record session logs in IMPSY's `.log` format ready for the training pipeline, so models and data move freely between the app and a desktop install.
+
+It's [on the App Store](https://apps.apple.com/app/id6771762122) for iOS 17+ and macOS 14+ (Apple Silicon); the source lives at [cpmpercussion/impsy-auv3](https://github.com/cpmpercussion/impsy-auv3).
 
 ## Watch it in action
 

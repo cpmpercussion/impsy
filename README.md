@@ -44,6 +44,10 @@ We have pre-built SD card images for running IMPSY on a Raspberry Pi. See the [i
 
 The `impsy-pi` image loads IMPSY automatically at boot and can be configured remotely over a USB connection to your Raspberry Pi.
 
+## IMPSY for iOS and macOS (AUv3)
+
+[IMPSY AUv3](https://charlesmartin.au/impsy-auv3/) is a native app that runs IMPSY's `.tflite` models as an AUv3 MIDI processor plugin on iOS and macOS — inside hosts such as AUM or Logic Pro, or standalone using virtual MIDI ports. It plays in call-and-response mode, imports and exports the same TOML mapping format as this toolkit, and can record session logs in IMPSY's `.log` format ready for the training pipeline, so models and data move freely between the app and a desktop install. It's available [on the App Store](https://apps.apple.com/app/id6771762122) (iOS 17+, macOS 14+ on Apple Silicon) and developed at [cpmpercussion/impsy-auv3](https://github.com/cpmpercussion/impsy-auv3).
+
 ## Local Installation
 
 If you wish to install IMPSY on a regular computer, or from scratch on a single-board computer here are the instructions. IMPSY is distributed as python software so you will need to use command-line interface to install it.

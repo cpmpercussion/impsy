@@ -86,7 +86,7 @@ image: /assets/img/impsy-s1-soundout.jpg
         without re-training. A web interface exposes recording, training, and inference.
       </p>
       <p class="mb-0">
-        The companion <a href="{{ site.links.pi }}">IMPSYpi</a> distribution packages the toolkit for Raspberry Pi Zero 2 W, 3, 4, and 5 so that an intelligent instrument can run untethered on stage. The <a href="{{ '/workshop/' | relative_url }}">IMPSYpi workshop</a> walks through the whole process end to end.
+        The companion <a href="{{ site.links.pi }}">IMPSYpi</a> distribution packages the toolkit for Raspberry Pi Zero 2 W, 3, 4, and 5 so that an intelligent instrument can run untethered on stage, and the <a href="{{ site.links.auv3 }}">IMPSY AUv3</a> app runs the same models as a MIDI plugin (or standalone) on iOS and macOS. The <a href="{{ '/workshop/' | relative_url }}">IMPSYpi workshop</a> walks through the whole process end to end.
       </p>
     </div>
   </div>
@@ -134,7 +134,7 @@ image: /assets/img/impsy-s1-soundout.jpg
       <h2 class="fw-semibold">Get involved</h2>
       <p>
         IMPSY is open source and developed in the open. The core repository, the Pi distribution,
-        and this site all live on GitHub — issues and pull requests are welcome.
+        the AUv3 app, and this site all live on GitHub — issues and pull requests are welcome.
       </p>
       <a class="btn btn-outline-secondary" href="{{ site.links.source }}">Star on GitHub →</a>
     </div>
