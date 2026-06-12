@@ -6,7 +6,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/impsy/badge.svg)](https://coveralls.io/github/cpmpercussion/impsy)
 [![PyPI - Version](https://img.shields.io/pypi/v/IMPSY)](https://pypi.org/project/impsy/)
 
-![An intelligent musical instrument setup powered by IMPSY running on a Raspberry Pi 53](https://github.com/cpmpercussion/impsy/raw/main/images/impsy-s1-soundout-1000w.jpg)
+![An intelligent musical instrument setup powered by IMPSY running on a Raspberry Pi 53](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/impsy-s1-soundout-1000w.jpg)
 
 IMPSY is a platform for creating intelligent musical instruments.
 It works on regular computers and on single-board computers such as a Raspberry Pi. 
@@ -82,7 +82,7 @@ Your IMPSY configuration goes in a `.toml` file which by default is called `conf
 For MIDI communication, IMPSY receives and sends message for one different note channel or CC for each dimension. Have a look at the `midi` block in `default.toml` for an example. 
 Here's an example diagram for using IMPSY with a Roland S-1 synthesiser. The MIDI input to IMPSY is 7 control knobs on the synthesiser face and the keyboard. IMPSY outputs MIDI to control the same 7 synth parameters and notes.
 
-![System diagram using IMPSY with a Roland S-1 synthesiser.](https://github.com/cpmpercussion/impsy/raw/main/images/impsy-diagram.png)
+![System diagram using IMPSY with a Roland S-1 synthesiser.](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/impsy-diagram.png)
 
 So what happens if IMPSY and the performer play at the same time? In this example, it doesn't make sense for both to control the synthesiser at the same time, so we set IMPSY to run in "call and response" mode, so that it only makes predictions when the human has stopped performing.
 
@@ -184,7 +184,7 @@ IMPSY uses a mixture density recurrent neural network MDRNN to make predictions.
 
 The network is illustrated here---every time IMPSY receives an interaction message from your interface, it is sent to thorugh the LSTM layers to produce the parameters of a Gaussian mixture model. The predicted next interaction is sampled from this probability model.
 
-![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/images/mdn_diagram.png)
+![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/mdn-diagram.png)
 
 The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/cpmpercussion/keras-mdn-layer) package. TFLite inference uses [ai-edge-litert](https://pypi.org/project/ai-edge-litert/) (the successor to the TensorFlow Lite runtime). There's more info and tutorials about MDNs on [the keras-mdn-layer github repo](https://github.com/cpmpercussion/keras-mdn-layer).
 

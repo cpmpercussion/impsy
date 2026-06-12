@@ -1,0 +1,58 @@
+title: IMPSY
+tagline: Intelligent Musical Prediction System
+description: >-
+  IMPSY is an Intelligent Musical Prediction System: a research toolkit for
+  building intelligent musical instruments using mixture density recurrent
+  neural networks. It supports flexible OSC, MIDI, serial, and web I/O, and
+  runs on Raspberry Pi for embedded creative applications.
+author:
+  name: Charles Martin
+  url: https://charlesmartin.au
+
+baseurl: "/impsy"
+url: "https://charlesmartin.au"
+
+repository: cpmpercussion/impsy
+github_username: cpmpercussion
+
+# Build settings
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Site nav
+nav:
+  - title: Home
+    url: /
+  - title: Get Started
+    url: /get-started/
+  - title: Config
+    url: /config/
+  - title: Workshop
+    url: /workshop/
+  - title: Research
+    url: /research/
+  - title: Gallery
+    url: /gallery/
+
+# External links surfaced in the footer / home page
+links:
+  source: https://github.com/cpmpercussion/impsy
+  pi: https://github.com/cpmpercussion/impsy-pi
+  videos: https://www.youtube.com/watch?v=GJ6vjhjv-TY&list=PLnRoOVbpGXfa9USZtfxtIkMhU1TfOMKQA
+  charles: https://charlesmartin.au
+  smcclab: https://smcclab.au
+  mishmash: https://mishmash.no
+
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+exclude:
+  - README.md
+  - CLAUDE.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor

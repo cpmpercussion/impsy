@@ -1,0 +1,12 @@
+---
+layout: default
+---
+<article class="container py-5" style="max-width: 820px;">
+  <header class="mb-4">
+    <h1 class="display-6 fw-semibold">{{ page.title }}</h1>
+    {% if page.subtitle %}<p class="lead text-body-secondary">{{ page.subtitle }}</p>{% endif %}
+  </header>
+  <div class="content">
+    {{ content }}
+  </div>
+</article>
