@@ -1,8 +1,14 @@
-# IMPSY Configuration Reference
+---
+layout: page
+title: Configuration Reference
+subtitle: Every key in the IMPSY config.toml, grouped by section.
+permalink: /config/
+description: Reference for IMPSY's TOML configuration — the interaction loop, the MDRNN model, and every MIDI, OSC, WebSocket, and serial I/O channel.
+---
 
 IMPSY is configured through a single TOML file — `config.toml` in the project root by default, or any path passed to `--config` / `-c` on the `run` command. The same file controls the interaction loop, the MDRNN model that's loaded, and every I/O channel (MIDI, OSC, WebSocket, serial). Logs, datasets, and trained model files are not configured here — they're discovered by convention from `logs/`, `datasets/`, and `models/`.
 
-The example configurations in [`configs/`](../configs/) are real, working setups. The rest of this document describes every key those examples use (and a few they don't).
+The example configurations in [`configs/`](https://github.com/cpmpercussion/impsy/tree/main/configs) are real, working setups. The rest of this document describes every key those examples use (and a few they don't).
 
 ## Table of contents
 
@@ -126,7 +132,7 @@ The MIDI server, using `mido` + `python-rtmidi`. Devices are referenced by name;
 | `output."<port>"` | array of arrays | yes per output device | The mapping used to encode the model's output vector as MIDI for this port. Length must equal `dimension - 1`. |
 | `feedback_protection` | bool | no | Default `false`. When `true`, MIDI inputs are dropped if they arrive within `feedback_threshold` of the last output AND match the most recent output note — useful when an output device echoes its own MIDI back over the same cable (e.g. Roland S-1). |
 | `feedback_threshold` | float | no | Default `0.02` (20 ms). Window during which feedback protection treats incoming notes as echoes. |
-| `thru_matrix."<input port>"` | array of strings | no | Optional MIDI thru routing. Each input port can list output ports that should receive its messages directly (bypassing the model). Lets you wire a controller to a synth while still feeding both into IMPSY. See [`configs/roland-s-1-quneo.toml`](../configs/roland-s-1-quneo.toml) for an example. |
+| `thru_matrix."<input port>"` | array of strings | no | Optional MIDI thru routing. Each input port can list output ports that should receive its messages directly (bypassing the model). Lets you wire a controller to a synth while still feeding both into IMPSY. See [`configs/roland-s-1-quneo.toml`](https://github.com/cpmpercussion/impsy/blob/main/configs/roland-s-1-quneo.toml) for an example. |
 
 Per-port mappings (`input."<name>"`, `output."<name>"`, `thru_matrix."<name>"`) use TOML's quoted-key syntax, which lets device names contain spaces and punctuation.
 

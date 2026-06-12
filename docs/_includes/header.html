@@ -1,0 +1,28 @@
+<nav class="navbar navbar-expand-md border-bottom sticky-top bg-body" aria-label="Site navigation">
+  <div class="container">
+    <a class="navbar-brand fw-semibold" href="{{ '/' | relative_url }}">
+      <span class="impsy-mark">IMPSY</span>
+      <span class="d-none d-sm-inline text-body-secondary fw-normal ms-1">/ Intelligent Music Platform</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-md-center">
+        {% for item in site.nav %}
+          {% assign current = false %}
+          {% if page.url == item.url %}{% assign current = true %}{% endif %}
+          <li class="nav-item">
+            <a class="nav-link {% if current %}active{% endif %}" {% if current %}aria-current="page"{% endif %} href="{{ item.url | relative_url }}">{{ item.title }}</a>
+          </li>
+        {% endfor %}
+        <li class="nav-item ms-md-2">
+          <button id="theme-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Toggle colour theme" title="Toggle theme (light / dark / auto)">
+            <span data-theme-icon>◐</span>
+            <span class="visually-hidden" data-theme-label>auto</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
