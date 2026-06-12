@@ -1,9 +1,10 @@
-# IMPSY Homepage Repository
+# IMPSY Homepage
 
-This repository holds the homepage source for the IMPSY (Intelligent Musical
-Instrument Platform) Project. The source here will build a website that will
-serve as a starting point for information about IMPSY, how to install and use
-it, and the research projects that have applied IMPSY.
+This directory holds the homepage source for the IMPSY (Intelligent Musical
+Instrument Platform) Project, published at <https://charlesmartin.au/impsy>.
+The source here builds a website that serves as a starting point for
+information about IMPSY, how to install and use it, and the research projects
+that have applied IMPSY.
 
 ## Contents
 
@@ -21,7 +22,7 @@ These are the main papers by Charles in this project.
 
 - 2026: Opening the Design Space: <https://github.com/cpmpercussion/impsypi-opening-design-space-paper> (most recent paper)
 - 2020: Understanding Musical Predictions with EMPI: <https://github.com/cpmpercussion/Understanding-Musical-Predictions-with-EMPI> (paper on embodied musical prediction system)
-- 2019: An Interactive Musical Prediction System with Mixture Density Recurrent Neural Networks: <> (original paper introducing the IMPS system, focus on ML and OSC communication)
+- 2019: An Interactive Musical Prediction System with Mixture Density Recurrent Neural Networks: <https://doi.org/10.5281/zenodo.3672952> (original paper introducing the IMPS system, focus on ML and OSC communication)
 - 2018: RoboJam: A Musical Mixture Density Network for Collaborative Touchscreen Interaction: <https://github.com/cpmpercussion/robojam-an-interactive-musical-mdn> (early paper, pre-IMPSY, working on MDRNN principle)
 
 ### Historical Notes
@@ -29,14 +30,14 @@ These are the main papers by Charles in this project.
 - 2017-2018: started musical MDRNN idea with Robojam project
 - 2019: released IMPS interactive musical prediction system applying MDRNN idea to general musical interaction (focus on OSC connectivity)
 - 2020: studied IMPS in performance and with EMPI system
-- 2024: rebuilt IMPS as IMPSY with broad IO connectivity and easier configurability. Focus on running on Rasbperry Pi for developing many new intelligent instruments.
+- 2024: rebuilt IMPS as IMPSY with broad IO connectivity and easier configurability. Focus on running on Raspberry Pi for developing many new intelligent instruments.
 - 2024: presented IMPSYpi in workshop at NIME2024: <https://github.com/smcclab/nime-embedded-ai>
 - 2026: updated IMPSY for modern install and clarifying the web interface. Establishing connections with the Mishmash project <https://mishmash.no>
 
 ## Style
 
 - The style should be creative yet research oriented, typical of the NIME community.
-- For examples of style, consulte the research publication above for Charles Martin's voice.
+- For examples of style, consult the research publications above for Charles Martin's voice.
 - The goal is not marketing copy, but clear communication to fellow researchers and music technologists who might adopt and adapt this work.
 - For further information about style and layout see Charles website: <https://github.com/cpmpercussion/homepage>
 - Few pages with clear markdown style for later updating.

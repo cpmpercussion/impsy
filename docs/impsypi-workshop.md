@@ -94,9 +94,9 @@ At the workshop we will have physical Raspberry Pi kits available to try out. Th
 
 ### Download the OS image and flash to an SD card
 
-IMPSY has a preinstalled SD card image that you can flash to an SD card so that you are ready to go[^sdpride]. For this part of the tutorial, take a look at the [impsy-rpi-image-maker repository](https://github.com/cpmpercussion/impsy-rpi-image-maker).
+IMPSY has a preinstalled SD card image that you can flash to an SD card so that you are ready to go[^sdpride]. For this part of the tutorial, take a look at the [impsy-pi repository](https://github.com/cpmpercussion/impsy-pi).
 
-1. Go to the [releases page](https://github.com/cpmpercussion/impsy-rpi-image-maker/releases) and download the `.img.xz` file for the latest release. It should be about 1.2GB.
+1. Go to the [releases page](https://github.com/cpmpercussion/impsy-pi/releases) and download the `.img.xz` file for the latest release. It should be about 1.2GB.
 
 2. Grab your 16GB+ SD card.
 
@@ -380,10 +380,10 @@ There are good reasons to install IMPSY natively on your computer, that is, to r
 
 For this you will need to install:
 
-- _python 3.11_
+- _python 3.11, 3.12, or 3.13_
 - `poetry`
 
-IMPSY _really_ needs Python 3.11.x to work (not 3.8, not 3.12... etc), so you might need to think about having multiple pythons available. The exact instructions here vary by system but we can confirm that valid install paths are available on macOS, Windows, and Linux[^testing]. There are lots of ways to install Python and Poetry so here are the rough instructions that may need some research to help proceed:
+IMPSY needs Python 3.11, 3.12, or 3.13 to work (not 3.8, 3.9, or 3.10), so you might need to think about having multiple pythons available. The exact instructions here vary by system but we can confirm that valid install paths are available on macOS, Windows, and Linux[^testing]. There are lots of ways to install Python and Poetry so here are the rough instructions that may need some research to help proceed:
 
 1. run `python --version` at a command line to see what version of Python you have.
 

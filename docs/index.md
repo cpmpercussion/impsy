@@ -27,7 +27,7 @@ image: /assets/img/impsy-s1-soundout.jpg
       </div>
       <div class="col-lg-6 hero-figure">
         <img src="{{ '/assets/img/impsy-s-1-169.jpg' | relative_url }}"
-             alt="An IMPSY-driven Korg S-1 synthesizer in performance, with a Raspberry Pi controller running the predictive model."
+             alt="An IMPSY-driven Roland S-1 synthesizer in performance, with a Raspberry Pi controller running the predictive model."
              loading="eager">
       </div>
     </div>
@@ -105,7 +105,7 @@ image: /assets/img/impsy-s1-soundout.jpg
 
   <div class="row g-3 gallery-grid">
     <div class="col-6 col-md-3">
-      <img src="{{ '/assets/img/intelligent-s1.jpg' | relative_url }}" alt="Korg S-1 with IMPSYpi controller.">
+      <img src="{{ '/assets/img/intelligent-s1.jpg' | relative_url }}" alt="Roland S-1 with IMPSYpi controller.">
     </div>
     <div class="col-6 col-md-3">
       <img src="{{ '/assets/img/intelligent-microfreak.jpg' | relative_url }}" alt="Arturia MicroFreak driven by IMPSY.">

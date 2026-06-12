@@ -47,11 +47,11 @@ See the main repository for the current training command, hyperparameter default
 
 ## 5. Run the instrument
 
-Once you have a trained model, IMPSY can run in *call-and-response*, *continuation*, or *duet* modes (or you can write your own). On a desktop machine you can iterate quickly; on a Pi, you get a self-contained intelligent instrument that boots straight into performance mode.
+Once you have a trained model, IMPSY can run in *call-and-response* mode (the model answers when you pause), *polyphony* mode (you and the model play simultaneously), or *battle* mode (the model plays autonomously alongside you) — plus a *user-only* mode for logging data without predictions. See the [configuration reference]({{ '/config/' | relative_url }}) for details. On a desktop machine you can iterate quickly; on a Pi, you get a self-contained intelligent instrument that boots straight into performance mode.
 
 ## Going embedded: IMPSYpi
 
-[IMPSYpi]({{ site.links.pi }}) is a Raspberry Pi distribution that ships IMPSY pre-configured for embedded use: it boots quickly, exposes the web interface on the local network, and is designed to live inside an instrument enclosure. It targets Raspberry Pi 4 and 5.
+[IMPSYpi]({{ site.links.pi }}) is a Raspberry Pi distribution that ships IMPSY pre-configured for embedded use: it boots quickly, exposes the web interface on the local network, and is designed to live inside an instrument enclosure. It targets Raspberry Pi 4 and 5 (Pi 3 and Zero 2 W also work).
 
 The IMPSYpi repository contains the build scripts, image notes, and example deployments — start there if your goal is a standalone, untethered intelligent instrument.
 

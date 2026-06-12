@@ -1,12 +1,12 @@
 # IMPSY: An Intelligent Musical Instrument Platform
 
-![MIT License](https://img.shields.io/github/license/cpmpercussion/keras-mdn-layer.svg?style=flat)
+![MIT License](https://img.shields.io/github/license/cpmpercussion/impsy.svg?style=flat)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2580175.svg)](https://doi.org/10.5281/zenodo.2580175)
 [![Install and run IMPSY](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml/badge.svg)](https://github.com/cpmpercussion/impsy/actions/workflows/python-app.yml)
 [![Coverage Status](https://coveralls.io/repos/github/cpmpercussion/impsy/badge.svg)](https://coveralls.io/github/cpmpercussion/impsy)
 [![PyPI - Version](https://img.shields.io/pypi/v/IMPSY)](https://pypi.org/project/impsy/)
 
-![An intelligent musical instrument setup powered by IMPSY running on a Raspberry Pi 53](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/impsy-s1-soundout-1000w.jpg)
+![An intelligent musical instrument setup powered by IMPSY running on a Raspberry Pi 5](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/impsy-s1-soundout-1000w.jpg)
 
 IMPSY is a platform for creating intelligent musical instruments.
 It works on regular computers and on single-board computers such as a Raspberry Pi. 
@@ -16,7 +16,7 @@ Several interactive paradigms are supported for call-response improvisation, as 
 Whenever you use IMPSY, your input data is logged to build up a training corpus and a command is provided to train new versions of your model.
 
 - Here's a demonstration video showing how IMPSY can be used with different musical interfaces: <https://youtu.be/NUpqzW6PeqU>
-- IMPSY's homepage, workshop materials, and research and artistic documentation is at: <https://charlesmartin.au/impsy-homepage/>
+- IMPSY's homepage, workshop materials, and research and artistic documentation is at: <https://charlesmartin.au/impsy/>
 
 ## Quickstart with pip
 
@@ -73,7 +73,7 @@ There are four steps for using IMPSY. First, you'll need to setup your musical i
 
 ### 1. Connect music interface and synthesis software and configure IMPSY
 
-IMPSY doesn't make any sound, it communicates with other sound making hardware or software and controller hardware or software via MIDI, OSC, WebSockets or serial. You could send and receive predictions from the same sofware (e.g., Pd with OSC input and output) or hardware (e.g., Arturia Microfreak with MIDI in and out). You can also have separate sources for input and output (input from a MIDI controller with output to Max via OSC) and multiple sources at the same time.
+IMPSY doesn't make any sound, it communicates with other sound making hardware or software and controller hardware or software via MIDI, OSC, WebSockets or serial. You could send and receive predictions from the same software (e.g., Pd with OSC input and output) or hardware (e.g., Arturia Microfreak with MIDI in and out). You can also have separate sources for input and output (input from a MIDI controller with output to Max via OSC) and multiple sources at the same time.
 
 You need to decide on a fixed number of inputs (or dimension) for your predictive model. This is the number of continuous outputs from your interface plus one (for time). So for an interface with 8 faders, the dimension will be 9.
 
@@ -97,7 +97,7 @@ Your synthesiser software or interface needs to listen for messages from the IMP
 
 You use the `run` command to log training data. If your interface has N inputs the dimension is N+1:
 
-    poetry run ./start_impsy run
+    poetry run ./start_impsy.py run
 
 This command creates files in the `logs` directory with data like this:
 
@@ -113,7 +113,7 @@ mode = "useronly"
 ```
 Look at `configs/user-only-example.toml` for an example.
 
-Every time you use IMPS' "run" command, a new log file is created so that you can build up a significant dataset!
+Every time you use IMPSY's `run` command, a new log file is created so that you can build up a significant dataset!
 
 ### 3. Train an MDRNN
 
@@ -121,20 +121,20 @@ There's two steps for training: Generate a dataset file, and train the predictiv
 
 Use the `dataset` command:
 
-    poetry run ./start_impsy dataset --dimension (N+1)
+    poetry run ./start_impsy.py dataset --dimension (N+1)
 
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
 To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xxs`, `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
 It's a good idea to start with an `xs` or `s` model, and the larger models may work better for quite large datasets (e.g., >1M individual interactions).
 
-    poetry run ./start_impsy train --dimension (N+1) --modelsize s
+    poetry run ./start_impsy.py train --dimension (N+1) --modelsize s
 
 Early stopping is enabled by default and will stop training after the model stops improving for 10 epochs (configurable with `--patience`). You can disable it with `--no-earlystopping`.
 
 By default, your trained model will be saved in the `models` directory in `.keras` and `.tflite` format.
 
-> WHat's with `.keras` and `.tflite` files? Both Keras and TFLite files have all the information needed to reconstruct a trained IMPSY neural network. `.keras` is the Keras machine learning framework's native format and `.tflite` is TensorFlow Lite's optimised model format. Until 2024 we used Keras' native model storage but Tensorflow Lite turns out to be more than 20x faster so it's almost always a better idea to use the `.tflite` file.
+> What's with `.keras` and `.tflite` files? Both Keras and TFLite files have all the information needed to reconstruct a trained IMPSY neural network. `.keras` is the Keras machine learning framework's native format and `.tflite` is TensorFlow Lite's optimised model format. Until 2024 we used Keras' native model storage but Tensorflow Lite turns out to be more than 20x faster so it's almost always a better idea to use the `.tflite` file.
 
 ### 4. Perform with your predictive model
 
@@ -146,11 +146,19 @@ size = "s"
 ```
 Which will load a 9d TFLite model of the "small" size. You can run this command to start making predictions:
 
-    poetry run ./start_impsy run 
+    poetry run ./start_impsy.py run
 
-PS: all the IMPSY commands respond to the `--help` switch to show command line options. If there's something not documented or working, it would be great if you add an issue above to let me know.
+PS: all the IMPSY commands respond to the `--help` switch to show command line options. For example, `run` accepts overrides for many config values (`--mode`, `--threshold`, `--sigma-temp`, `--pi-temp`, `--timescale` and more) so you can experiment without editing `config.toml`. If there's something not documented or working, it would be great if you add an issue above to let me know.
 
-### Using Docker to run IMPSy
+### The web interface
+
+IMPSY includes a web interface for working with your logs, datasets, models, and configuration from a browser:
+
+    poetry run ./start_impsy.py webui
+
+This starts a Flask server at `http://127.0.0.1:4000`. There are also `convert-tflite` (convert a `.keras`/`.h5` model to `.tflite`) and `test-mdrnn` (check that the neural network works on your system) commands — see `--help` for the full list.
+
+### Using Docker to run IMPSY
 
 We provide the docker image [`charlepm/impsy`](https://hub.docker.com/r/charlepm/impsy) which includes IMPSY with Poetry and required libraries installed.
 
@@ -166,7 +174,7 @@ docker compose -f docker-compose.yml up
 ```
 Then you can navigate to `http://127.0.0.1:4000` to view the web interface. OSC communication happens through ports 6000 and 6001. The local `config.toml`, and `datasets`, `logs` and `models` directories are mapped into the docker containers.
 
-You will need a special client address, `host.docker.internal` to send messages out of the docker containers to your host computer. Make sure this is listed under `client_ip` in `config.toml`. See `examples/pd-workshop-example.toml` for an example.
+You will need a special client address, `host.docker.internal` to send messages out of the docker containers to your host computer. Make sure this is listed under `client_ip` in `config.toml`. See `configs/pd-workshop-example.toml` for an example.
 
 #### Using docker to create datasets or train models
 
@@ -182,7 +190,7 @@ This can be useful to use the `dataset` or `train` commands to generate new data
 
 IMPSY uses a mixture density recurrent neural network MDRNN to make predictions. This machine learning architecture is set up to predict the next in a sequence of multi-valued elements. The recurrent neural network uses LSTM units to remember information about past inputs and use this to help make decisions. The mixture density model at the end of the network allows continuous multi-valued elements to be sampled from a rich probability distribution. 
 
-The network is illustrated here---every time IMPSY receives an interaction message from your interface, it is sent to thorugh the LSTM layers to produce the parameters of a Gaussian mixture model. The predicted next interaction is sampled from this probability model.
+The network is illustrated here---every time IMPSY receives an interaction message from your interface, it is sent through the LSTM layers to produce the parameters of a Gaussian mixture model. The predicted next interaction is sampled from this probability model.
 
 ![A Musical MDRNN](https://github.com/cpmpercussion/impsy/raw/main/docs/assets/img/mdn-diagram.png)
 
@@ -190,4 +198,11 @@ The MDRNN is written in Keras and uses the [keras-mdn-layer](https://github.com/
 
 ## IMPSY History
 
-IMPSY emerged from research at the University of Oslo as part of the EPEC (Engineering Predictabiity with Embodied Cognition) from 2016--2019. The initial software, called IMPS, focussed on OSC interaction and was released in 2019. A rewritten system called IMPSY was released in 2024 with a focus on embedded use within hardware electronic music setups. In 2026, the `keras-mdn-layer` components were rewritten in pure Keras to eliminate dependencies and make the system even lighter for embedded applications.
+IMPSY emerged from research at the University of Oslo as part of the EPEC (Engineering Predictability with Embodied Cognition) project from 2016--2019. The initial software, called IMPS, focussed on OSC interaction and was released in 2019. A rewritten system called IMPSY was released in 2024 with a focus on embedded use within hardware electronic music setups. In 2026, the `keras-mdn-layer` components were rewritten in pure Keras to eliminate dependencies and make the system even lighter for embedded applications.
+
+## Citing IMPSY
+
+IMPSY is research software and the ideas behind it are documented in a series of publications, listed at the [research page](https://charlesmartin.au/impsy/research/). If you use IMPSY in academic work, you could cite the original IMPS paper and the paper describing the current IMPSY platform:
+
+- Charles Martin and Jim Torresen. 2019. "An Interactive Musical Prediction System with Mixture Density Recurrent Neural Networks." In _Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)_. DOI: [10.5281/zenodo.3672952](https://doi.org/10.5281/zenodo.3672952)
+- Charles Martin. 2026. "Opening the Design Space: Two Years of Performance with Intelligent Musical Instruments." In _Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)_. Preprint: [arXiv:2604.23583](https://arxiv.org/abs/2604.23583)

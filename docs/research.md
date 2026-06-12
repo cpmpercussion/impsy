@@ -58,12 +58,15 @@ These papers extend IMPSY or the MDRNN approach into new instruments, interfaces
   <li>
     <div class="pub-year">2026</div>
     <div class="pub-title">A Web Interface for Real-Time Interaction with Machine Learning in Musical Performance</div>
-    <p class="mb-2 text-body-secondary">Hongdi Zhu and Charles Martin. <em>NIME 2026</em> (to appear). Describes the web interface for IMPSY — configuration, data capture, and model management without specialist tooling.</p>
+    <p class="mb-2 text-body-secondary">Hongzhe Zhu and Charles Martin. <em>NIME 2026</em>. Presents the design and evaluation of IMPSY's web interface, which visualises the state of the MDRNN in real time. An exploratory user study suggests that exposing the model's data provenance and generative processes supports user trust and expressive co-creation — an argument for transparency as a design factor in intelligent instruments.</p>
+    <a href="https://nime2026.org/proceedings/196.html">Abstract →</a>
   </li>
   <li>
     <div class="pub-year">2025</div>
     <div class="pub-title">Touching Wires: Tactility and a Quilted Musical Interface for Human–AI Musical Co-Creation</div>
-    <p class="mb-2 text-body-secondary">Sandy Ma and Charles Martin. <em>NIME 2025</em>. A soft, quilted controller for co-creative musical interaction with an IMPSY-based predictive model.</p>
+    <p class="mb-2 text-body-secondary">Sandy Ma and Charles Martin. <em>NIME 2025</em>, Canberra, pp. 296–303. A soft, quilted controller for co-creative musical interaction with an IMPSY-based predictive model.</p>
+    <a href="https://doi.org/10.5281/zenodo.15698865">DOI →</a>
+    · <a href="https://nime.org/proceedings/2025/nime2025_41.pdf">PDF →</a>
   </li>
   <li>
     <div class="pub-year">2025</div>
@@ -89,15 +92,15 @@ These papers extend IMPSY or the MDRNN approach into new instruments, interfaces
   <li><span class="year">2024</span> Rebuilt IMPS as <strong>IMPSY</strong> with broader I/O, easier configuration, and a focus on Raspberry Pi deployment for new intelligent instruments.</li>
   <li><span class="year">2024</span> Organised the <a href="https://smcclab.au/nime-embedded-ai/">Building NIMEs with Embedded AI</a> workshop at NIME 2024.</li>
   <li><span class="year">2025</span> SMCC Lab students publish the first IMPSY-based papers: Wang (<em>AI See, You See</em>, CHI EA) and Ma (<em>Touching Wires</em>, NIME).</li>
-  <li><span class="year">2026</span> Published the IMPSY design-space paper and web-interface paper at NIME 2026; established connections with the <a href="{{ site.links.mishmash }}">Mishmash</a> Centre for AI and Creativity.</li>
+  <li><span class="year">2026</span> The IMPSY design-space paper and web-interface paper appear at NIME 2026; established connections with the <a href="{{ site.links.mishmash }}">Mishmash</a> Centre for AI and Creativity.</li>
 </ul>
 
 ## Music featuring IMPSY
 
 Recorded music made with IMPSY-based instruments:
 
-- [*Hyphae*](https://collectedresonances.bandcamp.com/album/hyphae) — Collected Resonances.
-- [*Clear Skies on a Hill*](https://charlesmartin.bandcamp.com/track/clear-skies-on-a-hill) — Charles Martin.
+- [*Hyphae*](https://collectedresonances.bandcamp.com/album/hyphae) — Andromeda is Coming (Charles Martin and Alexander Hunter with two IMPSYpi agents), released on Collected Resonances.
+- [*Clear Skies on a Hill*](https://charlesmartin.bandcamp.com/track/clear-skies-on-a-hill) — Charles Martin and Yichen Wang, recorded live in Canberra, 2024.
 
 ## Wider context
 

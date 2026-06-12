@@ -24,6 +24,7 @@ The example configurations in [`configs/`](https://github.com/cpmpercussion/imps
 - [`[serialmidi]`](#serialmidi)
 - [`[webui]`](#webui)
 - [MIDI mapping format](#midi-mapping-format)
+- [Command-line overrides](#command-line-overrides)
 - [Notes & quirks](#notes--quirks)
 
 ## Quick start
@@ -112,8 +113,8 @@ Selects the MDRNN architecture and its temperature controls.
 | Key | Type | Required | Notes |
 |---|---|---|---|
 | `dimension` | int | yes | Total number of values per data row, **including the inter-event time delta**. So `dimension = 9` means 8 musical parameters plus `dt`. The number of entries in each MIDI/WebSocket mapping list must equal `dimension - 1`. |
-| `file` | string | yes | Path to the model file, relative to the project root. `.tflite` is preferred for inference (~20× faster than Keras); `.keras` and `.h5` also work. An empty string or missing file falls back to a `DummyMDRNN` that emits random samples — useful for `useronly` mode or testing the I/O without training. |
-| `size` | string | yes | One of `"xxs"`, `"xs"`, `"s"`, `"m"`, `"l"`, `"xl"`. Maps to LSTM unit count: 16 / 32 / 64 / 128 / 256 / 512. The number of mixtures is always 5; layers are 2 except `xl` which is 3. Must match the model file's architecture — wrong size + wrong file will fail to load. |
+| `file` | string | no | Path to the model file, relative to the project root. `.tflite` is preferred for inference (~20× faster than Keras); `.keras` and `.h5` also work. An empty string or missing file falls back to a `DummyMDRNN` that emits random samples — useful for `useronly` mode or testing the I/O without training. |
+| `size` | string | no | One of `"xxs"`, `"xs"`, `"s"`, `"m"`, `"l"`, `"xl"`. Defaults to `"s"` if omitted. Maps to LSTM unit count: 16 / 32 / 64 / 128 / 256 / 512. The number of mixtures is always 5; layers are 2 except `xl` which is 3. Must match the model file's architecture — wrong size + wrong file will fail to load. |
 | `sigmatemp` | float | yes | Sigma temperature applied to the Gaussian components at sampling time. Lower → predictions hug the means (smoother, more conservative). `0.01` is the usual default. |
 | `pitemp` | float | yes | Pi temperature applied to the mixture weights. Lower → the model is more decisive about which Gaussian to draw from; higher → more variety between samples. `1` is neutral. |
 | `timescale` | float | yes | Multiplier on the predicted `dt` before playback. `1` plays predictions at their trained tempo; `2` halves the speed; `0.5` doubles it. |
@@ -226,6 +227,16 @@ Each entry is either:
 The same mapping is used in both directions. Inbound: a matching MIDI message is decoded into `(index, value/127)` and dropped into the model's input vector at `index`. Outbound: the model's output vector is encoded back into MIDI messages following the mapping.
 
 Channels are 1-based in the config (matching standard MIDI conventions); they're decremented internally to mido's 0-based channel.
+
+## Command-line overrides
+
+Most `[interaction]` and `[model]` keys can be overridden per-run on the `run` command without editing the config file — handy for trying out a temperature or mode change in performance:
+
+```
+impsy run --mode battle --sigma-temp 0.05 --timescale 2
+```
+
+The available overrides are `--dimension`, `--mode`, `--threshold`, `--input-thru/--no-input-thru`, `--sigma-temp`, `--pi-temp`, `--timescale`, `--verbose/--quiet`, `--log-input/--no-log-input`, and `--log-predictions/--no-log-predictions`. A model file can also be passed as a positional argument (`impsy run models/my-model.tflite`), overriding `[model].file`. See `impsy run --help` for the full list.
 
 ## Notes & quirks
 
