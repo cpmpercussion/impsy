@@ -6,7 +6,7 @@ permalink: /get-started/
 description: How to install IMPSY, capture gesture data, train a mixture density RNN, and route predictions back into your instrument.
 ---
 
-IMPSY is a Python project. There are three main paths: a **desktop install** for development, training, and recording; the **IMPSYpi** distribution for running an intelligent instrument on a Raspberry Pi; and the **[IMPSY AUv3 app]({{ site.links.auv3 }})** for playing IMPSY models inside a DAW (or standalone) on iOS and macOS.
+IMPSY is a Python project at its core, but there are four ways to play with it: a **desktop install** for development, training, and recording; the **IMPSYpi** distribution for running an intelligent instrument on a Raspberry Pi; the **[IMPSY AUv3 app]({{ site.links.auv3 }})** for playing IMPSY models inside a DAW (or standalone) on iOS and macOS; and **[IMPSY Web]({{ site.links.web }})**, which runs the same models entirely in a browser.
 
 > **Looking for the most complete walkthrough?** The [IMPSYpi Workshop]({{ '/workshop/' | relative_url }}) takes you end-to-end: Docker install on a laptop, training your own MDRNN, flashing the Raspberry Pi image, and connecting IMPSY to a micro:bit or Pure Data instrument. The page below is the short version — if you want the full guided tour, start there.
 
@@ -60,6 +60,12 @@ The IMPSYpi repository contains the build scripts, image notes, and example depl
 [IMPSY AUv3]({{ site.links.auv3 }}) is a native iOS/macOS app that runs IMPSY's TFLite models as an AUv3 MIDI processor — load it in AUM, Logic Pro, or any other AUv3 host, or run it standalone with virtual MIDI ports. It plays in call-and-response mode, imports and exports the same TOML mappings as the Python toolkit, and can record session logs in IMPSY's `.log` format ready for the training pipeline, so models and data move freely between the app and a desktop install.
 
 It's [on the App Store](https://apps.apple.com/app/id6771762122) for iOS 17+ and macOS 14+ (Apple Silicon); the source lives at [cpmpercussion/impsy-auv3](https://github.com/cpmpercussion/impsy-auv3).
+
+## In your browser: IMPSY Web
+
+[IMPSY Web]({{ site.links.web }}) runs IMPSY's `.tflite` models entirely client-side — inference happens in the browser via LiteRT.js, and the model drives your local MIDI software through the Web MIDI API. Play the on-screen dimension faders (or an external controller), pause, and the model answers in call-and-response, straight into a DAW such as Ableton over a virtual MIDI bus. There's nothing to install: load a model, pick a MIDI output, and perform.
+
+It's an early but working third frontend, alongside the Python toolkit and the AUv3 app. Web MIDI needs a supported browser (Chrome, Edge, or Firefox — not Safari); the source lives at [cpmpercussion/impsy-web](https://github.com/cpmpercussion/impsy-web).
 
 ## Watch it in action
 

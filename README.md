@@ -48,6 +48,10 @@ The `impsy-pi` image loads IMPSY automatically at boot and can be configured rem
 
 [IMPSY AUv3](https://charlesmartin.au/impsy-auv3/) is a native app that runs IMPSY's `.tflite` models as an AUv3 MIDI processor plugin on iOS and macOS — inside hosts such as AUM or Logic Pro, or standalone using virtual MIDI ports. It plays in call-and-response mode, imports and exports the same TOML mapping format as this toolkit, and can record session logs in IMPSY's `.log` format ready for the training pipeline, so models and data move freely between the app and a desktop install. It's available [on the App Store](https://apps.apple.com/app/id6771762122) (iOS 17+, macOS 14+ on Apple Silicon) and developed at [cpmpercussion/impsy-auv3](https://github.com/cpmpercussion/impsy-auv3).
 
+## IMPSY in the browser (Web)
+
+[IMPSY Web](https://charlesmartin.au/impsy-web/) is a browser-based version of IMPSY that runs the same `.tflite` models entirely client-side (via LiteRT.js) and drives your local MIDI software through the Web MIDI API. You play with the on-screen dimension faders or an external controller, pause, and the model responds in call-and-response — straight into a DAW such as Ableton over a virtual MIDI bus, with nothing to install. It's an early but working third IMPSY frontend alongside the Python toolkit and the AUv3 app; it needs a Web MIDI–capable browser (Chrome, Edge, or Firefox — not Safari) and is developed at [cpmpercussion/impsy-web](https://github.com/cpmpercussion/impsy-web).
+
 ## Local Installation
 
 If you wish to install IMPSY on a regular computer, or from scratch on a single-board computer here are the instructions. IMPSY is distributed as python software so you will need to use command-line interface to install it.
