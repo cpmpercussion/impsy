@@ -21,6 +21,8 @@ image: /assets/img/impsy-s1-soundout.jpg
         <div class="d-flex flex-wrap gap-2">
           <a class="btn btn-impsy btn-lg" href="{{ '/get-started/' | relative_url }}">Get started</a>
           <a class="btn btn-outline-secondary btn-lg" href="{{ '/workshop/' | relative_url }}">IMPSYpi workshop</a>
+          <a class="btn btn-outline-secondary btn-lg" href="{{ site.links.appstore }}">IMPSY AUv3 on the App Store</a>
+          <a class="btn btn-outline-secondary btn-lg" href="{{ site.links.web }}">Try IMPSY Web</a>
           <a class="btn btn-outline-secondary btn-lg" href="{{ site.links.source }}">Source on GitHub</a>
           <a class="btn btn-outline-secondary btn-lg" href="{{ '/research/' | relative_url }}">Read the research</a>
         </div>
