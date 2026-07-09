@@ -22,4 +22,7 @@ def time_network_build(dimension, size):
 @click.command(name="test-mdrnn")
 def test_mdrnn():
     """This command simply loads the MDRNN to test that it works and how long it takes."""
-    time_network_build(4, "s")
+    try:
+        time_network_build(4, "s")
+    except ImportError as exc:
+        raise click.ClickException(str(exc))

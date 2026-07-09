@@ -1,14 +1,34 @@
-"""impsy.tflite_converter: Functions for converting a model to tflite format."""
+"""impsy.tflite_converter: Functions for converting a model to tflite format.
+
+Requires the `[train]` extra (TensorFlow + keras-mdn-layer). TF imports are
+deferred so that importing this module does not pull in TensorFlow on an
+inference-only install — the user only hits the ImportError if they actually
+invoke a conversion command.
+"""
 
 from .utils import mdrnn_config, get_config_data
 from .compat import get_tflite_optimize_default, analyze_tflite_model
 from pathlib import Path
 import click
-import tensorflow as tf
+
+
+_TRAIN_EXTRA_HINT = (
+    "TensorFlow is required for model conversion. "
+    "Install the training extra: `pip install impsy[train]`."
+)
+
+
+def _require_tensorflow():
+    try:
+        import tensorflow as tf  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(_TRAIN_EXTRA_HINT) from exc
+    return tf
 
 
 def _make_concrete_function(model):
     """Trace model with batch_size=1 so TensorList shapes are static, avoiding SELECT_TF_OPS."""
+    tf = _require_tensorflow()
     input_specs = [
         tf.TensorSpec(shape=[1] + list(inp.shape[1:]), dtype=tf.float32, name=inp.name)
         for inp in model.inputs
@@ -23,6 +43,7 @@ def _make_concrete_function(model):
 
 def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=False):
     """This actually converts a loaded Keras model to tflite format."""
+    tf = _require_tensorflow()
     # Setup output path and name.
     output_file = model_path.with_suffix(".tflite")
     if save_path is not None:
@@ -57,6 +78,7 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
 
 def model_file_to_tflite(filename, save_path=None, optimise=False):
     """Converts a given model"""
+    tf = _require_tensorflow()
     import keras_mdn_layer as mdn_layer
 
     model_file = Path(filename)
@@ -140,19 +162,22 @@ def weights_file_to_model_file(weights_file, model_size, dimension, save_path=No
 )
 def convert_tflite(model, dimension, size, out_dir, optimise):
     """Convert existing IMPSY model to tflite format."""
-    if model is None:
-        config_to_tflite("config.toml", save_path=out_dir, optimise=optimise)
-    elif Path(model).suffix == ".keras":
-        # it's a keras file
-        model_file_to_tflite(model, save_path=out_dir, optimise=optimise)
-    elif Path(model).suffix == ".h5":
-        # it's an h5 file
-        if dimension is not None and size is not None:
-            model_file = weights_file_to_model_file(
-                model, size, dimension, save_path=out_dir
-            )
-            model_file_to_tflite(model_file, save_path=out_dir, optimise=optimise)
-        else:
-            click.secho(
-                "You need to specify a dimension and size to convert an h5 file."
-            )
+    try:
+        if model is None:
+            config_to_tflite("config.toml", save_path=out_dir, optimise=optimise)
+        elif Path(model).suffix == ".keras":
+            # it's a keras file
+            model_file_to_tflite(model, save_path=out_dir, optimise=optimise)
+        elif Path(model).suffix == ".h5":
+            # it's an h5 file
+            if dimension is not None and size is not None:
+                model_file = weights_file_to_model_file(
+                    model, size, dimension, save_path=out_dir
+                )
+                model_file_to_tflite(model_file, save_path=out_dir, optimise=optimise)
+            else:
+                click.secho(
+                    "You need to specify a dimension and size to convert an h5 file."
+                )
+    except ImportError as exc:
+        raise click.ClickException(str(exc))

@@ -232,14 +232,17 @@ def train(
         f"IMPSY: Going to train a {dimension}D, {modelsize} sized MDRNN model.",
         fg="green",
     )
-    train_mdrnn(
-        dimension,
-        source,
-        modelsize,
-        earlystopping,
-        patience,
-        numepochs,
-        batchsize,
-        save_location=destination,
-    )
+    try:
+        train_mdrnn(
+            dimension,
+            source,
+            modelsize,
+            earlystopping,
+            patience,
+            numepochs,
+            batchsize,
+            save_location=destination,
+        )
+    except ImportError as exc:
+        raise click.ClickException(str(exc))
     click.secho("IMPSY: training completed.", fg="green")

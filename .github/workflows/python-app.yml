@@ -29,8 +29,8 @@ jobs:
       with:
         python-version: '3.12'
         cache: 'poetry'
-    - name: Install dependencies
-      run: poetry install
+    - name: Install dependencies (with [train] extra)
+      run: poetry install --extras train
     - name: Lint with flake8
       run: |
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
@@ -70,8 +70,8 @@ jobs:
     - name: Install ALSA dev headers (Linux only, required to build python-rtmidi from source)
       if: runner.os == 'Linux'
       run: sudo apt-get install -y libasound2-dev
-    - name: Install dependencies
-      run: poetry install
+    - name: Install dependencies (with [train] extra)
+      run: poetry install --extras train
     - name: Lint with flake8
       run: |
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=examples
@@ -80,3 +80,33 @@ jobs:
       run: poetry run pytest
     - name: Verify CLI
       run: poetry run python ./start_impsy.py --help
+
+  # Inference-only base install: verifies that `pip install impsy` (no extras)
+  # works without TensorFlow and supports the lightweight Raspberry Pi /
+  # performance-rig use case. Ubuntu + 3.13 only — the test is for dependency
+  # surface, not platform compatibility.
+  base-install-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Install ALSA dev headers (required to build python-rtmidi from source)
+      run: sudo apt-get install -y libasound2-dev
+    - name: Install base package only (no [train] extra)
+      run: |
+        python -m pip install --upgrade pip
+        pip install . pytest
+    - name: Confirm TensorFlow is NOT installed
+      run: |
+        python - <<'PY'
+        import importlib.util, sys
+        if importlib.util.find_spec("tensorflow") is not None:
+            sys.exit("FAIL: tensorflow should not be present in the base install")
+        print("OK: tensorflow absent")
+        PY
+    - name: Run inference-only smoke tests
+      run: pytest tests/test_base_install.py -v
+    - name: Verify CLI loads
+      run: python ./start_impsy.py --help

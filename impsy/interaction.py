@@ -113,7 +113,16 @@ def build_network(config: dict):
             click.secho(
                 f"MDRNN Loading from .keras or .h5 file: {model_file}", fg="green"
             )
-            model = mdrnn.KerasMDRNN(model_file, dimension, units, mixtures, layers)
+            try:
+                model = mdrnn.KerasMDRNN(
+                    model_file, dimension, units, mixtures, layers
+                )
+            except ImportError as exc:
+                raise click.ClickException(
+                    f"Cannot load {model_file.suffix} model without the training "
+                    f"extra. Install `pip install impsy[train]`, or convert the "
+                    f"model to .tflite first.\nUnderlying error: {exc}"
+                )
         else:
             click.secho(f"MDRNN Loading dummy model: {model_file}", fg="yellow")
             model = mdrnn.DummyMDRNN(model_file, dimension, units, mixtures, layers)
