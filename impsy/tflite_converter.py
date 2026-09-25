@@ -26,7 +26,7 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
     # Setup output path and name.
     output_file = model_path.with_suffix(".tflite")
     if save_path is not None:
-        output_file = save_path / output_file.name
+        output_file = Path(save_path) / output_file.name
 
     click.secho("Setup converter.", fg="blue")
     concrete_func = _make_concrete_function(model)
@@ -55,15 +55,44 @@ def model_to_tflite(model, model_path: Path, save_path: Path = None, optimise=Fa
     return output_file
 
 
+def training_model_to_inference_model(training_model):
+    """Builds an inference model matching a loaded training model and copies its weights across."""
+    import impsy.mdrnn as mdrnn
+
+    lstm_layers = [
+        layer
+        for layer in training_model.layers
+        if isinstance(layer, tf.keras.layers.LSTM)
+    ]
+    mdn_layer = training_model.get_layer("td_mdn").layer
+    inference_model = mdrnn.build_mdrnn_model(
+        dimension=training_model.inputs[0].shape[-1],
+        n_hidden_units=lstm_layers[0].units,
+        n_mixtures=mdn_layer.num_mix,
+        n_layers=len(lstm_layers),
+        inference=True,
+    )
+    inference_model.set_weights(training_model.get_weights())
+    return inference_model
+
+
 def model_file_to_tflite(filename, save_path=None, optimise=False):
     """Converts a given model"""
     import keras_mdn_layer as mdn_layer
 
     model_file = Path(filename)
     assert model_file.suffix == ".keras", "This function only works on .keras files."
+    # compile=False: training checkpoints carry an unregistered MDN loss function.
     loaded_model = tf.keras.models.load_model(
-        filename, custom_objects={"MDN": mdn_layer.MDN}
+        filename, custom_objects={"MDN": mdn_layer.MDN}, compile=False
     )
+    if len(loaded_model.inputs) == 1:
+        # Training models have no LSTM state inputs, e.g., a ModelCheckpoint file.
+        click.secho(
+            "Training model detected (e.g., a checkpoint), converting to inference model.",
+            fg="yellow",
+        )
+        loaded_model = training_model_to_inference_model(loaded_model)
     tflite_file = model_to_tflite(
         loaded_model, model_file, save_path=save_path, optimise=optimise
     )

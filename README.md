@@ -164,7 +164,7 @@ IMPSY includes a web interface for working with your logs, datasets, models, and
 
     poetry run ./start_impsy.py webui
 
-This starts a Flask server at `http://127.0.0.1:4000`. There are also `convert-tflite` (convert a `.keras`/`.h5` model to `.tflite`) and `test-mdrnn` (check that the neural network works on your system) commands — see `--help` for the full list.
+This starts a Flask server at `http://127.0.0.1:4000`. There are also `convert-tflite` (convert a `.keras`/`.h5` model to `.tflite`, including a `-ckpt.keras` checkpoint from a training run you stopped early) and `test-mdrnn` (check that the neural network works on your system) commands — see `--help` for the full list.
 
 ### Using Docker to run IMPSY
 

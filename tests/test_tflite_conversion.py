@@ -1,5 +1,6 @@
 from impsy import tflite_converter
 import os
+import numpy as np
 
 ### tflite conversion tests
 
@@ -42,3 +43,18 @@ def test_model_file_to_tflite_optimised(trained_model, models_location):
     assert (
         os.path.getsize(tflite_file) <= os.path.getsize(non_opt_file) + 1024
     )  # allow small variance
+
+
+def test_checkpoint_file_to_tflite(dimension, units, mixtures, layers, tmp_path):
+    """Training-model checkpoints (as saved by ModelCheckpoint) should convert too."""
+    from impsy import mdrnn
+
+    training_model = mdrnn.build_mdrnn_model(
+        dimension, units, mixtures, layers, inference=False
+    )
+    checkpoint_file = tmp_path / "test-ckpt.keras"
+    training_model.save(checkpoint_file)
+    tflite_file = tflite_converter.model_file_to_tflite(checkpoint_file)
+    assert os.path.exists(tflite_file)
+    runner = mdrnn.TfliteMDRNN(tflite_file, dimension, units, mixtures, layers)
+    assert len(runner.generate(np.zeros(dimension, dtype=np.float32))) == dimension
