@@ -1,0 +1,73 @@
+# This workflow publishes IMPSY to PyPI when a GitHub release is published.
+# It uses PyPI trusted publishing (OIDC), so no API token is stored in the repo.
+# To release: bump `version` in pyproject.toml, push to main, then
+# `gh release create vX.Y.Z` (the tag must match the pyproject version).
+
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install poetry
+      run: pipx install poetry
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Check tag matches package version
+      run: |
+        VERSION="$(poetry version --short)"
+        if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+          echo "Release tag ${GITHUB_REF_NAME} does not match pyproject version v${VERSION}" >&2
+          exit 1
+        fi
+    - name: Build sdist and wheel
+      run: poetry build
+    - name: Smoke test the built wheel
+      run: |
+        python -m venv /tmp/wheel-test
+        /tmp/wheel-test/bin/pip install dist/*.whl
+        /tmp/wheel-test/bin/impsy --help
+        cd "$(mktemp -d)" && /tmp/wheel-test/bin/impsy init
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/impsy/
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    - uses: pypa/gh-action-pypi-publish@release/v1
+
+  attach-to-release:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist/
+    - name: Upload dists to the GitHub release
+      run: gh release upload "${GITHUB_REF_NAME}" dist/* --repo "${GITHUB_REPOSITORY}"
+      env:
+        GH_TOKEN: ${{ github.token }}

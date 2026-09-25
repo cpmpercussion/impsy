@@ -79,6 +79,10 @@ Runtime config is TOML (default: `config.toml`, examples in `configs/`). Key sec
 
 `docs/` is a self-contained **Jekyll** site (the former `cpmpercussion/impsy-homepage` repo) that publishes to GitHub Pages at `https://charlesmartin.au/impsy`. It builds and deploys via `.github/workflows/pages.yml` on every push to `main`, independently of the Python test workflow. The config reference page (`docs/config.md`) is part of this site. See `docs/CLAUDE.md` for site architecture and local-preview commands (`cd docs && bundle exec jekyll serve`). Shared images live in `docs/assets/img/` — README image links point there too, so there's a single copy of each.
 
+### Releasing
+
+Releases publish to PyPI via `.github/workflows/publish.yml` using PyPI trusted publishing (no API tokens). To cut a release: bump `version` in `pyproject.toml` (the only place it's set; the package reads it from metadata), push to `main`, then `gh release create vX.Y.Z --notes-file ...`. The workflow checks the tag matches the pyproject version, builds with Poetry, smoke-tests the wheel, publishes from the `pypi` GitHub environment (restricted to `v*` tags), and attaches the sdist/wheel to the GitHub release. There's no CHANGELOG — release notes live on the GitHub release.
+
 ### Tests
 
 Fixtures in `tests/conftest.py` provide: synthetic log files, generated datasets, trained `xs`-size models, and converted TFLite/Keras/weights files. Tests use dimension=8, sequence_length=3, batch_size=3.
