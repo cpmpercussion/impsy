@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.0",
+  "spec_version": "0.2.0",
   "description": "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Note state carries across steps within a case.",
   "tolerance": 1e-09,
   "cases": [
@@ -279,6 +279,111 @@
         [
           [144, 60, 127],
           [144, 62, 127]
+        ]
+      ]
+    },
+    {
+      "name": "note_velocity_output",
+      "description": "A note dimension takes its velocity from the first note_velocity dimension on its channel in the same output vector: max(1, floor(v * 127 + 0.5)), so it never sends velocity 0. Note dimensions on one channel share its velocity dimension. A note_velocity dimension sends nothing itself, and notes on channels without one keep velocity 127.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 5,
+      "output_mapping": [
+        ["note_on", 1],
+        ["note_velocity", 1],
+        ["note_on", 1],
+        ["note_on", 2]
+      ],
+      "steps": [
+        {
+          "values": [0.47007874015748036, 0.5, 0.5015748031496063, 0.5251968503937008]
+        },
+        {
+          "values": [0.4858267716535433, 0.0, 0.5094488188976378, 0.5251968503937008]
+        },
+        {
+          "values": [0.4858267716535433, 1.0, 0.5094488188976378, 0.5251968503937008]
+        }
+      ],
+      "expected": [
+        [
+          [144, 60, 64],
+          [144, 64, 64],
+          [145, 67, 127]
+        ],
+        [
+          [128, 60, 0],
+          [144, 62, 1],
+          [128, 64, 0],
+          [144, 65, 1],
+          [129, 67, 0],
+          [145, 67, 127]
+        ],
+        [
+          [128, 62, 0],
+          [144, 62, 127],
+          [128, 65, 0],
+          [144, 65, 127],
+          [129, 67, 0],
+          [145, 67, 127]
+        ]
+      ]
+    },
+    {
+      "name": "fixed_velocity_output",
+      "description": "[note_on, ch, velocity] sends its notes with that fixed velocity (clamped to 1-127). A note_velocity dimension on the same channel overrides it.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 5,
+      "output_mapping": [
+        ["note_on", 1, 100],
+        ["note_on", 2, 100],
+        ["note_velocity", 2],
+        ["note_on", 3, 0]
+      ],
+      "steps": [
+        {
+          "values": [0.47007874015748036, 0.47007874015748036, 0.25, 0.47007874015748036]
+        }
+      ],
+      "expected": [
+        [
+          [144, 60, 100],
+          [145, 60, 32],
+          [146, 60, 1]
+        ]
+      ]
+    },
+    {
+      "name": "pitch_bend_output",
+      "description": "A pitch_bend dimension sends a pitch bend with raw = floor(v * 16383 + 0.5), as bytes [0xE0 | ch, raw & 0x7F, raw >> 7]. Values are clipped to [0, 1] first.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 3,
+      "output_mapping": [
+        ["pitch_bend", 1],
+        ["pitch_bend", 16]
+      ],
+      "steps": [
+        {
+          "values": [0.0, 1.0]
+        },
+        {
+          "values": [0.5, 0.25]
+        },
+        {
+          "values": [-1.0, 2.0]
+        }
+      ],
+      "expected": [
+        [
+          [224, 0, 0],
+          [239, 127, 127]
+        ],
+        [
+          [224, 0, 64],
+          [239, 0, 32]
+        ],
+        [
+          [224, 0, 0],
+          [239, 127, 127]
         ]
       ]
     }

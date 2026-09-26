@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.0",
+  "spec_version": "0.2.0",
   "description": "MIDI bytes in -> the [index, value] updates it makes to the input vector, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
   "tolerance": 1e-09,
   "cases": [
@@ -240,6 +240,103 @@
           [1, 0.25196850393700787],
           [3, 0.25196850393700787]
         ]
+      ]
+    },
+    {
+      "name": "note_velocity_pairs_with_notes",
+      "description": "A note-on sets every note_on dimension on its channel to note/127 and every note_velocity dimension on its channel to velocity/127, as one update. A note_velocity dimension can be mapped without a note dimension on that channel. Velocity-0 note-ons are still note-offs and change nothing.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["note_velocity", 1],
+        ["control_change", 1, 74],
+        ["note_velocity", 2]
+      ],
+      "messages": [
+        [144, 60, 100],
+        [144, 60, 1],
+        [144, 72, 127],
+        [145, 64, 90],
+        [144, 60, 0],
+        [129, 64, 64]
+      ],
+      "expected": [
+        [
+          [0, 0.47244094488188976],
+          [1, 0.7874015748031497]
+        ],
+        [
+          [0, 0.47244094488188976],
+          [1, 0.007874015748031496]
+        ],
+        [
+          [0, 0.5669291338582677],
+          [1, 1.0]
+        ],
+        [
+          [3, 0.7086614173228346]
+        ],
+        null,
+        null
+      ]
+    },
+    {
+      "name": "fixed_velocity_note_input",
+      "description": "A note mapping with a fixed output velocity [note_on, ch, velocity] matches note-ons on its channel like [note_on, ch]; the fixed velocity only affects output.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 2,
+      "input_mapping": [
+        ["note_on", 1, 100]
+      ],
+      "messages": [
+        [144, 60, 100],
+        [144, 64, 20]
+      ],
+      "expected": [
+        [
+          [0, 0.47244094488188976]
+        ],
+        [
+          [0, 0.5039370078740157]
+        ]
+      ]
+    },
+    {
+      "name": "pitch_bend_input",
+      "description": "A pitch bend on a mapped channel sets that dimension to raw / 16383, where raw = (msb << 7) | lsb is the 14-bit value (0-16383, centre 8192).",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 4,
+      "input_mapping": [
+        ["pitch_bend", 1],
+        ["pitch_bend", 16],
+        ["control_change", 1, 1]
+      ],
+      "messages": [
+        [224, 0, 0],
+        [224, 0, 64],
+        [224, 127, 127],
+        [224, 1, 0],
+        [239, 0, 96],
+        [225, 0, 64]
+      ],
+      "expected": [
+        [
+          [0, 0.0]
+        ],
+        [
+          [0, 0.5000305194408838]
+        ],
+        [
+          [0, 1.0]
+        ],
+        [
+          [0, 6.103888176768602e-05]
+        ],
+        [
+          [1, 0.7500457791613258]
+        ],
+        null
       ]
     }
   ]

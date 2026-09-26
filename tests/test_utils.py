@@ -71,9 +71,62 @@ def test_midi_to_value_inverts_range():
 
 def test_midi_message_to_updates_unsupported_type():
     """Test that unsupported MIDI message types raise ValueError."""
-    msg = mido.Message("pitchwheel", channel=0, pitch=0)
-    with pytest.raises(ValueError, match="Only note_on and control_change"):
+    msg = mido.Message("aftertouch", channel=0, value=64)
+    with pytest.raises(ValueError, match="Only note_on, control_change and pitchwheel"):
         utils.midi_message_to_updates(msg, [["note_on", 1]])
+
+
+def test_note_on_sets_pitch_and_velocity_dimensions():
+    mapping = [["note_on", 1], ["note_velocity", 1], ["note_velocity", 2]]
+    msg = mido.Message("note_on", channel=0, note=60, velocity=100)
+    assert utils.midi_message_to_updates(msg, mapping) == [
+        (0, 60 / 127),
+        (1, 100 / 127),
+    ]
+    # a fixed-velocity note mapping still matches on input
+    assert utils.midi_message_to_updates(msg, [["note_on", 1, 90]]) == [(0, 60 / 127)]
+
+
+def test_pitch_bend_round_trip():
+    assert utils.pitch_bend_to_value(-8192) == 0.0
+    assert utils.pitch_bend_to_value(8191) == 1.0
+    assert utils.value_to_pitch_bend(0.5) == 0
+    assert utils.value_to_pitch_bend(-1.0) == -8192
+    assert utils.value_to_pitch_bend(2.0) == 8191
+    for pitch in range(-8192, 8192, 7):
+        assert utils.value_to_pitch_bend(utils.pitch_bend_to_value(pitch)) == pitch
+    msg = mido.Message("pitchwheel", channel=2, pitch=8191)
+    assert utils.midi_message_to_updates(msg, [["note_on", 3], ["pitch_bend", 3]]) == [
+        (1, 1.0)
+    ]
+
+
+def test_output_velocity_sources():
+    """Velocity comes from a note_velocity dimension, then a fixed velocity, then 127."""
+    state = utils.MidiOutputState(
+        [["note_on", 1], ["note_velocity", 1], ["note_on", 2, 90], ["note_on", 3]]
+    )
+    velocities = [
+        m.velocity for m in state.messages([0.5, 0.5, 0.5, 0.5]) if m.type == "note_on"
+    ]
+    assert velocities == [64, 90, 127]
+    # velocity 0 would be a note-off, so the lowest velocity sent is 1
+    velocities = [
+        m.velocity for m in state.messages([0.5, 0.0, 0.5, 0.5]) if m.type == "note_on"
+    ]
+    assert velocities[0] == 1
+
+
+def test_velocity_dimension_overrides_fixed_velocity():
+    state = utils.MidiOutputState([["note_on", 1, 90], ["note_velocity", 1]])
+    (note_on,) = state.messages([0.5, 1.0])
+    assert note_on.velocity == 127
+
+
+def test_pitch_bend_output():
+    state = utils.MidiOutputState([["pitch_bend", 2]])
+    (msg,) = state.messages([1.0])
+    assert msg.type == "pitchwheel" and msg.channel == 1 and msg.pitch == 8191
 
 
 def test_match_midi_port_exact():

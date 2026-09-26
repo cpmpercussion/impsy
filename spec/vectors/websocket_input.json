@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.0",
+  "spec_version": "0.2.0",
   "description": "WebSocket message strings in -> the [index, value] updates they make, or null if ignored.",
   "tolerance": 1e-09,
   "cases": [
@@ -27,6 +27,35 @@
           [3, 0.5039370078740157]
         ],
         null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "name": "websocket_velocity_and_pitch_bend",
+      "description": "noteon sets note_velocity dimensions like the equivalent MIDI note-on. /channel/{ch}/pitchbend/{value} carries the raw 14-bit value (0-16383) and is decoded like a MIDI pitch bend. Out-of-range or malformed pitch bends are ignored.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "input_mapping": [
+        ["note_on", 1],
+        ["note_velocity", 1],
+        ["pitch_bend", 1]
+      ],
+      "messages": ["/channel/1/noteon/60/100", "/channel/1/pitchbend/8192", "/channel/1/pitchbend/0", "/channel/1/pitchbend/16383", "/channel/2/pitchbend/8192", "/channel/1/pitchbend/16384", "/channel/1/pitchbend/1/2"],
+      "expected": [
+        [
+          [0, 0.47244094488188976],
+          [1, 0.7874015748031497]
+        ],
+        [
+          [2, 0.5000305194408838]
+        ],
+        [
+          [2, 0.0]
+        ],
+        [
+          [2, 1.0]
+        ],
         null,
         null,
         null

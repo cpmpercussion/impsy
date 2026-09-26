@@ -179,7 +179,7 @@ A WebSocket server (`websockets` library) that exchanges MIDI-shaped messages wi
 | `input` | array of arrays | yes | Mapping for incoming WebSocket messages, same format as [MIDI mappings](#midi-mapping-format). Length = `dimension - 1`. |
 | `output` | array of arrays | yes | Mapping for outgoing WebSocket messages, same format as MIDI. Length = `dimension - 1`. |
 
-Messages are slash-separated strings. Outgoing format: `/channel/{ch}/noteon/{note}/{velocity}`, `/channel/{ch}/noteoff/{note}/{velocity}`, `/channel/{ch}/cc/{ctrl}/{value}`. Incoming uses the same shape — clients can echo messages straight back. `{ch}` is **1-based** to match the channel numbers used in `[websocket].input` and the MIDI config tables (so `channel = 1` is MIDI channel 1, not channel 2).
+Messages are slash-separated strings. Outgoing format: `/channel/{ch}/noteon/{note}/{velocity}`, `/channel/{ch}/noteoff/{note}/{velocity}`, `/channel/{ch}/cc/{ctrl}/{value}`, `/channel/{ch}/pitchbend/{value}` (raw 14-bit value, 0–16383). Incoming uses the same shape — clients can echo messages straight back. `{ch}` is **1-based** to match the channel numbers used in `[websocket].input` and the MIDI config tables (so `channel = 1` is MIDI channel 1, not channel 2).
 
 ## `[serial]`
 
@@ -220,7 +220,10 @@ Optional. Localhost-only ports the `impsy webui` Flask app and the `impsy run` i
 
 Each entry is either:
 
-- `["note_on", channel]` — a MIDI note message on `channel` (1–16). The dimension's value (`0.0`–`1.0`) is scaled to MIDI note 0–127 for the note number; velocity is fixed at 127. On input, a note-on with velocity 0 counts as a note-off, and note-offs are ignored.
+- `["note_on", channel]` — a MIDI note message on `channel` (1–16). The dimension's value (`0.0`–`1.0`) is scaled to MIDI note 0–127 for the note number. Output velocity is 127 unless a `note_velocity` dimension or a fixed velocity sets it (below). On input, a note-on with velocity 0 counts as a note-off, and note-offs are ignored.
+- `["note_on", channel, velocity]` — same, but output notes use this fixed velocity (1–127). On input it behaves exactly like `["note_on", channel]`.
+- `["note_velocity", channel]` — the velocity of notes on `channel`. On input, a note-on on that channel sets this dimension to `velocity/127` at the same time as it sets the channel's `note_on` dimensions (one interaction). On output it sends nothing by itself: every note dimension on the channel takes its velocity from it, as `max(1, round(value * 127))` so it never sends a velocity-0 note-off. It overrides a fixed velocity. If a channel has several `note_velocity` entries, output uses the first. Existing logs and models don't have a velocity dimension, so adding one means recording new data at `dimension + 1`.
+- `["pitch_bend", channel]` — a pitch bend message on `channel`. Pitch bend is its own 14-bit message (0–16383, centred at 8192), so the dimension's value is `raw / 16383` on input, and `round(value * 16383)` on output. A value of `0.5` is (almost exactly) no bend.
 - `["control_change", channel, controller]` — a control-change message on `channel`, controller `0`–`127`. The dimension's value is scaled to `0`–`127`.
 - `["control_change", channel, controller, min, max]` — same, but the value is mapped into the range `[min, max]` instead of `[0, 127]`. On input, the CC value is clamped to `[min, max]` and mapped back to `0.0`–`1.0`, so `min` gives 0 and `max` gives 1. Useful for synth parameters that respond to a narrower CC range, and for controls that only send a fixed range.
 
