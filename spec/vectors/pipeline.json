@@ -1,6 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "Timed MIDI input -> the model input vectors [dt, x_1..x_n] and 'interface' log rows it produces.",
+  "tolerance": 1e-09,
   "cases": [
     {
       "name": "sparse_midi_to_dense_model_input",

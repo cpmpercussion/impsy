@@ -1,6 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "Log file lines -> training dataset rows [dt, x_1..x_n].",
+  "tolerance": 1e-09,
   "cases": [
     {
       "name": "log_to_dataset",

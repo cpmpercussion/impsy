@@ -1,6 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "WebSocket message strings in -> (index, value), or null if ignored.",
+  "tolerance": 1e-09,
   "cases": [
     {
       "name": "websocket_input",

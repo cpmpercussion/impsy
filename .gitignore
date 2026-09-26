@@ -172,3 +172,6 @@ datasets
 
 experiment_data
 .claude/settings.local.json
+
+# Conformance test model (see spec/README.md)
+!spec/models/

@@ -14,6 +14,7 @@ If your implementation passes every case, it treats MIDI, WebSocket messages, lo
 | `websocket_output.json` | an output mapping and output vectors | for each step, the list of WebSocket strings sent |
 | `pipeline.json` | an input mapping, an initial input vector, a start time, and timed MIDI events | `model_inputs`: every `[dt, x_1..x_n]` vector sent to the model; `log`: every log row as `{"source", "values"}` |
 | `dataset.json` | the lines of a `*-{dimension}d-mdrnn.log` file | the dataset rows `[dt, x_1..x_n]` training uses |
+| `model.json` | the fixed-weight model in `models/`, temperatures, and a sequence of `[dt, x_1..x_n]` inputs (with an optional LSTM reset) | the model's shape and tensor names, then for each step: the scaled input tensor, the raw MDN output, the mixture weights `pi`, means `mu` and sampling standard deviations `std` in IMPSY's units, and which mixture each uniform draw selects |
 
 Conventions used across all files:
 
@@ -22,11 +23,13 @@ Conventions used across all files:
 - Output values in `midi_output.json` and `websocket_output.json` are what the interaction loop hands to the outputs. They can be outside `[0, 1]`, and clipping them is part of the expected behaviour.
 - State carries across steps within a case (for example, the last note on each channel, used for note-offs) but never between cases.
 - `pipeline.json` times are in seconds from an arbitrary origin. Log timestamps aren't part of the vectors, only each row's source and values.
+- `model.json` paths such as `model_file` are relative to `spec/`. The model is 3-dimensional, with 2 LSTM layers of 16 units and 5 mixtures, and random weights, so it's small and easy to debug with, not musical. It checks that your code reads a `.tflite` file the way IMPSY does: input scaling, feeding each LSTM state output back to the matching input, splitting the MDN output, and applying the temperatures. Sampling itself is random and isn't compared.
+- Each file has a `tolerance`: the absolute tolerance for comparing floats. Most files use `1e-9` because the values are exact in float64. `model.json` uses `1e-4` because TFLite float kernels differ slightly between CPUs.
 
 ## Using the vectors in another implementation
 
 1. Copy `spec/vectors/` into your repository from a tagged IMPSY release, and record which one (a git submodule works too). Check `spec_version` in your test so an update is a deliberate change.
-2. Write a test that loads each file, feeds every case's inputs through your code, and compares the result with `expected`. Compare integers and strings exactly, and floats with an absolute tolerance. `1e-6` suits implementations that work in float32.
+2. Write a test that loads each file, feeds every case's inputs through your code, and compares the result with `expected`. Compare integers and strings exactly, and floats within an absolute tolerance: the file's `tolerance`, or `1e-6` if your implementation works in float32 and the file's value is smaller.
 3. If your implementation deliberately differs from a case, skip that case by name, with a comment that links to the discussion. Don't edit the vector.
 
 Each case has a `description`. Cases that depend on a design question that is still open list the GitHub issues in `open_decisions`. Those cases record what IMPSY does *today*. When a decision changes that behaviour, the vector changes and `spec_version` gets a major bump.
@@ -43,9 +46,10 @@ poetry run pytest tests/test_conformance.py     # run the vectors against IMPSY
 
 `tests/test_conformance.py` fails if the committed vectors don't match the generator, so a behaviour change in IMPSY can't slip past without updating them. When a change is intentional, regenerate and bump `SPEC_VERSION` in `impsy/conformance.py`: minor for new cases, major when an existing case's expected output changes.
 
+The `.tflite` file in `models/` is committed rather than rebuilt in tests, because the converter's output can change between TensorFlow versions. Its weights come from a seeded generator, and `--build-model` rebuilds it. Only do that on purpose: it changes every expected value in `model.json`.
+
 ## Not covered yet
 
-- Model inference: a small fixed-weight model with an input sequence and the expected mixture parameters before sampling.
 - The model-output playback path: the `dt` floor, `timescale`, and what is fed back into the model (see [#103](https://github.com/cpmpercussion/impsy/issues/103)).
 - OSC and serial (CSV and serial MIDI) IO, and MIDI feedback protection.
 - Config validation, e.g. mapping length and duplicate entries ([#102](https://github.com/cpmpercussion/impsy/issues/102)).
