@@ -85,7 +85,7 @@ Releases publish to PyPI via `.github/workflows/publish.yml` using PyPI trusted 
 
 ### Conformance vectors (`spec/`)
 
-`spec/vectors/*.json` records how this reference implementation maps MIDI/WebSocket input to model input vectors, output vectors back to messages, and logs to datasets. impsy-auv3 and impsy-web run the same vectors. `impsy/conformance.py` defines the cases and computes their expected values by driving the real `MIDIServer`/`WebSocketServer`/`InteractionServer`/`dataset` code with fakes. `tests/test_conformance.py` runs the vectors and fails if they're stale. After an intentional behaviour change to these paths, run `poetry run python -m impsy.conformance` and bump `SPEC_VERSION`. Open design questions are linked from each case's `open_decisions`. See `spec/README.md`.
+`spec/vectors/*.json` records how this reference implementation maps MIDI/WebSocket input to model input vectors, output vectors back to messages, logs to datasets, and how a `.tflite` model file is read (`spec/models/` holds a fixed-weight test model). impsy-auv3 and impsy-web run the same vectors. `impsy/conformance.py` defines the cases and computes their expected values by driving the real `MIDIServer`/`WebSocketServer`/`InteractionServer`/`dataset` code with fakes. `tests/test_conformance.py` runs the vectors and fails if they're stale. After an intentional behaviour change to these paths, run `poetry run python -m impsy.conformance` and bump `SPEC_VERSION`. Open design questions are linked from each case's `open_decisions`. See `spec/README.md`.
 
 ### Tests
 

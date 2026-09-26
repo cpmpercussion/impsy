@@ -1,6 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "Model output vectors -> WebSocket message strings sent at each step.",
+  "tolerance": 1e-09,
   "cases": [
     {
       "name": "websocket_output",

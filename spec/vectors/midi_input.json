@@ -1,6 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "MIDI bytes in -> (index, value) for the model input vector, or null if ignored. Index is 0-based over x_1..x_n (dt excluded).",
+  "tolerance": 1e-09,
   "cases": [
     {
       "name": "note_on_value_is_pitch",

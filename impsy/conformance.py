@@ -37,7 +37,19 @@ from impsy import dataset, impsio, interaction
 # expected behaviour of an existing case changes.
 SPEC_VERSION = "0.1.0"
 
-DEFAULT_VECTOR_DIR = Path(__file__).resolve().parent.parent / "spec" / "vectors"
+SPEC_DIR = Path(__file__).resolve().parent.parent / "spec"
+DEFAULT_VECTOR_DIR = SPEC_DIR / "vectors"
+
+# A tiny model with fixed weights, committed as a binary. Paths in vectors are
+# relative to spec/.
+MODEL_FILE = "models/conformance-dim3-layers2-units16-mixtures5.tflite"
+MODEL_PARAMS = {"dimension": 3, "units": 16, "mixtures": 5, "layers": 2}
+MODEL_WEIGHT_SEED = 2345
+# TFLite float kernels differ slightly between CPUs, so model outputs are
+# compared with this absolute tolerance rather than exactly.
+MODEL_TOLERANCE = 1e-4
+# Everything else is computed in float64 and should match to rounding error.
+DEFAULT_TOLERANCE = 1e-9
 
 IN_PORT = "in"
 OUT_PORT = "out"
@@ -277,6 +289,136 @@ def run_dataset_case(case):
             str(log_file), case["dimension"]
         )
     return [_floats(row) for row in rows]
+
+
+def _round(values, digits=8):
+    return [float(f"{float(v):.{digits}g}") for v in np.ravel(values)]
+
+
+def run_model_case(case):
+    """Input vectors -> what the model file produces at each step.
+
+    Runs the committed .tflite file through TfliteMDRNN, the same class
+    `impsy run` uses, keeping LSTM state between steps. For each step it
+    records the scaled input tensor, the raw MDN output, and the mixture
+    that output describes in IMPSY's units (after dividing by SCALE_FACTOR
+    and applying the temperatures). Sampling itself is random, so it isn't
+    recorded, except for which mixture a given uniform draw selects.
+    """
+    import keras_mdn_layer as mdn
+    from impsy import mdrnn
+
+    model_path = SPEC_DIR / case["model_file"]
+    dimension, units, mixtures, layers = mdrnn.introspect_tflite_params(model_path)
+    net = mdrnn.TfliteMDRNN(model_path, dimension, units, mixtures, layers)
+    net.pi_temp = case["pi_temp"]
+    net.sigma_temp = case["sigma_temp"]
+
+    captured = {}
+    real_sample = mdn.sample_from_output
+
+    def capture(params, *args, **kwargs):
+        captured["params"] = np.array(params)
+        return real_sample(params, *args, **kwargs)
+
+    steps = []
+    with patch.object(mdrnn.mdn, "sample_from_output", capture):
+        for step in case["steps"]:
+            if step.get("reset"):
+                net.reset_lstm_states()
+                steps.append(None)
+                continue
+            value = np.array(step["input"], dtype=np.float64)
+            net.generate(value)
+            params = captured["params"]
+            mus, sigmas, pi_logits = mdn.split_mixture_params(
+                params, dimension, mixtures
+            )
+            pis = mdn.softmax(pi_logits, t=net.pi_temp)
+            chosen = []
+            for u in case["uniform_draws"]:
+                with patch.object(mdn.np.random, "rand", lambda *a, u=u: np.array([u])):
+                    chosen.append(int(mdn.sample_from_categorical(pis)))
+            scale = mdrnn.SCALE_FACTOR
+            steps.append(
+                {
+                    "model_input": _round((value * scale).astype(np.float32)),
+                    "mdn_output": _round(params),
+                    "pi": _round(pis),
+                    "mu": [
+                        _round(m)
+                        for m in np.reshape(mus, (mixtures, dimension)) / scale
+                    ],
+                    "std": [
+                        _round(sd)
+                        for sd in np.reshape(sigmas, (mixtures, dimension))
+                        * np.sqrt(net.sigma_temp)
+                        / scale
+                    ],
+                    "mixture_for_draw": chosen,
+                }
+            )
+    return {
+        "introspected": {
+            "dimension": dimension,
+            "units": units,
+            "mixtures": mixtures,
+            "layers": layers,
+        },
+        "tensors": _model_tensor_names(net),
+        "steps": steps,
+    }
+
+
+def _model_tensor_names(net):
+    """Which tensor is which, as TfliteMDRNN resolves them for this file."""
+    inputs = ["inputs"]
+    for i in range(net.n_layers):
+        inputs += [f"state_h_{i}", f"state_c_{i}"]
+    if net.runner is not None:
+        mdn_output = net._mdn_output_key
+        state_outputs = []
+        for i in range(net.n_layers):
+            state_outputs += [net._state_h_keys[i], net._state_c_keys[i]]
+    else:
+        names = {d["index"]: d["name"] for d in net.interpreter.get_output_details()}
+        mdn_output = names[net._mdn_output_index]
+        state_outputs = [names[i] for i in net._state_output_indices]
+    return {
+        "inputs": inputs,
+        "mdn_output": mdn_output,
+        "state_outputs": dict(zip(inputs[1:], state_outputs)),
+    }
+
+
+def build_conformance_model(path=None):
+    """Build the fixed-weight conformance model and write it as .tflite.
+
+    Weights come from a seeded numpy generator, not Keras initialisers, so the
+    model is reproducible. The converted binary can still differ between
+    TensorFlow versions, which is why the file is committed and only rebuilt
+    on purpose.
+    """
+    from impsy import mdrnn
+    from impsy.tflite_converter import model_to_tflite
+
+    path = Path(path) if path else SPEC_DIR / MODEL_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    model = mdrnn.build_mdrnn_model(
+        MODEL_PARAMS["dimension"],
+        MODEL_PARAMS["units"],
+        MODEL_PARAMS["mixtures"],
+        MODEL_PARAMS["layers"],
+        inference=True,
+    )
+    rng = np.random.default_rng(MODEL_WEIGHT_SEED)
+    model.set_weights(
+        [
+            rng.uniform(-2.0, 2.0, w.shape).astype(np.float32)
+            for w in model.get_weights()
+        ]
+    )
+    return model_to_tflite(model, path)
 
 
 # Cases. Inputs only; expected outputs are filled in by running the runners.
@@ -551,6 +693,26 @@ DATASET_CASES = [
     },
 ]
 
+MODEL_CASES = [
+    {
+        "name": "fixed_weight_model_steps",
+        "description": "Feed [dt, x_1, x_2] vectors to the model one at a time, carrying the LSTM state (h and c for each layer) from each step's outputs to the next step's inputs. 'tensors.state_outputs' says which output tensor feeds which state input; the reference implementation matches them by shape and tensor index. The model input is the vector times 10 (SCALE_FACTOR) as float32. The MDN output is [mu (mixtures x dimension), sigma (mixtures x dimension), pi logits (mixtures)]. pi = softmax(pi_logits / pi_temp). Sampling picks mixture k with the first cumulative pi >= a uniform draw, then samples each dimension from a normal with mean mu_k and std sigma_k * sqrt(sigma_temp). Dividing by 10 gives the output [dt, x_1, x_2]; 'mu' and 'std' here are already divided by 10. A reset step zeroes the LSTM state, so the step after it matches the first step.",
+        "model_file": MODEL_FILE,
+        "pi_temp": 1.5,
+        "sigma_temp": 0.01,
+        "uniform_draws": [0.05, 0.3, 0.6, 0.9],
+        "steps": [
+            {"input": [0.0, 0.5, 0.5]},
+            {"input": [0.25, 0.47244094488188976, 0.0]},
+            {"input": [0.125, 0.5669291338582677, 1.0]},
+            {"input": [2.0, 0.0, 0.25]},
+            {"reset": True},
+            {"input": [0.0, 0.5, 0.5]},
+            {"input": [0.25, 0.47244094488188976, 0.0]},
+        ],
+    },
+]
+
 VECTOR_FILES = {
     "midi_input.json": (
         "MIDI bytes in -> (index, value) for the model input vector, or null if ignored. Index is 0-based over x_1..x_n (dt excluded).",
@@ -584,6 +746,13 @@ VECTOR_FILES = {
     ),
 }
 
+VECTOR_FILES["model.json"] = (
+    "Model input vectors -> the scaled model input, raw MDN output, and mixture parameters at each step, for the committed fixed-weight .tflite model in spec/models/. Floats are compared with the document's tolerance.",
+    MODEL_CASES,
+    run_model_case,
+)
+TOLERANCES = {"model.json": MODEL_TOLERANCE}
+
 RUNNERS = {name: runner for name, (_, _, runner) in VECTOR_FILES.items()}
 
 
@@ -599,9 +768,44 @@ def build_vectors():
         documents[filename] = {
             "spec_version": SPEC_VERSION,
             "description": description,
+            "tolerance": TOLERANCES.get(filename, DEFAULT_TOLERANCE),
             "cases": built,
         }
     return documents
+
+
+def mismatch(actual, expected, tolerance, path="$"):
+    """Return a description of the first difference, or None if they match.
+
+    Floats are compared with an absolute tolerance; everything else exactly.
+    """
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        return None if actual is expected else f"{path}: {actual!r} != {expected!r}"
+    if isinstance(expected, float) or isinstance(actual, float):
+        if not isinstance(actual, (int, float)) or not isinstance(
+            expected, (int, float)
+        ):
+            return f"{path}: {actual!r} != {expected!r}"
+        if abs(actual - expected) <= tolerance:
+            return None
+        return f"{path}: {actual!r} != {expected!r} (tolerance {tolerance})"
+    if isinstance(expected, list):
+        if not isinstance(actual, list) or len(actual) != len(expected):
+            return f"{path}: {actual!r} != {expected!r}"
+        for i, (a, e) in enumerate(zip(actual, expected)):
+            found = mismatch(a, e, tolerance, f"{path}[{i}]")
+            if found:
+                return found
+        return None
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict) or actual.keys() != expected.keys():
+            return f"{path}: {actual!r} != {expected!r}"
+        for key in expected:
+            found = mismatch(actual[key], expected[key], tolerance, f"{path}.{key}")
+            if found:
+                return found
+        return None
+    return None if actual == expected else f"{path}: {actual!r} != {expected!r}"
 
 
 def _to_json(value, indent=0):
@@ -635,15 +839,24 @@ def dump(document):
     is_flag=True,
     help="Don't write; exit non-zero if the files differ from what would be generated.",
 )
-def main(out: Path, check: bool):
+@click.option(
+    "--build-model",
+    is_flag=True,
+    help=f"Rebuild spec/{MODEL_FILE} before generating. Changes every model.json expected value.",
+)
+def main(out: Path, check: bool, build_model: bool):
     """Generate IMPSY conformance test vectors from the reference implementation."""
+    if build_model:
+        build_conformance_model()
     documents = build_vectors()
     stale = []
     for filename, document in documents.items():
         path = out / filename
         text = dump(document)
         if check:
-            if not path.exists() or path.read_text() != text:
+            if not path.exists() or mismatch(
+                document, json.loads(path.read_text()), document["tolerance"]
+            ):
                 stale.append(filename)
         else:
             out.mkdir(parents=True, exist_ok=True)
