@@ -132,6 +132,11 @@ def train_mdrnn(
     # Restrict corpus to performances longer than the training sequence length.
     corpus = [l for l in corpus if len(l) > SEQ_LEN + 1]
     click.secho(f"Corpus Examples: {len(corpus)}", fg="blue")
+    if not corpus:
+        raise ValueError(
+            f"No performances in the dataset are longer than {SEQ_LEN + 1} events, "
+            "so there's nothing to train on. Record some longer logs."
+        )
 
     # Prepare training data as X and Y.
     slices = []

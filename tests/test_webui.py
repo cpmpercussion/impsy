@@ -449,6 +449,25 @@ def test_log_file_dimension():
     assert webui_mod.log_file_dimension("x-12d-mdrnn.log") == 12
     assert webui_mod.log_file_dimension("notes.log") is None
     assert webui_mod.log_file_dimension("x-d-mdrnn.log") is None
+    assert webui_mod.log_file_dimension("2d-mdrnn.log") is None  # no separator
+
+
+def test_dataset_file_info_uses_standard_name(tmp_path):
+    # Not a real .npz: the dimension must come from the name without loading it.
+    fake = tmp_path / "training-dataset-5d.npz"
+    fake.write_bytes(b"not a dataset")
+    assert webui_mod.get_dataset_file_info(fake)["dimension"] == 5
+    other = tmp_path / "mine.npz"
+    other.write_bytes(b"not a dataset")
+    assert webui_mod.get_dataset_file_info(other)["dimension"] is None
+
+
+def test_training_job_stop_does_not_overwrite_finished():
+    job = webui_mod.TrainingJob()
+    job.status = "finished"
+    job.stop()
+    assert job.status == "finished"
+    assert not job._stop_requested
 
 
 def test_logs_upload(client, tmp_path, restored_workspace):
@@ -498,6 +517,10 @@ def test_train_post_rejects_bad_input(client, tmp_path, restored_workspace):
         "/train", data={"dataset": "d.npz", "max_epochs": "0"}, follow_redirects=True
     )
     assert b"Epochs must be" in response.data
+    response = client.post(
+        "/train", data={"dataset": "d.npz", "patience": "0"}, follow_redirects=True
+    )
+    assert b"Patience must be" in response.data
 
 
 def test_training_job_trains_and_stops(dimension, dataset_file, tmp_path):

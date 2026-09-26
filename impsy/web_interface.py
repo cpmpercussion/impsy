@@ -5,6 +5,7 @@ import psutil
 import shutil
 import platform
 import os
+import re
 import time
 import tomllib
 from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, version as _pkg_version
@@ -305,16 +306,21 @@ def allowed_dataset_file(filename):
 
 def log_file_dimension(filename):
     """Returns the dimension in a log filename (*-{dimension}d-mdrnn.log), or None."""
-    name = Path(filename).name
-    if not name.endswith("d-mdrnn.log"):
-        return None
-    dim = name[: -len("d-mdrnn.log")].rsplit("-", 1)[-1]
-    return int(dim) if dim.isdigit() else None
+    match = re.search(r"-(\d+)d-mdrnn\.log$", Path(filename).name)
+    return int(match.group(1)) if match else None
 
 
 def get_dataset_file_info(filepath):
-    """Get metadata for a dataset file, including the dimension of its data."""
+    """Get metadata for a dataset file, including the dimension of its data.
+
+    Uses the dimension in a standard training-dataset-{dimension}d.npz name,
+    otherwise loads the dataset to find it.
+    """
     info = get_file_info(filepath)
+    match = re.fullmatch(r"training-dataset-(\d+)d\.npz", filepath.name)
+    if match:
+        info["dimension"] = int(match.group(1))
+        return info
     try:
         from impsy.train import dataset_dimension
 
@@ -382,9 +388,10 @@ class TrainingJob:
             return True
 
     def stop(self):
-        if self.running:
-            self._stop_requested = True
-            self.status = "stopping"
+        with self._lock:
+            if self.status == "running":
+                self._stop_requested = True
+                self.status = "stopping"
 
     def _run(self, dataset_file, model_size, max_epochs, patience, models_dir):
         try:
@@ -418,16 +425,19 @@ class TrainingJob:
                 save_location=models_dir,
                 callbacks=[ProgressCallback()],
             )
-            self.model_files = [
+            model_files = [
                 Path(output[k]).name
                 for k in ("tflite_file", "keras_file")
                 if k in output
             ]
-            self.status = "finished"
+            error, status = None, "finished"
         except Exception as e:
-            self.error = str(e)
-            self.status = "failed"
-        finally:
+            model_files, error, status = [], str(e), "failed"
+        # Lock so a stop() request can't overwrite the final status.
+        with self._lock:
+            self.model_files = model_files
+            self.error = error
+            self.status = status
             self.finished_at = time.time()
 
     def to_dict(self):
@@ -697,8 +707,10 @@ def train():
             flash("Choose a dataset to train on.", "error")
         elif model_size not in TRAIN_SIZES:
             flash(f"Unknown model size: {model_size}", "error")
-        elif not 1 <= max_epochs <= TRAIN_MAX_EPOCHS or patience < 1:
+        elif not 1 <= max_epochs <= TRAIN_MAX_EPOCHS:
             flash(f"Epochs must be between 1 and {TRAIN_MAX_EPOCHS}.", "error")
+        elif patience < 1:
+            flash("Patience must be at least 1.", "error")
         elif not _training_job.start(
             dataset_file, model_size, max_epochs, patience, MODEL_DIR
         ):
