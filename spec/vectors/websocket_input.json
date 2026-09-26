@@ -1,0 +1,39 @@
+{
+  "spec_version": "0.1.0",
+  "description": "WebSocket message strings in -> (index, value), or null if ignored.",
+  "cases": [
+    {
+      "name": "websocket_input",
+      "description": "Incoming /channel/{ch}/noteon/{note}/{vel} and /channel/{ch}/cc/{ctrl}/{value}; channels are 1-based. Note-offs are ignored; velocity-0 note-ons count as notes (see the MIDI note_on_velocity_zero case).",
+      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99"],
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": ["/channel/1/noteon/60/100", "/channel/2/noteon/64/0", "/channel/1/noteoff/60/0", "/channel/1/cc/42/127", "/channel/16/cc/7/64", "/channel/3/noteon/60/100", "/channel/1/cc/43/64"],
+      "expected": [
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        },
+        {
+          "index": 2,
+          "value": 0.5039370078740157
+        },
+        null,
+        {
+          "index": 1,
+          "value": 1.0
+        },
+        {
+          "index": 3,
+          "value": 0.5039370078740157
+        },
+        null,
+        null
+      ]
+    }
+  ]
+}
