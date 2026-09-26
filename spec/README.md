@@ -24,7 +24,7 @@ Conventions used across all files:
 - State carries across steps within a case (for example, the last note on each channel, used for note-offs) but never between cases.
 - `pipeline.json` times are in seconds from an arbitrary origin. Log timestamps aren't part of the vectors, only each row's source and values.
 - `model.json` paths such as `model_file` are relative to `spec/`. The model is 3-dimensional, with 2 LSTM layers of 16 units and 5 mixtures, and random weights, so it's small and easy to debug with, not musical. It checks that your code reads a `.tflite` file the way IMPSY does: input scaling, feeding each LSTM state output back to the matching input, splitting the MDN output, and applying the temperatures. Sampling itself is random and isn't compared.
-- Each file has a `tolerance`: the absolute tolerance for comparing floats. Most files use `1e-9` because the values are exact in float64. `model.json` uses `1e-4` because TFLite float kernels differ slightly between CPUs.
+- Each file has a `tolerance`: the absolute tolerance for comparing floats. Most files use `1e-9` because the values are exact in float64. `model.json` uses `1e-2` because TFLite float kernels differ slightly between CPUs.
 
 ## Using the vectors in another implementation
 

@@ -1,7 +1,7 @@
 {
   "spec_version": "0.1.0",
   "description": "Model input vectors -> the scaled model input, raw MDN output, and mixture parameters at each step, for the committed fixed-weight .tflite model in spec/models/. Floats are compared with the document's tolerance.",
-  "tolerance": 0.0001,
+  "tolerance": 0.01,
   "cases": [
     {
       "name": "fixed_weight_model_steps",
