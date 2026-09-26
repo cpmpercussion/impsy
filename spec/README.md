@@ -8,7 +8,7 @@ If your implementation passes every case, it treats MIDI, WebSocket messages, lo
 
 | File | Input | Expected |
 |---|---|---|
-| `midi_input.json` | a config `input_mapping` and a list of raw MIDI messages (byte arrays) | for each message, `{"indices", "value"}`: the input vector entries it sets, or `null` if it is ignored |
+| `midi_input.json` | a config `input_mapping` and a list of raw MIDI messages (byte arrays) | for each message, the `[index, value]` updates it makes to the input vector, or `null` if it is ignored |
 | `midi_output.json` | a config `output_mapping` and a list of steps: output values `x_1..x_n`, or `{"all_notes_off": true}` | for each step, the list of MIDI messages sent (byte arrays, in order) |
 | `websocket_input.json` | an input mapping and WebSocket message strings | as for `midi_input.json` |
 | `websocket_output.json` | an output mapping and output vectors | for each step, the list of WebSocket strings sent |

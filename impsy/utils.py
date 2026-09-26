@@ -2,7 +2,7 @@ import numpy as np
 import tomllib
 import click
 import mido
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 # MDRNN config
 
@@ -87,15 +87,23 @@ def get_config_data(config_path: str):
 # MIDI mapping and message utilities
 
 
-def value_to_midi(value: float) -> int:
-    """Quantise a value in [0, 1] to a MIDI data byte 0-127, rounding to nearest (half up)."""
-    return int(np.clip(np.floor(float(value) * 127 + 0.5), 0, 127))
+def value_to_midi(value: float, min_value: int = 0, max_value: int = 127) -> int:
+    """Scale a value in [0, 1] to a MIDI data byte in [min_value, max_value], rounding to nearest (half up)."""
+    value = min(max(float(value), 0.0), 1.0)
+    scaled = min_value + value * (max_value - min_value)
+    return int(np.clip(np.floor(scaled + 0.5), 0, 127))
 
 
-def process_midi_min_max(value: int, min_value: int, max_value: int) -> int:
-    """Process a MIDI control change value to fit within a min and max range."""
-    range = max_value - min_value
-    return int(np.floor(range * value / 127 + 0.5) + min_value)
+def midi_to_value(midi_value: int, min_value: int = 0, max_value: int = 127) -> float:
+    """The inverse of value_to_midi: a MIDI data byte in [min_value, max_value] to a value in [0, 1].
+
+    Bytes outside the range are clamped to it; an empty range gives 0.
+    """
+    if min_value == max_value:
+        return 0.0
+    low, high = sorted((min_value, max_value))
+    clamped = min(max(midi_value, low), high)
+    return (clamped - min_value) / (max_value - min_value)
 
 
 class MidiOutputState:
@@ -123,8 +131,8 @@ class MidiOutputState:
             if i >= len(output_values):
                 break
             channel = entry[1] - 1
-            midi_value = value_to_midi(output_values[i])
             if entry[0] == "note_on":
+                midi_value = value_to_midi(output_values[i])
                 previous = self.sounding.pop(i, None)
                 if previous is not None and not self._held_elsewhere(i, previous):
                     messages.append(
@@ -143,8 +151,7 @@ class MidiOutputState:
                 self.sounding[i] = (channel, midi_value)
                 self.last_note_on[channel] = midi_value
             elif entry[0] == "control_change":
-                if len(entry) == 5:
-                    midi_value = process_midi_min_max(midi_value, entry[3], entry[4])
+                midi_value = value_to_midi(output_values[i], *entry[3:5])
                 messages.append(
                     mido.Message(
                         "control_change",
@@ -165,31 +172,39 @@ class MidiOutputState:
         return messages
 
 
-def midi_message_to_indices_value(
+def midi_message_to_updates(
     msg: mido.Message, input_mapping: list
-) -> (List[int], float):
-    """Takes a MIDO message and an input mapping and returns the indices it maps to and its value.
+) -> List[Tuple[int, float]]:
+    """Takes a MIDO message and an input mapping and returns the (index, value) updates it makes.
 
-    A message can map to several dimensions; all of them get the same value.
+    A message can map to several dimensions. A CC mapped with a range
+    [..., min, max] is scaled back from that range to [0, 1], so the same
+    message can give different values for different dimensions.
     Note-ons with velocity 0 are note-offs and, like other messages that
     don't change the input, raise ValueError.
     """
     if msg.type == "note_on":
         if msg.velocity == 0:
             raise ValueError("Note-ons with velocity 0 are note-offs.")
-        key = ["note_on", msg.channel + 1]
-        value = msg.note / 127.0
+        updates = [
+            (i, msg.note / 127.0)
+            for i, entry in enumerate(input_mapping)
+            if list(entry) == ["note_on", msg.channel + 1]
+        ]
     elif msg.type == "control_change":
         key = ["control_change", msg.channel + 1, msg.control]
-        value = msg.value / 127.0
+        updates = [
+            (i, midi_to_value(msg.value, *entry[3:5]))
+            for i, entry in enumerate(input_mapping)
+            if list(entry[:3]) == key
+        ]
     else:
         raise ValueError(
             f"Only note_on and control_change messages can be processed, this was a {msg.type} message."
         )
-    indices = [i for i, entry in enumerate(input_mapping) if list(entry) == key]
-    if not indices:
+    if not updates:
         raise ValueError(f"No input mapping for {msg}.")
-    return (indices, value)
+    return updates
 
 
 def match_midi_port_to_list(port, port_list, verbose=True):

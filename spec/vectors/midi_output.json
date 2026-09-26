@@ -149,8 +149,8 @@
     },
     {
       "name": "control_change_min_max",
-      "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to floor((max - min) * v / 127 + 0.5) + min.",
-      "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
+      "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the value v in [0, 1] to floor(min + v * (max - min) + 0.5), rounding once.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/100", "https://github.com/cpmpercussion/impsy/issues/105"],
       "dimension": 4,
       "output_mapping": [
         ["control_change", 1, 20, 0, 63],
@@ -166,6 +166,9 @@
         },
         {
           "values": [1.0, 1.0, 1.0]
+        },
+        {
+          "values": [0.008, 0.008, 0.06]
         }
       ],
       "expected": [
@@ -183,6 +186,11 @@
           [176, 20, 63],
           [176, 21, 127],
           [176, 22, 20]
+        ],
+        [
+          [176, 20, 1],
+          [176, 21, 65],
+          [176, 22, 11]
         ]
       ]
     },

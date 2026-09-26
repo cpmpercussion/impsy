@@ -1,6 +1,6 @@
 {
   "spec_version": "0.1.0",
-  "description": "WebSocket message strings in -> the input vector indices they set and their value, or null if ignored.",
+  "description": "WebSocket message strings in -> the [index, value] updates they make, or null if ignored.",
   "tolerance": 1e-09,
   "cases": [
     {
@@ -15,20 +15,17 @@
       ],
       "messages": ["/channel/1/noteon/60/100", "/channel/2/noteon/64/0", "/channel/1/noteoff/60/0", "/channel/1/cc/42/127", "/channel/16/cc/7/64", "/channel/3/noteon/60/100", "/channel/1/cc/43/64", "/channel/1/noteon/60", "/channel/1/noteon/sixty/100"],
       "expected": [
-        {
-          "indices": [0],
-          "value": 0.47244094488188976
-        },
+        [
+          [0, 0.47244094488188976]
+        ],
         null,
         null,
-        {
-          "indices": [1],
-          "value": 1.0
-        },
-        {
-          "indices": [3],
-          "value": 0.5039370078740157
-        },
+        [
+          [1, 1.0]
+        ],
+        [
+          [3, 0.5039370078740157]
+        ],
         null,
         null,
         null,

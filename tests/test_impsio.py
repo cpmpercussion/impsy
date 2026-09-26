@@ -56,24 +56,28 @@ def test_midi_message_handling():
     # notes
     input_mapping = [["note_on", 1]]
     note_msg = mido.Message("note_on", channel=0, note=12, velocity=64)
-    indices, value = utils.midi_message_to_indices_value(note_msg, input_mapping)
-    assert indices == [0] and value == 12 / 127
+    updates = utils.midi_message_to_updates(note_msg, input_mapping)
+    assert updates == [(0, 12 / 127)]
     # note off, and note-on with velocity 0, are ignored
     for msg in [
         mido.Message("note_off", channel=0, note=12, velocity=0),
         mido.Message("note_on", channel=0, note=12, velocity=0),
     ]:
         with pytest.raises(ValueError):
-            utils.midi_message_to_indices_value(msg, input_mapping)
+            utils.midi_message_to_updates(msg, input_mapping)
     # cc
     input_mapping = [["control_change", 1, 1]]
     cc_msg = mido.Message("control_change", channel=0, control=1, value=64)
-    indices, value = utils.midi_message_to_indices_value(cc_msg, input_mapping)
-    assert indices == [0] and value == 64 / 127
+    updates = utils.midi_message_to_updates(cc_msg, input_mapping)
+    assert updates == [(0, 64 / 127)]
     # a message mapped to several dimensions returns all of them
     input_mapping = [["control_change", 1, 1], ["note_on", 1], ["control_change", 1, 1]]
-    indices, value = utils.midi_message_to_indices_value(cc_msg, input_mapping)
-    assert indices == [0, 2]
+    updates = utils.midi_message_to_updates(cc_msg, input_mapping)
+    assert updates == [(0, 64 / 127), (2, 64 / 127)]
+    # a CC mapped with a range is scaled back from that range
+    input_mapping = [["control_change", 1, 1, 0, 63]]
+    updates = utils.midi_message_to_updates(cc_msg, input_mapping)
+    assert updates == [(0, 1.0)]
 
 
 def test_midi_output_state_messages(output_values, midi_output_mapping):
@@ -355,7 +359,7 @@ def test_websocket_handler_roundtrip(default_config):
     """
     sender = impsio.WebSocketServer(default_config, lambda i, v: None, lambda v: None)
     received = []
-    sender.callback = lambda indices, value: received.append((indices, value))
+    sender.callback = lambda updates: received.append(updates)
 
     # Pick the first cc entry from [websocket].input — channel is 1-based in config
     cfg_entry = next(
@@ -381,7 +385,7 @@ def test_websocket_handler_roundtrip(default_config):
             return iter([wire])
 
     sender.websocket_handler(FakeWs())
-    assert received == [([expected_index], pytest.approx(64 / 127.0))]
+    assert received == [[(expected_index, pytest.approx(64 / 127.0))]]
 
 
 def test_websocket_send_midi_removes_dead_client(
@@ -434,8 +438,8 @@ def test_midi_server_handle_port_with_messages(
     """Test MIDI handle_port processes messages via callback."""
     received = []
 
-    def mock_callback(indices, value):
-        received.append((indices, value))
+    def mock_callback(updates):
+        received.append(updates)
         return np.random.rand(default_config["model"]["dimension"] - 1)
 
     sender = impsio.MIDIServer(default_config, mock_callback, dense_callback)
@@ -494,8 +498,8 @@ def test_serial_midi_handle_with_mock(default_config):
     """Test SerialMIDI handle processes MIDI messages from serial."""
     received = []
 
-    def mock_callback(indices, value):
-        received.append((indices, value))
+    def mock_callback(updates):
+        received.append(updates)
         return np.zeros(default_config["model"]["dimension"] - 1)
 
     def mock_dense_callback(values):

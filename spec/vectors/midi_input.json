@@ -1,6 +1,6 @@
 {
   "spec_version": "0.1.0",
-  "description": "MIDI bytes in -> the input vector indices it sets and their value, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
+  "description": "MIDI bytes in -> the [index, value] updates it makes to the input vector, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
   "tolerance": 1e-09,
   "cases": [
     {
@@ -21,26 +21,21 @@
         [145, 64, 90]
       ],
       "expected": [
-        {
-          "indices": [0],
-          "value": 0.47244094488188976
-        },
-        {
-          "indices": [0],
-          "value": 0.47244094488188976
-        },
-        {
-          "indices": [0],
-          "value": 0.0
-        },
-        {
-          "indices": [0],
-          "value": 1.0
-        },
-        {
-          "indices": [2],
-          "value": 0.5039370078740157
-        }
+        [
+          [0, 0.47244094488188976]
+        ],
+        [
+          [0, 0.47244094488188976]
+        ],
+        [
+          [0, 0.0]
+        ],
+        [
+          [0, 1.0]
+        ],
+        [
+          [2, 0.5039370078740157]
+        ]
       ]
     },
     {
@@ -93,22 +88,88 @@
         [191, 7, 100]
       ],
       "expected": [
-        {
-          "indices": [1],
-          "value": 0.0
-        },
-        {
-          "indices": [1],
-          "value": 0.5039370078740157
-        },
-        {
-          "indices": [1],
-          "value": 1.0
-        },
-        {
-          "indices": [3],
-          "value": 0.7874015748031497
-        }
+        [
+          [1, 0.0]
+        ],
+        [
+          [1, 0.5039370078740157]
+        ],
+        [
+          [1, 1.0]
+        ],
+        [
+          [3, 0.7874015748031497]
+        ]
+      ]
+    },
+    {
+      "name": "control_change_with_range",
+      "description": "A CC mapped with a range [cc, ch, ctrl, min, max] is scaled back to [0, 1]: the raw value is clamped to [min, max], then value = (raw - min) / (max - min). This inverts the output scaling.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/105"],
+      "dimension": 3,
+      "input_mapping": [
+        ["control_change", 1, 20, 0, 63],
+        ["control_change", 1, 21, 64, 127]
+      ],
+      "messages": [
+        [176, 20, 0],
+        [176, 20, 21],
+        [176, 20, 63],
+        [176, 20, 100],
+        [176, 21, 0],
+        [176, 21, 64],
+        [176, 21, 96],
+        [176, 21, 127]
+      ],
+      "expected": [
+        [
+          [0, 0.0]
+        ],
+        [
+          [0, 0.3333333333333333]
+        ],
+        [
+          [0, 1.0]
+        ],
+        [
+          [0, 1.0]
+        ],
+        [
+          [1, 0.0]
+        ],
+        [
+          [1, 0.0]
+        ],
+        [
+          [1, 0.5079365079365079]
+        ],
+        [
+          [1, 1.0]
+        ]
+      ]
+    },
+    {
+      "name": "same_cc_with_different_ranges",
+      "description": "When one CC is mapped to several dimensions with different ranges, each dimension gets the value scaled by its own range.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/102", "https://github.com/cpmpercussion/impsy/issues/105"],
+      "dimension": 3,
+      "input_mapping": [
+        ["control_change", 1, 7],
+        ["control_change", 1, 7, 0, 63]
+      ],
+      "messages": [
+        [176, 7, 32],
+        [176, 7, 127]
+      ],
+      "expected": [
+        [
+          [0, 0.25196850393700787],
+          [1, 0.5079365079365079]
+        ],
+        [
+          [0, 1.0],
+          [1, 1.0]
+        ]
       ]
     },
     {
@@ -145,15 +206,13 @@
         [191, 1, 50]
       ],
       "expected": [
-        {
-          "indices": [0],
-          "value": 0.47244094488188976
-        },
+        [
+          [0, 0.47244094488188976]
+        ],
         null,
-        {
-          "indices": [1],
-          "value": 0.3937007874015748
-        },
+        [
+          [1, 0.3937007874015748]
+        ],
         null
       ]
     },
@@ -173,14 +232,14 @@
         [176, 7, 32]
       ],
       "expected": [
-        {
-          "indices": [0, 2],
-          "value": 0.47244094488188976
-        },
-        {
-          "indices": [1, 3],
-          "value": 0.25196850393700787
-        }
+        [
+          [0, 0.47244094488188976],
+          [2, 0.47244094488188976]
+        ],
+        [
+          [1, 0.25196850393700787],
+          [3, 0.25196850393700787]
+        ]
       ]
     }
   ]
