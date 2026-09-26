@@ -388,15 +388,17 @@ class InteractionServer(object):
         self.interface_input_queue.put_nowait(self.last_user_interaction_data)
 
     # Todo this is the "callback" for our IO functions.
-    def construct_input_list(self, indices: list, value: float) -> list:
+    def construct_input_list(self, updates: list) -> list:
         """constructs a dense input list from a sparse format (e.g., when receiving MIDI).
 
-        One incoming message is one interaction, even if it is mapped to
-        several dimensions: all of them are set to value.
+        updates is a list of (index, value) pairs from one incoming message.
+        One message is one interaction, even if it is mapped to several
+        dimensions.
         """
         # set up dense interaction list
         values = self.last_user_interaction_data[1:]
-        values[indices] = value
+        for index, value in updates:
+            values[index] = value
         self._broadcast_monitor("in", values)
         # log
         if self.verbose:

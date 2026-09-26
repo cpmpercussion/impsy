@@ -166,21 +166,18 @@ def _parse_log_line(line):
 
 
 def run_midi_input_case(case):
-    """Each MIDI message in -> the (indices, value) it produces, or None if ignored."""
+    """Each MIDI message in -> the [index, value] updates it makes, or None if ignored."""
     config = _midi_config(case["dimension"], input_mapping=case["input_mapping"])
     results = []
     for message_bytes in case["messages"]:
         received = []
-        server = _midi_server(
-            config, lambda indices, value: received.append((indices, value))
-        )
+        server = _midi_server(config, lambda updates: received.append(updates))
         server.midi_in_port[IN_PORT] = FakeMidiInPort(
             [mido.Message.from_bytes(message_bytes)]
         )
         server.handle()
         if received:
-            indices, value = received[0]
-            results.append({"indices": list(indices), "value": float(value)})
+            results.append([[i, float(v)] for i, v in received[0]])
         else:
             results.append(None)
     return results
@@ -194,7 +191,7 @@ def run_midi_output_case(case):
     A step of {"all_notes_off": true} is what happens on disconnect.
     """
     config = _midi_config(case["dimension"], output_mapping=case["output_mapping"])
-    midi = _midi_server(config, lambda indices, value: None)
+    midi = _midi_server(config, lambda updates: None)
     server, _ = _interaction_server(config, [0.0] * (case["dimension"] - 1), 0.0)
     server.senders = [midi]
     out_port = midi.midi_out_port[OUT_PORT]
@@ -210,7 +207,7 @@ def run_midi_output_case(case):
 
 
 def run_websocket_input_case(case):
-    """Each websocket string in -> the (indices, value) it produces, or None."""
+    """Each websocket string in -> the [index, value] updates it makes, or None."""
     config = {"verbose": False, "websocket": {"input": case["input_mapping"]}}
     config["websocket"]["output"] = []
     results = []
@@ -218,14 +215,13 @@ def run_websocket_input_case(case):
         received = []
         server = impsio.WebSocketServer(
             config,
-            lambda indices, value: received.append((indices, value)),
+            lambda updates: received.append(updates),
             lambda values: None,
         )
         with patch.object(impsio.click, "secho"):
             server.websocket_handler(FakeWebsocketClient([message]))
         if received:
-            indices, value = received[0]
-            results.append({"indices": list(indices), "value": float(value)})
+            results.append([[i, float(v)] for i, v in received[0]])
         else:
             results.append(None)
     return results
@@ -506,6 +502,37 @@ MIDI_INPUT_CASES = [
         ],
     },
     {
+        "name": "control_change_with_range",
+        "description": "A CC mapped with a range [cc, ch, ctrl, min, max] is scaled back to [0, 1]: the raw value is clamped to [min, max], then value = (raw - min) / (max - min). This inverts the output scaling.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/105"],
+        "dimension": 3,
+        "input_mapping": [
+            ["control_change", 1, 20, 0, 63],
+            ["control_change", 1, 21, 64, 127],
+        ],
+        "messages": [
+            [CC | 0, 20, 0],
+            [CC | 0, 20, 21],
+            [CC | 0, 20, 63],
+            [CC | 0, 20, 100],
+            [CC | 0, 21, 0],
+            [CC | 0, 21, 64],
+            [CC | 0, 21, 96],
+            [CC | 0, 21, 127],
+        ],
+    },
+    {
+        "name": "same_cc_with_different_ranges",
+        "description": "When one CC is mapped to several dimensions with different ranges, each dimension gets the value scaled by its own range.",
+        "issues": [
+            "https://github.com/cpmpercussion/impsy/issues/102",
+            "https://github.com/cpmpercussion/impsy/issues/105",
+        ],
+        "dimension": 3,
+        "input_mapping": [["control_change", 1, 7], ["control_change", 1, 7, 0, 63]],
+        "messages": [[CC | 0, 7, 32], [CC | 0, 7, 127]],
+    },
+    {
         "name": "unmapped_messages_ignored",
         "description": "Messages on unmapped channels or controllers, and unsupported message types, are ignored.",
         "dimension": 5,
@@ -589,8 +616,11 @@ MIDI_OUTPUT_CASES = [
     },
     {
         "name": "control_change_min_max",
-        "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to floor((max - min) * v / 127 + 0.5) + min.",
-        "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
+        "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the value v in [0, 1] to floor(min + v * (max - min) + 0.5), rounding once.",
+        "issues": [
+            "https://github.com/cpmpercussion/impsy/issues/100",
+            "https://github.com/cpmpercussion/impsy/issues/105",
+        ],
         "dimension": 4,
         "output_mapping": [
             ["control_change", 1, 20, 0, 63],
@@ -601,6 +631,7 @@ MIDI_OUTPUT_CASES = [
             {"values": [0.0, 0.0, 0.0]},
             {"values": [0.5, 0.5, 0.5]},
             {"values": [1.0, 1.0, 1.0]},
+            {"values": [0.008, 0.008, 0.06]},
         ],
     },
     {
@@ -785,7 +816,7 @@ MODEL_CASES = [
 
 VECTOR_FILES = {
     "midi_input.json": (
-        "MIDI bytes in -> the input vector indices it sets and their value, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
+        "MIDI bytes in -> the [index, value] updates it makes to the input vector, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
         MIDI_INPUT_CASES,
         run_midi_input_case,
     ),
@@ -795,7 +826,7 @@ VECTOR_FILES = {
         run_midi_output_case,
     ),
     "websocket_input.json": (
-        "WebSocket message strings in -> the input vector indices they set and their value, or null if ignored.",
+        "WebSocket message strings in -> the [index, value] updates they make, or null if ignored.",
         WEBSOCKET_INPUT_CASES,
         run_websocket_input_case,
     ),

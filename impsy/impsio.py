@@ -3,7 +3,7 @@
 import abc
 from collections.abc import Callable
 import click
-from typing import List
+from typing import List, Tuple
 import datetime
 import numpy as np
 import serial
@@ -14,7 +14,7 @@ from threading import Thread
 from impsy.utils import (
     MidiOutputState,
     match_midi_port_to_list,
-    midi_message_to_indices_value,
+    midi_message_to_updates,
 )
 
 
@@ -22,17 +22,17 @@ class IOServer(abc.ABC):
     """Abstract class for music IO for IMPSY."""
 
     config: dict
-    callback: Callable[[List[int], float], None]
+    callback: Callable[[List[Tuple[int, float]]], None]
 
     def __init__(
         self,
         config: dict,
-        callback: Callable[[List[int], float], None],
+        callback: Callable[[List[Tuple[int, float]]], None],
         dense_callback: Callable[[List[int]], None],
         command_callback: Callable[[str, list], None] = None,
     ) -> None:
         self.config = config  # the IMPSY config
-        self.callback = callback  # a callback method to report incoming sparse data as (indices, value), e.g., MIDI notes
+        self.callback = callback  # a callback method to report incoming sparse data as a list of (index, value) updates, e.g., MIDI notes
         self.dense_callback = dense_callback  # a callback for dense input data (e.g., lists of OSC arguments)
         self.command_callback = (
             command_callback  # a callback for command messages (e.g., mode changes)
@@ -66,7 +66,7 @@ class SerialServer(IOServer):
     def __init__(
         self,
         config: dict,
-        callback: Callable[[List[int], float], None],
+        callback: Callable[[List[Tuple[int, float]]], None],
         dense_callback: Callable[[List[int]], None],
     ) -> None:
         super().__init__(config, callback, dense_callback)
@@ -136,7 +136,7 @@ class SerialMIDIServer(IOServer):
     def __init__(
         self,
         config: dict,
-        callback: Callable[[List[int], float], None],
+        callback: Callable[[List[Tuple[int, float]]], None],
         dense_callback: Callable[[List[int]], None],
     ) -> None:
         super().__init__(config, callback, dense_callback)
@@ -175,10 +175,8 @@ class SerialMIDIServer(IOServer):
             return
         else:
             try:
-                indices, value = midi_message_to_indices_value(
-                    message, self.midi_input_mapping
-                )
-                self.callback(indices, value)
+                updates = midi_message_to_updates(message, self.midi_input_mapping)
+                self.callback(updates)
             except ValueError as e:
                 # error when handling the MIDI message
                 # click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
@@ -291,12 +289,10 @@ class WebSocketServer(IOServer):
                 click.secho(f"WS in: {message}", fg="blue")
             try:
                 midi_message = self.websocket_to_midi(message)
-                indices, value = midi_message_to_indices_value(
-                    midi_message, self.midi_input_mapping
-                )
+                updates = midi_message_to_updates(midi_message, self.midi_input_mapping)
             except ValueError:
                 continue  # unparseable, unmapped, or a note-off
-            self.callback(indices, value)
+            self.callback(updates)
 
     @staticmethod
     def websocket_to_midi(message: str) -> mido.Message:
@@ -531,10 +527,10 @@ class MIDIServer(IOServer):
                         continue
 
             try:
-                indices, value = midi_message_to_indices_value(
+                updates = midi_message_to_updates(
                     message, self.midi_input_mapping[in_port]
                 )
-                return_values_list = self.callback(indices, value)
+                return_values_list = self.callback(updates)
                 self.process_midi_through_sending(in_port, return_values_list)
             except ValueError as e:
                 # error when handling the MIDI message

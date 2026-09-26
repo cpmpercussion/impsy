@@ -48,26 +48,32 @@ def test_mdrnn_config_invalid_size():
         utils.mdrnn_config("invalid_size")
 
 
-def test_process_midi_min_max():
-    """Test MIDI min/max processing with boundary values."""
-    # No scaling (full range)
-    assert utils.process_midi_min_max(0, 0, 127) == 0
-    assert utils.process_midi_min_max(127, 0, 127) == 127
-
-    # Restricted range
-    result = utils.process_midi_min_max(64, 10, 100)
-    assert 10 <= result <= 100
-
+def test_value_to_midi_with_range():
+    """Test scaling values into a MIDI min/max range, rounding once."""
+    assert utils.value_to_midi(0.0, 0, 127) == 0
+    assert utils.value_to_midi(1.0, 0, 127) == 127
+    assert utils.value_to_midi(0.0, 10, 100) == 10
+    assert utils.value_to_midi(1.0, 10, 100) == 100
+    assert utils.value_to_midi(0.008, 0, 63) == 1  # 0.504
     # Min equals max (degenerate case)
-    result = utils.process_midi_min_max(64, 50, 50)
-    assert result == 50
+    assert utils.value_to_midi(0.5, 50, 50) == 50
 
 
-def test_midi_message_to_indices_value_unsupported_type():
+def test_midi_to_value_inverts_range():
+    assert utils.midi_to_value(64, 0, 127) == 64 / 127
+    assert utils.midi_to_value(21, 0, 63) == 21 / 63
+    assert utils.midi_to_value(100, 0, 63) == 1.0  # clamped
+    assert utils.midi_to_value(0, 64, 127) == 0.0  # clamped
+    assert utils.midi_to_value(5, 50, 50) == 0.0
+    for midi in range(64, 128):
+        assert utils.value_to_midi(utils.midi_to_value(midi, 64, 127), 64, 127) == midi
+
+
+def test_midi_message_to_updates_unsupported_type():
     """Test that unsupported MIDI message types raise ValueError."""
     msg = mido.Message("pitchwheel", channel=0, pitch=0)
     with pytest.raises(ValueError, match="Only note_on and control_change"):
-        utils.midi_message_to_indices_value(msg, [["note_on", 1]])
+        utils.midi_message_to_updates(msg, [["note_on", 1]])
 
 
 def test_match_midi_port_exact():
