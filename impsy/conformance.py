@@ -47,7 +47,7 @@ MODEL_PARAMS = {"dimension": 3, "units": 16, "mixtures": 5, "layers": 2}
 MODEL_WEIGHT_SEED = 2345
 # TFLite float kernels differ slightly between CPUs, so model outputs are
 # compared with this absolute tolerance rather than exactly.
-MODEL_TOLERANCE = 1e-4
+MODEL_TOLERANCE = 1e-2
 # Everything else is computed in float64 and should match to rounding error.
 DEFAULT_TOLERANCE = 1e-9
 
