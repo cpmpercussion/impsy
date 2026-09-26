@@ -388,11 +388,15 @@ class InteractionServer(object):
         self.interface_input_queue.put_nowait(self.last_user_interaction_data)
 
     # Todo this is the "callback" for our IO functions.
-    def construct_input_list(self, index: int, value: float) -> list:
-        """constructs a dense input list from a sparse format (e.g., when receiving MIDI)"""
+    def construct_input_list(self, indices: list, value: float) -> list:
+        """constructs a dense input list from a sparse format (e.g., when receiving MIDI).
+
+        One incoming message is one interaction, even if it is mapped to
+        several dimensions: all of them are set to value.
+        """
         # set up dense interaction list
         values = self.last_user_interaction_data[1:]
-        values[index] = value
+        values[indices] = value
         self._broadcast_monitor("in", values)
         # log
         if self.verbose:
@@ -473,24 +477,28 @@ class InteractionServer(object):
                     self.rnn_output_buffer.task_done()
                 # send MIDI noteoff messages to stop previous sounds
 
+    def prepare_rnn_playback(self, item):
+        """Turns a model output [dt, x_1, ..., x_n] into (seconds to wait, values to play, next model input).
+
+        timescale only changes playback speed: the model is fed back its own
+        (clamped) dt, not the scaled one, so it keeps seeing the timing it
+        was trained on.
+        """
+        dt = max(item[0], 0.001)  # stop accidental minus and zero dt.
+        x_pred = np.minimum(np.maximum(item[1:], 0), 1)
+        wait = dt * self.config["model"]["timescale"]
+        return wait, x_pred, np.concatenate([np.array([dt]), x_pred])
+
     def playback_rnn_loop(self):
         """Plays back RNN notes from its buffer queue. This loop blocks and should run in a separate thread."""
         while True:
             item = self.rnn_output_buffer.get(
                 block=True, timeout=None
             )  # Blocks until next item is available.
-            dt = item[0]
-            # click.secho(f"Raw dt: {dt}", fg="blue")
-            x_pred = np.minimum(np.maximum(item[1:], 0), 1)
-            dt = max(dt, 0.001)  # stop accidental minus and zero dt.
-            dt = dt * self.config["model"]["timescale"]  # timescale modification!
-            # click.secho(f"Sleeping for dt: {dt}", fg="blue")
-
-            time.sleep(dt)  # wait until time to play the sound
+            wait, x_pred, feedback = self.prepare_rnn_playback(item)
+            time.sleep(wait)  # wait until time to play the sound
             # put last played in queue for prediction.
-            self.rnn_prediction_queue.put_nowait(
-                np.concatenate([np.array([dt]), x_pred])
-            )
+            self.rnn_prediction_queue.put_nowait(feedback)
             if self.rnn_to_sound:
                 # Send predictions to outputs via impsio objects
                 self.send_back_values(x_pred)

@@ -8,17 +8,18 @@ If your implementation passes every case, it treats MIDI, WebSocket messages, lo
 
 | File | Input | Expected |
 |---|---|---|
-| `midi_input.json` | a config `input_mapping` and a list of raw MIDI messages (byte arrays) | for each message, `{"index", "value"}` for the input vector, or `null` if it is ignored |
+| `midi_input.json` | a config `input_mapping` and a list of raw MIDI messages (byte arrays) | for each message, `{"indices", "value"}`: the input vector entries it sets, or `null` if it is ignored |
 | `midi_output.json` | a config `output_mapping` and a list of steps: output values `x_1..x_n`, or `{"all_notes_off": true}` | for each step, the list of MIDI messages sent (byte arrays, in order) |
 | `websocket_input.json` | an input mapping and WebSocket message strings | as for `midi_input.json` |
 | `websocket_output.json` | an output mapping and output vectors | for each step, the list of WebSocket strings sent |
+| `playback.json` | a `timescale` and model outputs `[dt, x_1..x_n]` | for each output: seconds to `wait` before playing, the `output` values played, and the `next_model_input` fed back to the model |
 | `pipeline.json` | an input mapping, an initial input vector, a start time, and timed MIDI events | `model_inputs`: every `[dt, x_1..x_n]` vector sent to the model; `log`: every log row as `{"source", "values"}` |
 | `dataset.json` | the lines of a `*-{dimension}d-mdrnn.log` file | the dataset rows `[dt, x_1..x_n]` training uses |
 | `model.json` | the fixed-weight model in `models/`, temperatures, and a sequence of `[dt, x_1..x_n]` inputs (with an optional LSTM reset) | the model's shape and tensor names, then for each step: the scaled input tensor, the raw MDN output, the mixture weights `pi`, means `mu` and sampling standard deviations `std` in IMPSY's units, and which mixture each uniform draw selects |
 
 Conventions used across all files:
 
-- `index` is 0-based over `x_1..x_n`. It never counts `dt`, so index 0 is the first entry in the mapping.
+- Indices are 0-based over `x_1..x_n`. They never count `dt`, so index 0 is the first entry in the mapping. A message mapped to several entries sets all of them, as one interaction.
 - Channels in mappings are 1-based, as in `config.toml`. In MIDI bytes, config channel `c` is status nibble `c - 1`.
 - Output values in `midi_output.json` and `websocket_output.json` are what the interaction loop hands to the outputs. They can be outside `[0, 1]`, and clipping them is part of the expected behaviour.
 - State carries across steps within a case (for example, the last note on each channel, used for note-offs) but never between cases.
@@ -32,7 +33,7 @@ Conventions used across all files:
 2. Write a test that loads each file, feeds every case's inputs through your code, and compares the result with `expected`. Compare integers and strings exactly, and floats within an absolute tolerance: the file's `tolerance`, or `1e-6` if your implementation works in float32 and the file's value is smaller.
 3. If your implementation deliberately differs from a case, skip that case by name, with a comment that links to the discussion. Don't edit the vector.
 
-Each case has a `description`. Cases that depend on a design question that is still open list the GitHub issues in `open_decisions`. Those cases record what IMPSY does *today*. When a decision changes that behaviour, the vector changes and `spec_version` gets a major bump.
+Each case has a `description`. Cases whose behaviour was settled in a GitHub discussion link to it in `issues`. When IMPSY's behaviour changes, the vectors change and `spec_version` gets a major bump.
 
 ## Regenerating
 
@@ -50,6 +51,5 @@ The `.tflite` file in `models/` is committed rather than rebuilt in tests, becau
 
 ## Not covered yet
 
-- The model-output playback path: the `dt` floor, `timescale`, and what is fed back into the model (see [#103](https://github.com/cpmpercussion/impsy/issues/103)).
 - OSC and serial (CSV and serial MIDI) IO, and MIDI feedback protection.
-- Config validation, e.g. mapping length and duplicate entries ([#102](https://github.com/cpmpercussion/impsy/issues/102)).
+- Config validation, e.g. mapping length.

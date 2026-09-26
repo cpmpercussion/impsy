@@ -63,11 +63,11 @@ def test_process_midi_min_max():
     assert result == 50
 
 
-def test_midi_message_to_index_value_unsupported_type():
+def test_midi_message_to_indices_value_unsupported_type():
     """Test that unsupported MIDI message types raise ValueError."""
     msg = mido.Message("pitchwheel", channel=0, pitch=0)
     with pytest.raises(ValueError, match="Only note_on and control_change"):
-        utils.midi_message_to_index_value(msg, [["note_on", 1]])
+        utils.midi_message_to_indices_value(msg, [["note_on", 1]])
 
 
 def test_match_midi_port_exact():

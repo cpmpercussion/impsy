@@ -220,11 +220,13 @@ Optional. Localhost-only ports the `impsy webui` Flask app and the `impsy run` i
 
 Each entry is either:
 
-- `["note_on", channel]` — a MIDI note message on `channel` (1–16). The dimension's value (`0.0`–`1.0`) is scaled to MIDI note 0–127 for the note number; velocity is fixed at 127.
+- `["note_on", channel]` — a MIDI note message on `channel` (1–16). The dimension's value (`0.0`–`1.0`) is scaled to MIDI note 0–127 for the note number; velocity is fixed at 127. On input, a note-on with velocity 0 counts as a note-off, and note-offs are ignored.
 - `["control_change", channel, controller]` — a control-change message on `channel`, controller `0`–`127`. The dimension's value is scaled to `0`–`127`.
 - `["control_change", channel, controller, min, max]` — same, but the value is mapped into the range `[min, max]` instead of `[0, 127]`. Useful for synth parameters that respond to a narrower CC range.
 
-The same mapping is used in both directions. Inbound: a matching MIDI message is decoded into `(index, value/127)` and dropped into the model's input vector at `index`. Outbound: the model's output vector is encoded back into MIDI messages following the mapping.
+The same mapping is used in both directions. Inbound: a matching MIDI message is decoded into `value/127` and dropped into the model's input vector at its index. Outbound: the model's output vector is encoded back into MIDI messages following the mapping, rounding each value to the nearest MIDI value (`round(value * 127)`).
+
+Several entries can name the same message. On input, one incoming message sets every dimension it's mapped to, as one interaction. On output, note dimensions that share a channel play polyphonically: each dimension turns off its own previous note before playing a new one. For CCs, the last value sent holds.
 
 Channels are 1-based in the config (matching standard MIDI conventions); they're decremented internally to mido's 0-based channel.
 
