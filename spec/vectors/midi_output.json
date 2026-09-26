@@ -1,11 +1,11 @@
 {
-  "spec_version": "0.2.0",
+  "spec_version": "1.0.0",
   "description": "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Note state carries across steps within a case.",
   "tolerance": 1e-09,
   "cases": [
     {
       "name": "note_and_cc_encoding",
-      "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before.",
+      "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before. The last CC isn't resent in the second step because 0.999 also encodes to 127 (see unchanged_cc_and_pitch_bend_not_resent).",
       "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
       "dimension": 5,
       "output_mapping": [
@@ -37,8 +37,7 @@
           [144, 60, 127],
           [176, 42, 32],
           [129, 0, 0],
-          [145, 13, 127],
-          [191, 7, 127]
+          [145, 13, 127]
         ],
         [
           [128, 60, 0],
@@ -349,6 +348,74 @@
           [144, 60, 100],
           [145, 60, 32],
           [146, 60, 1]
+        ]
+      ]
+    },
+    {
+      "name": "unchanged_cc_and_pitch_bend_not_resent",
+      "description": "A CC is only sent when its MIDI value (after rounding, so 0.502 and 0.5 are both 64) differs from the last value sent to the same channel and controller; pitch bend likewise per channel, on the 14-bit value. Notes are always sent. Two dimensions mapped to the same CC both send when their values differ. All-notes-off (disconnect) forgets the last values, so the next step sends them all again.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/110"],
+      "dimension": 6,
+      "output_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 7],
+        ["pitch_bend", 1],
+        ["control_change", 2, 1],
+        ["control_change", 2, 1]
+      ],
+      "steps": [
+        {
+          "values": [0.47007874015748036, 0.5, 0.5, 0.25, 0.25]
+        },
+        {
+          "values": [0.47007874015748036, 0.5, 0.5, 0.25, 0.25]
+        },
+        {
+          "values": [0.47007874015748036, 0.502, 0.51, 0.25, 0.75]
+        },
+        {
+          "values": [0.47007874015748036, 0.6, 0.51, 0.25, 0.75]
+        },
+        {
+          "all_notes_off": true
+        },
+        {
+          "values": [0.47007874015748036, 0.6, 0.51, 0.25, 0.75]
+        }
+      ],
+      "expected": [
+        [
+          [144, 60, 127],
+          [176, 7, 64],
+          [224, 0, 64],
+          [177, 1, 32]
+        ],
+        [
+          [128, 60, 0],
+          [144, 60, 127]
+        ],
+        [
+          [128, 60, 0],
+          [144, 60, 127],
+          [224, 35, 65],
+          [177, 1, 95]
+        ],
+        [
+          [128, 60, 0],
+          [144, 60, 127],
+          [176, 7, 76],
+          [177, 1, 32],
+          [177, 1, 95]
+        ],
+        [
+          [128, 60, 0]
+        ],
+        [
+          [144, 60, 127],
+          [176, 7, 76],
+          [224, 35, 65],
+          [177, 1, 32],
+          [177, 1, 95]
         ]
       ]
     },

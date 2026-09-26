@@ -35,7 +35,7 @@ from impsy import dataset, impsio, interaction
 
 # Bump the minor version when cases are added, the major version when the
 # expected behaviour of an existing case changes.
-SPEC_VERSION = "0.2.0"
+SPEC_VERSION = "1.0.0"
 
 SPEC_DIR = Path(__file__).resolve().parent.parent / "spec"
 DEFAULT_VECTOR_DIR = SPEC_DIR / "vectors"
@@ -630,7 +630,7 @@ MIDI_INPUT_CASES = [
 MIDI_OUTPUT_CASES = [
     {
         "name": "note_and_cc_encoding",
-        "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before.",
+        "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before. The last CC isn't resent in the second step because 0.999 also encodes to 127 (see unchanged_cc_and_pitch_bend_not_resent).",
         "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "dimension": 5,
         "output_mapping": MIXED_MAPPING,
@@ -746,6 +746,27 @@ MIDI_OUTPUT_CASES = [
         "steps": [{"values": [note(60), note(60), 0.25, note(60)]}],
     },
     {
+        "name": "unchanged_cc_and_pitch_bend_not_resent",
+        "description": "A CC is only sent when its MIDI value (after rounding, so 0.502 and 0.5 are both 64) differs from the last value sent to the same channel and controller; pitch bend likewise per channel, on the 14-bit value. Notes are always sent. Two dimensions mapped to the same CC both send when their values differ. All-notes-off (disconnect) forgets the last values, so the next step sends them all again.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/110"],
+        "dimension": 6,
+        "output_mapping": [
+            ["note_on", 1],
+            ["control_change", 1, 7],
+            ["pitch_bend", 1],
+            ["control_change", 2, 1],
+            ["control_change", 2, 1],
+        ],
+        "steps": [
+            {"values": [note(60), 0.5, 0.5, 0.25, 0.25]},
+            {"values": [note(60), 0.5, 0.5, 0.25, 0.25]},
+            {"values": [note(60), 0.502, 0.51, 0.25, 0.75]},
+            {"values": [note(60), 0.6, 0.51, 0.25, 0.75]},
+            {"all_notes_off": True},
+            {"values": [note(60), 0.6, 0.51, 0.25, 0.75]},
+        ],
+    },
+    {
         "name": "pitch_bend_output",
         "description": "A pitch_bend dimension sends a pitch bend with raw = floor(v * 16383 + 0.5), as bytes [0xE0 | ch, raw & 0x7F, raw >> 7]. Values are clipped to [0, 1] first.",
         "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
@@ -797,7 +818,7 @@ WEBSOCKET_INPUT_CASES = [
 WEBSOCKET_OUTPUT_CASES = [
     {
         "name": "websocket_output",
-        "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note and clipping to [0, 1].",
+        "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note, clipping to [0, 1], and not resending unchanged CC values.",
         "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "output_mapping": MIXED_MAPPING,
         "steps": [

@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.2.0",
+  "spec_version": "1.0.0",
   "description": "Timed MIDI input -> the model input vectors [dt, x_1..x_n] and 'interface' log rows it produces.",
   "tolerance": 1e-09,
   "cases": [

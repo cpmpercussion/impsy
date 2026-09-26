@@ -132,6 +132,9 @@ class MidiOutputState:
     A note's velocity comes from the first note_velocity dimension on its
     channel if there is one, otherwise from the mapping's fixed velocity
     (["note_on", channel, velocity]), otherwise 127.
+
+    CCs and pitch bends are only sent when their value differs from the last
+    one sent to the same channel (and controller). Notes are always sent.
     """
 
     def __init__(self, mapping: list):
@@ -139,6 +142,7 @@ class MidiOutputState:
         self.sounding = {}  # dimension index -> (channel, note), 0-based channel
         self.last_note_on = {}  # channel -> most recent note sent on it
         self.velocity_index = {}  # channel -> index of its note_velocity dimension
+        self.last_sent = {}  # (type, channel[, control]) -> last CC or pitch bend value
         for i, entry in enumerate(mapping):
             if entry[0] == "note_velocity":
                 self.velocity_index.setdefault(entry[1] - 1, i)
@@ -151,6 +155,17 @@ class MidiOutputState:
         if len(entry) >= 3:
             return int(min(max(entry[2], 1), 127))
         return 127
+
+    def _changed(self, key: tuple, value: int) -> bool:
+        """Record value as sent to key; False if it's the same as last time."""
+        if self.last_sent.get(key) == value:
+            return False
+        self.last_sent[key] = value
+        return True
+
+    def clear_sent_values(self) -> None:
+        """Forget the last CC and pitch bend values, so the next step sends them all."""
+        self.last_sent = {}
 
     def _held_elsewhere(self, index: int, channel_note: tuple) -> bool:
         return any(
@@ -187,6 +202,8 @@ class MidiOutputState:
                 self.last_note_on[channel] = midi_value
             elif entry[0] == "control_change":
                 midi_value = value_to_midi(output_values[i], *entry[3:5])
+                if not self._changed(("cc", channel, entry[2]), midi_value):
+                    continue
                 messages.append(
                     mido.Message(
                         "control_change",
@@ -196,17 +213,20 @@ class MidiOutputState:
                     )
                 )
             elif entry[0] == "pitch_bend":
+                pitch = value_to_pitch_bend(output_values[i])
+                if not self._changed(("pitch_bend", channel), pitch):
+                    continue
                 messages.append(
-                    mido.Message(
-                        "pitchwheel",
-                        channel=channel,
-                        pitch=value_to_pitch_bend(output_values[i]),
-                    )
+                    mido.Message("pitchwheel", channel=channel, pitch=pitch)
                 )
         return messages
 
     def all_notes_off(self) -> List[mido.Message]:
-        """Note-offs for every sounding note, e.g. on disconnect."""
+        """Note-offs for every sounding note, e.g. on disconnect.
+
+        Also forgets the last CC and pitch bend values, so a reconnect resends them.
+        """
+        self.clear_sent_values()
         messages = [
             mido.Message("note_off", channel=channel, note=note, velocity=0)
             for channel, note in dict.fromkeys(self.sounding.values())
