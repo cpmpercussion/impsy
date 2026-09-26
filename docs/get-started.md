@@ -41,7 +41,7 @@ The web interface makes this straightforward: hit record, perform, save the log.
 
 ## 4. Train a mixture density RNN
 
-IMPSY's prediction model is a small mixture density recurrent network. Training runs locally: no cloud component, no account, no required GPU for modestly sized models. Training a usable instrument on a few minutes of data takes minutes, not hours.
+IMPSY's prediction model is a small mixture density recurrent network. Training runs on your own computer, with no account and no GPU needed for modestly sized models. Training a usable instrument on a few minutes of data takes minutes, not hours.
 
 See the main repository for the current training command, hyperparameter defaults, and tips for tuning the mixture parameters.
 
