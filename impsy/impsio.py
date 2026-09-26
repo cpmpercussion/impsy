@@ -12,10 +12,9 @@ from websockets.sync.server import serve
 from pythonosc import dispatcher, osc_server, udp_client
 from threading import Thread
 from impsy.utils import (
-    get_midi_note_offs,
-    output_values_to_midi_messages,
+    MidiOutputState,
     match_midi_port_to_list,
-    midi_message_to_index_value,
+    midi_message_to_indices_value,
 )
 
 
@@ -23,17 +22,17 @@ class IOServer(abc.ABC):
     """Abstract class for music IO for IMPSY."""
 
     config: dict
-    callback: Callable[[int, float], None]
+    callback: Callable[[List[int], float], None]
 
     def __init__(
         self,
         config: dict,
-        callback: Callable[[int, float], None],
+        callback: Callable[[List[int], float], None],
         dense_callback: Callable[[List[int]], None],
         command_callback: Callable[[str, list], None] = None,
     ) -> None:
         self.config = config  # the IMPSY config
-        self.callback = callback  # a callback method to report incoming sparse data.(e.g., MIDI notes)
+        self.callback = callback  # a callback method to report incoming sparse data as (indices, value), e.g., MIDI notes
         self.dense_callback = dense_callback  # a callback for dense input data (e.g., lists of OSC arguments)
         self.command_callback = (
             command_callback  # a callback for command messages (e.g., mode changes)
@@ -67,7 +66,7 @@ class SerialServer(IOServer):
     def __init__(
         self,
         config: dict,
-        callback: Callable[[int, float], None],
+        callback: Callable[[List[int], float], None],
         dense_callback: Callable[[List[int]], None],
     ) -> None:
         super().__init__(config, callback, dense_callback)
@@ -137,7 +136,7 @@ class SerialMIDIServer(IOServer):
     def __init__(
         self,
         config: dict,
-        callback: Callable[[int, float], None],
+        callback: Callable[[List[int], float], None],
         dense_callback: Callable[[List[int]], None],
     ) -> None:
         super().__init__(config, callback, dense_callback)
@@ -146,32 +145,16 @@ class SerialMIDIServer(IOServer):
         self.baudrate = 31250  # midi baudrate
         self.serial = None
         self.buffer = ""  # used for storing serial data after reading
-        self.last_midi_notes = {}  # dict to store last played notes via midi
         self.midi_output_mapping = self.config["serialmidi"]["output"]
         self.midi_input_mapping = self.config["serialmidi"]["input"]
+        self.output_state = MidiOutputState(self.midi_output_mapping)
 
     def send(self, output_values) -> None:
         """Sends sound commands via MIDI"""
         start_time = datetime.datetime.now()
 
-        output_midi_messages = output_values_to_midi_messages(
-            output_values, {"serial": self.midi_output_mapping}
-        )
-        for msg in output_midi_messages["serial"]:
-            # send note off if a previous note_on had been sent
-            if msg.type == "note_on" and msg.channel in self.last_midi_notes:
-                note_off_msg = mido.Message(
-                    "note_off",
-                    channel=msg.channel,
-                    note=self.last_midi_notes[msg.channel],
-                    velocity=0,
-                )
-                self.send_midi_message(note_off_msg)
-            self.send_midi_message(msg)  # actually send the message.
-            if msg.type == "note_on":
-                self.last_midi_notes[msg.channel] = (
-                    msg.note
-                )  # store last midi note if it was a note_on.
+        for msg in self.output_state.messages(output_values):
+            self.send_midi_message(msg)
 
         duration_time = (datetime.datetime.now() - start_time).total_seconds()
         if duration_time > 0.02:
@@ -192,10 +175,10 @@ class SerialMIDIServer(IOServer):
             return
         else:
             try:
-                index, value = midi_message_to_index_value(
+                indices, value = midi_message_to_indices_value(
                     message, self.midi_input_mapping
                 )
-                self.callback(index, value)
+                self.callback(indices, value)
             except ValueError as e:
                 # error when handling the MIDI message
                 # click.secho(f"MIDISerial Handling failed for a message: {e}", fg="red")
@@ -228,10 +211,7 @@ class SerialMIDIServer(IOServer):
 
     def send_midi_note_offs(self):
         """Sends note offs on any MIDI channels that have been used for notes."""
-        note_off_messages = get_midi_note_offs(
-            self.midi_output_mapping, self.last_midi_notes
-        )
-        for msg in note_off_messages:
+        for msg in self.output_state.all_notes_off():
             self.send_midi_message(msg)
 
 
@@ -244,29 +224,13 @@ class WebSocketServer(IOServer):
         self.ws_clients = set()  # storage for potential ws clients.
         self.ws_thread = None
         self.ws_server = None
-        self.last_midi_notes = {}  # dict to store last played notes via midi
         self.midi_output_mapping = self.config["websocket"]["output"]
         self.midi_input_mapping = self.config["websocket"]["input"]
+        self.output_state = MidiOutputState(self.midi_output_mapping)
 
     def send(self, output_values) -> None:
-        output_midi_messages = output_values_to_midi_messages(
-            output_values, {"ws": self.midi_output_mapping}
-        )
-        for msg in output_midi_messages["ws"]:
-            # send note off if a previous note_on had been sent
-            if msg.type == "note_on" and msg.channel in self.last_midi_notes:
-                note_off_msg = mido.Message(
-                    "note_off",
-                    channel=msg.channel,
-                    note=self.last_midi_notes[msg.channel],
-                    velocity=0,
-                )
-                self.websocket_send_midi(note_off_msg)
-            self.websocket_send_midi(msg)  # actually send the message.
-            if msg.type == "note_on":
-                self.last_midi_notes[msg.channel] = (
-                    msg.note
-                )  # store last midi note if it was a note_on.
+        for msg in self.output_state.messages(output_values):
+            self.websocket_send_midi(msg)
 
     def handle(self) -> None:
         return super().handle()
@@ -325,29 +289,33 @@ class WebSocketServer(IOServer):
         for message in websocket:
             if self.verbose:
                 click.secho(f"WS in: {message}", fg="blue")
-            m = message.split("/")[1:]
-            msg_type = m[2]
-            chan = int(m[1])
-            note = int(m[3])
-            vel = int(m[4])
+            try:
+                midi_message = self.websocket_to_midi(message)
+                indices, value = midi_message_to_indices_value(
+                    midi_message, self.midi_input_mapping
+                )
+            except ValueError:
+                continue  # unparseable, unmapped, or a note-off
+            self.callback(indices, value)
+
+    @staticmethod
+    def websocket_to_midi(message: str) -> mido.Message:
+        """Parse /channel/<ch1based>/<noteon|noteoff|cc>/<a>/<b> into a mido message."""
+        try:
+            _, _, chan, msg_type, a, b = message.split("/")
+            channel = int(chan) - 1
+            a, b = int(a), int(b)
             if msg_type == "noteon":
-                try:
-                    index = self.midi_input_mapping.index(["note_on", chan])
-                    value = note / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    click.secho(f"WS in: exception with message {message}", fg="red")
-                    pass
-            elif msg_type == "cc":
-                try:
-                    index = self.midi_input_mapping.index(
-                        ["control_change", chan, note]
-                    )
-                    value = vel / 127.0
-                    self.callback(index, value)
-                except ValueError:
-                    click.secho(f"WS in: exception with message {message}", fg="red")
-                    pass
+                return mido.Message("note_on", channel=channel, note=a, velocity=b)
+            if msg_type == "noteoff":
+                return mido.Message("note_off", channel=channel, note=a, velocity=b)
+            if msg_type == "cc":
+                return mido.Message(
+                    "control_change", channel=channel, control=a, value=b
+                )
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Could not parse websocket message {message!r}") from e
+        raise ValueError(f"Unknown websocket message type in {message!r}")
 
     def websocket_serve_loop(self):
         """Threading websockets server following https://websockets.readthedocs.io/en/stable/reference/sync/server.html"""
@@ -506,9 +474,12 @@ class MIDIServer(IOServer):
         self.verbose = self.config["verbose"]
         self.midi_in_port = {}  # dict of mido input ports
         self.midi_out_port = {}  # dict of mido output ports
-        self.last_midi_notes = {}  # dict to store last played notes via midi
         self.midi_output_mapping = self.config["midi"]["output"]
         self.midi_input_mapping = self.config["midi"]["input"]
+        self.output_state = {
+            port: MidiOutputState(mapping)
+            for port, mapping in self.midi_output_mapping.items()
+        }
         self.feedback_protection = feedback_protection
         self.feedback_threshold = feedback_threshold  # default is 0.02s
         # Load feedback protection from config
@@ -524,35 +495,12 @@ class MIDIServer(IOServer):
             len(output_values) + 1 == self.dimension
         ), "Dimension not same as prediction size."  # Todo more useful error.
 
-        outputs = output_values_to_midi_messages(
-            output_values, self.midi_output_mapping
-        )
-
-        for o_port in outputs:
+        for o_port, state in self.output_state.items():
             # only send to specified ports if given.
-            if send_ports is not None:
-                if o_port not in send_ports:
-                    continue
-            # send the messages for this output port.
-            output_midi_messages = outputs[o_port]
-            for msg in output_midi_messages:
-                # send note off if a previous note_on had been sent
-                if (
-                    msg.type == "note_on"
-                    and msg.channel in self.last_midi_notes[o_port]
-                ):
-                    note_off_msg = mido.Message(
-                        "note_off",
-                        channel=msg.channel,
-                        note=self.last_midi_notes[o_port][msg.channel],
-                        velocity=0,
-                    )
-                    self.send_midi_message(note_off_msg, o_port)
-                # actually send the message.
+            if send_ports is not None and o_port not in send_ports:
+                continue
+            for msg in state.messages(output_values):
                 self.send_midi_message(msg, o_port)
-                # store last midi note if it was a note_on.
-                if msg.type == "note_on":
-                    self.last_midi_notes[o_port][msg.channel] = msg.note
                 self.last_midi_message_time = datetime.datetime.now()
 
     def handle(self) -> None:
@@ -573,23 +521,20 @@ class MIDIServer(IOServer):
                     datetime.datetime.now() - self.last_midi_message_time
                 ).total_seconds()
                 if time_since_last_output < self.feedback_threshold:
-                    try:
-                        if (
-                            message.type == "note_on"
-                            and message.note
-                            == self.last_midi_notes[in_port][message.channel]
-                        ):
-                            # click.secho(f"MIDI feedback detected: {time_since_last_output}s, {message}", fg="red")
-                            # detected a feedback message (same note as last output in a short time) so skip this message
-                            continue
-                    except KeyError:
-                        pass  # no last note stored, so can't be feedback.
+                    state = self.output_state.get(in_port)
+                    if (
+                        state is not None
+                        and message.type == "note_on"
+                        and state.last_note_on.get(message.channel) == message.note
+                    ):
+                        # detected a feedback message (same note as last output in a short time) so skip this message
+                        continue
 
             try:
-                index, value = midi_message_to_index_value(
+                indices, value = midi_message_to_indices_value(
                     message, self.midi_input_mapping[in_port]
                 )
-                return_values_list = self.callback(index, value)
+                return_values_list = self.callback(indices, value)
                 self.process_midi_through_sending(in_port, return_values_list)
             except ValueError as e:
                 # error when handling the MIDI message
@@ -628,9 +573,6 @@ class MIDIServer(IOServer):
 
         for out_port in self.config["midi"]["out_device"]:
             click.secho(f"Connecting MIDI output: {out_port}", fg="blue")
-            self.last_midi_notes[out_port] = (
-                {}
-            )  # initialise last midi notes for this output port.
             try:
                 potential_midi_outputs = mido.get_output_names()
                 desired_output_port = match_midi_port_to_list(
@@ -685,9 +627,6 @@ class MIDIServer(IOServer):
 
     def send_midi_note_offs(self):
         """Sends note offs on any MIDI channels that have been used for notes."""
-        note_off_messages = get_midi_note_offs(
-            self.midi_output_mapping, self.last_midi_notes
-        )
-        for output_port in note_off_messages:
-            for msg in note_off_messages[output_port]:
+        for output_port, state in self.output_state.items():
+            for msg in state.all_notes_off():
                 self.send_midi_message(msg, output_port)

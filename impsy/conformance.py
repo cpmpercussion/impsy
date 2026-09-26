@@ -126,7 +126,6 @@ def _midi_server(config, callback):
     server = impsio.MIDIServer(config, callback, lambda values: None)
     server.midi_in_port = {IN_PORT: None}
     server.midi_out_port = {OUT_PORT: FakeMidiOutPort()}
-    server.last_midi_notes = {OUT_PORT: {}}
     return server
 
 
@@ -167,21 +166,21 @@ def _parse_log_line(line):
 
 
 def run_midi_input_case(case):
-    """Each MIDI message in -> the (index, value) it produces, or None if ignored."""
+    """Each MIDI message in -> the (indices, value) it produces, or None if ignored."""
     config = _midi_config(case["dimension"], input_mapping=case["input_mapping"])
     results = []
     for message_bytes in case["messages"]:
         received = []
         server = _midi_server(
-            config, lambda index, value: received.append((index, value))
+            config, lambda indices, value: received.append((indices, value))
         )
         server.midi_in_port[IN_PORT] = FakeMidiInPort(
             [mido.Message.from_bytes(message_bytes)]
         )
         server.handle()
         if received:
-            index, value = received[0]
-            results.append({"index": index, "value": float(value)})
+            indices, value = received[0]
+            results.append({"indices": list(indices), "value": float(value)})
         else:
             results.append(None)
     return results
@@ -191,11 +190,11 @@ def run_midi_output_case(case):
     """A sequence of output steps -> the MIDI bytes sent at each step.
 
     Values pass through InteractionServer.send_back_values, so clipping to
-    [0, 1] is included. MIDIServer keeps per-channel note state across steps.
+    [0, 1] is included. MIDIServer keeps note state across steps.
     A step of {"all_notes_off": true} is what happens on disconnect.
     """
     config = _midi_config(case["dimension"], output_mapping=case["output_mapping"])
-    midi = _midi_server(config, lambda index, value: None)
+    midi = _midi_server(config, lambda indices, value: None)
     server, _ = _interaction_server(config, [0.0] * (case["dimension"] - 1), 0.0)
     server.senders = [midi]
     out_port = midi.midi_out_port[OUT_PORT]
@@ -211,7 +210,7 @@ def run_midi_output_case(case):
 
 
 def run_websocket_input_case(case):
-    """Each websocket string in -> the (index, value) it produces, or None."""
+    """Each websocket string in -> the (indices, value) it produces, or None."""
     config = {"verbose": False, "websocket": {"input": case["input_mapping"]}}
     config["websocket"]["output"] = []
     results = []
@@ -219,14 +218,14 @@ def run_websocket_input_case(case):
         received = []
         server = impsio.WebSocketServer(
             config,
-            lambda index, value: received.append((index, value)),
+            lambda indices, value: received.append((indices, value)),
             lambda values: None,
         )
         with patch.object(impsio.click, "secho"):
             server.websocket_handler(FakeWebsocketClient([message]))
         if received:
-            index, value = received[0]
-            results.append({"index": index, "value": float(value)})
+            indices, value = received[0]
+            results.append({"indices": list(indices), "value": float(value)})
         else:
             results.append(None)
     return results
@@ -278,6 +277,30 @@ def run_pipeline_case(case):
         "model_inputs": model_inputs,
         "log": [_parse_log_line(line) for line in log_handler.records],
     }
+
+
+def run_playback_case(case):
+    """Model outputs -> how long to wait, what to play, and the next model input.
+
+    This is InteractionServer.prepare_rnn_playback, the step the playback
+    thread takes for each model output before sleeping and sending it.
+    """
+    config = {"model": {"dimension": len(case["model_outputs"][0])}}
+    config["model"]["timescale"] = case["timescale"]
+    server, _ = _interaction_server(
+        config, [0.0] * (config["model"]["dimension"] - 1), 0.0
+    )
+    results = []
+    for item in case["model_outputs"]:
+        wait, values, feedback = server.prepare_rnn_playback(np.array(item))
+        results.append(
+            {
+                "wait": float(wait),
+                "output": _floats(values),
+                "next_model_input": _floats(feedback),
+            }
+        )
+    return results
 
 
 def run_dataset_case(case):
@@ -430,7 +453,7 @@ PITCH_BEND = 0xE0
 
 
 def note(n):
-    """An output value that encodes to MIDI note n under both ceil and round."""
+    """An output value a little below n/127, which encodes to MIDI note n."""
     return (n - 0.3) / 127
 
 
@@ -457,8 +480,8 @@ MIDI_INPUT_CASES = [
     },
     {
         "name": "note_on_velocity_zero",
-        "description": "A note-on with velocity 0 (a note-off by MIDI convention) is currently treated as a new note.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99"],
+        "description": "A note-on with velocity 0 is a note-off by MIDI convention, so it's ignored like other note-offs.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/99"],
         "dimension": 5,
         "input_mapping": MIXED_MAPPING,
         "messages": [[NOTE | 0, 60, 0], [NOTE | 1, 72, 0]],
@@ -508,20 +531,25 @@ MIDI_INPUT_CASES = [
         ],
     },
     {
-        "name": "duplicate_note_mapping_first_wins",
-        "description": "When two dimensions map to note_on on the same channel, input goes to the first.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/102"],
-        "dimension": 3,
-        "input_mapping": [["note_on", 1], ["note_on", 1]],
-        "messages": [[NOTE | 0, 60, 100]],
+        "name": "duplicate_mapping_sets_every_dimension",
+        "description": "A message mapped to several dimensions sets all of them to the same value.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/102"],
+        "dimension": 5,
+        "input_mapping": [
+            ["note_on", 1],
+            ["control_change", 1, 7],
+            ["note_on", 1],
+            ["control_change", 1, 7],
+        ],
+        "messages": [[NOTE | 0, 60, 100], [CC | 0, 7, 32]],
     },
 ]
 
 MIDI_OUTPUT_CASES = [
     {
         "name": "note_and_cc_encoding",
-        "description": "Note dimensions become note-on with note = ceil(value * 127) and velocity 127; CC dimensions become value = ceil(value * 127). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where ceil and round-to-nearest differ.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+        "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "dimension": 5,
         "output_mapping": MIXED_MAPPING,
         "steps": [
@@ -532,7 +560,7 @@ MIDI_OUTPUT_CASES = [
     },
     {
         "name": "monophonic_note_offs",
-        "description": "Before each note-on, a note-off (velocity 0) is sent for the previous note on that channel, even if the note is the same.",
+        "description": "Before each note-on, a note-off (velocity 0) is sent for the previous note of that dimension, even if the note is the same.",
         "dimension": 3,
         "output_mapping": [["note_on", 1], ["note_on", 2]],
         "steps": [
@@ -543,7 +571,7 @@ MIDI_OUTPUT_CASES = [
     },
     {
         "name": "all_notes_off",
-        "description": "On disconnect, a note-off is sent for the last note on each note channel that has played.",
+        "description": "On disconnect, a note-off is sent for every sounding note.",
         "dimension": 3,
         "output_mapping": [["note_on", 1], ["note_on", 3]],
         "steps": [
@@ -561,8 +589,8 @@ MIDI_OUTPUT_CASES = [
     },
     {
         "name": "control_change_min_max",
-        "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to ceil((max - min) * v / 127) + min.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+        "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to floor((max - min) * v / 127 + 0.5) + min.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "dimension": 4,
         "output_mapping": [
             ["control_change", 1, 20, 0, 63],
@@ -577,8 +605,8 @@ MIDI_OUTPUT_CASES = [
     },
     {
         "name": "output_boundary_values",
-        "description": "Values exactly at n/127 (in float64). ceil(value * 127) gives n here, but an implementation that holds these values as float32 and multiplies in float64 gets n + 1 for many n. Round-to-nearest gives n either way.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+        "description": "Values exactly at n/127 encode to n. Rounding to nearest gets this right whether the value is held as float32 or float64; ceil, which IMPSY used before, gave n + 1 for many n in float32.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "dimension": 3,
         "output_mapping": [["note_on", 1], ["control_change", 1, 1]],
         "steps": [
@@ -588,20 +616,26 @@ MIDI_OUTPUT_CASES = [
         ],
     },
     {
-        "name": "duplicate_note_mapping",
-        "description": "Two note dimensions on the same channel: the second note-on first turns off the first.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/102"],
+        "name": "polyphonic_notes_on_one_channel",
+        "description": "Note dimensions that share a channel play together: each turns off only its own previous note. If another dimension on the channel is still holding that note, no note-off is sent. All-notes-off sends one note-off per sounding (channel, note).",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/102"],
         "dimension": 3,
         "output_mapping": [["note_on", 1], ["note_on", 1]],
-        "steps": [{"values": [note(60), note(64)]}],
+        "steps": [
+            {"values": [note(60), note(64)]},
+            {"values": [note(62), note(64)]},
+            {"values": [note(64), note(64)]},
+            {"all_notes_off": True},
+            {"values": [note(60), note(62)]},
+        ],
     },
 ]
 
 WEBSOCKET_INPUT_CASES = [
     {
         "name": "websocket_input",
-        "description": "Incoming /channel/{ch}/noteon/{note}/{vel} and /channel/{ch}/cc/{ctrl}/{value}; channels are 1-based. Note-offs are ignored; velocity-0 note-ons count as notes (see the MIDI note_on_velocity_zero case).",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99"],
+        "description": "Incoming /channel/{ch}/noteon/{note}/{vel} and /channel/{ch}/cc/{ctrl}/{value} are decoded like the equivalent MIDI messages; channels are 1-based. Note-offs (noteoff, or noteon with velocity 0) and malformed messages are ignored.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/99"],
         "input_mapping": MIXED_MAPPING,
         "messages": [
             "/channel/1/noteon/60/100",
@@ -611,6 +645,8 @@ WEBSOCKET_INPUT_CASES = [
             "/channel/16/cc/7/64",
             "/channel/3/noteon/60/100",
             "/channel/1/cc/43/64",
+            "/channel/1/noteon/60",
+            "/channel/1/noteon/sixty/100",
         ],
     },
 ]
@@ -619,7 +655,7 @@ WEBSOCKET_OUTPUT_CASES = [
     {
         "name": "websocket_output",
         "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note on a channel.",
-        "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "output_mapping": MIXED_MAPPING,
         "steps": [
             [0.5, 0.5, 0.0, 1.0],
@@ -632,8 +668,8 @@ WEBSOCKET_OUTPUT_CASES = [
 PIPELINE_CASES = [
     {
         "name": "sparse_midi_to_dense_model_input",
-        "description": "Each MIDI event updates one dimension of the current input vector; the others keep their last values. The model input is [dt, x_1, ..., x_n], where dt is seconds since the previous interaction (or since start_time for the first). Each event also writes an 'interface' log row with x_1..x_n. The initial vector is random in the reference implementation; here it is set explicitly.",
-        "open_decisions": [
+        "description": "Each MIDI event updates the dimensions it's mapped to; the others keep their last values. The model input is [dt, x_1, ..., x_n], where dt is seconds since the previous interaction (or since start_time for the first). Each event also writes an 'interface' log row with x_1..x_n. The reference implementation starts from a random vector; here the initial vector is set explicitly.",
+        "issues": [
             "https://github.com/cpmpercussion/impsy/issues/99",
             "https://github.com/cpmpercussion/impsy/issues/101",
         ],
@@ -651,6 +687,19 @@ PIPELINE_CASES = [
         ],
     },
     {
+        "name": "one_message_is_one_interaction",
+        "description": "A message mapped to several dimensions is still one interaction: one model input and one log row, with all of its dimensions set.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/102"],
+        "dimension": 4,
+        "input_mapping": [["note_on", 1], ["note_on", 1], ["control_change", 1, 1]],
+        "initial_values": [0.0, 0.0, 0.0],
+        "start_time": 0.0,
+        "events": [
+            {"time": 1.0, "bytes": [NOTE | 0, 60, 100]},
+            {"time": 1.5, "bytes": [CC | 0, 1, 127]},
+        ],
+    },
+    {
         "name": "ignored_messages_do_not_reset_dt",
         "description": "Ignored messages produce no model input, and dt runs from the last message that did.",
         "dimension": 3,
@@ -663,6 +712,27 @@ PIPELINE_CASES = [
             {"time": 1.75, "bytes": [0xF8]},
             {"time": 2.0, "bytes": [CC | 0, 1, 0]},
         ],
+    },
+]
+
+PLAYBACK_CASES = [
+    {
+        "name": "timescale_and_clamping",
+        "description": "A model output [dt, x_1, ..., x_n] is played after waiting dt * timescale seconds, with dt first clamped to at least 0.001 and the values clipped to [0, 1]. The next model input is [dt, x_1, ..., x_n] with the clamped but unscaled dt: timescale only changes playback speed.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/103"],
+        "timescale": 2.0,
+        "model_outputs": [
+            [0.25, 0.5, 0.75],
+            [-0.1, -0.2, 1.3],
+            [0.0005, 0.3, 0.3],
+        ],
+    },
+    {
+        "name": "slower_timescale",
+        "description": "As above with timescale 0.5.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/103"],
+        "timescale": 0.5,
+        "model_outputs": [[1.0, 0.5, 0.5], [0.125, 0.0, 1.0]],
     },
 ]
 
@@ -715,17 +785,17 @@ MODEL_CASES = [
 
 VECTOR_FILES = {
     "midi_input.json": (
-        "MIDI bytes in -> (index, value) for the model input vector, or null if ignored. Index is 0-based over x_1..x_n (dt excluded).",
+        "MIDI bytes in -> the input vector indices it sets and their value, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
         MIDI_INPUT_CASES,
         run_midi_input_case,
     ),
     "midi_output.json": (
-        "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Per-channel note state carries across steps within a case.",
+        "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Note state carries across steps within a case.",
         MIDI_OUTPUT_CASES,
         run_midi_output_case,
     ),
     "websocket_input.json": (
-        "WebSocket message strings in -> (index, value), or null if ignored.",
+        "WebSocket message strings in -> the input vector indices they set and their value, or null if ignored.",
         WEBSOCKET_INPUT_CASES,
         run_websocket_input_case,
     ),
@@ -738,6 +808,11 @@ VECTOR_FILES = {
         "Timed MIDI input -> the model input vectors [dt, x_1..x_n] and 'interface' log rows it produces.",
         PIPELINE_CASES,
         run_pipeline_case,
+    ),
+    "playback.json": (
+        "Model outputs [dt, x_1..x_n] -> seconds to wait, the values played, and the next model input.",
+        PLAYBACK_CASES,
+        run_playback_case,
     ),
     "dataset.json": (
         "Log file lines -> training dataset rows [dt, x_1..x_n].",

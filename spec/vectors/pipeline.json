@@ -5,8 +5,8 @@
   "cases": [
     {
       "name": "sparse_midi_to_dense_model_input",
-      "description": "Each MIDI event updates one dimension of the current input vector; the others keep their last values. The model input is [dt, x_1, ..., x_n], where dt is seconds since the previous interaction (or since start_time for the first). Each event also writes an 'interface' log row with x_1..x_n. The initial vector is random in the reference implementation; here it is set explicitly.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99", "https://github.com/cpmpercussion/impsy/issues/101"],
+      "description": "Each MIDI event updates the dimensions it's mapped to; the others keep their last values. The model input is [dt, x_1, ..., x_n], where dt is seconds since the previous interaction (or since start_time for the first). Each event also writes an 'interface' log row with x_1..x_n. The reference implementation starts from a random vector; here the initial vector is set explicitly.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/99", "https://github.com/cpmpercussion/impsy/issues/101"],
       "dimension": 5,
       "input_mapping": [
         ["note_on", 1],
@@ -45,9 +45,8 @@
       "expected": {
         "model_inputs": [
           [0.5, 0.47244094488188976, 1.0, 0.0, 0.0],
-          [0.25, 0.47244094488188976, 1.0, 0.0, 0.0],
           [0.25, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0],
-          [1.0, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0],
+          [1.25, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0],
           [0.125, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
         ],
         "log": [
@@ -61,15 +60,50 @@
           },
           {
             "source": "interface",
-            "values": [0.47244094488188976, 1.0, 0.0, 0.0]
-          },
-          {
-            "source": "interface",
             "values": [0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
           },
           {
             "source": "interface",
             "values": [0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
+          }
+        ]
+      }
+    },
+    {
+      "name": "one_message_is_one_interaction",
+      "description": "A message mapped to several dimensions is still one interaction: one model input and one log row, with all of its dimensions set.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/102"],
+      "dimension": 4,
+      "input_mapping": [
+        ["note_on", 1],
+        ["note_on", 1],
+        ["control_change", 1, 1]
+      ],
+      "initial_values": [0.0, 0.0, 0.0],
+      "start_time": 0.0,
+      "events": [
+        {
+          "time": 1.0,
+          "bytes": [144, 60, 100]
+        },
+        {
+          "time": 1.5,
+          "bytes": [176, 1, 127]
+        }
+      ],
+      "expected": {
+        "model_inputs": [
+          [1.0, 0.47244094488188976, 0.47244094488188976, 1.0],
+          [0.5, 0.47244094488188976, 0.47244094488188976, 1.0]
+        ],
+        "log": [
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 0.47244094488188976, 0.0]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 0.47244094488188976, 1.0]
           }
         ]
       }

@@ -344,7 +344,7 @@ def test_make_prediction_rnn_to_rnn(interaction_server, default_neural_network):
 
 
 def test_input_list(interaction_server):
-    interaction_server.construct_input_list(0, 0.0)
+    interaction_server.construct_input_list([0], 0.0)
 
 
 def test_dense_callback(interaction_server, default_dimension):
@@ -393,7 +393,7 @@ def test_construct_input_list_broadcasts_in(interaction_server, monkeypatch):
         "_broadcast_monitor",
         lambda d, v: sent.append((d, list(v))),
     )
-    interaction_server.construct_input_list(0, 0.5)
+    interaction_server.construct_input_list([0], 0.5)
     # At least one broadcast — the 'in' event. The default fixture has
     # input_thru=true, so a downstream send_back_values may add an 'out'.
     # Bound from above so accidental extra broadcasts get caught.
@@ -540,7 +540,7 @@ def test_construct_input_list_updates_state(interaction_server, default_dimensio
     """Test that construct_input_list updates interaction time and data."""
     old_time = interaction_server.last_user_interaction_time
     time.sleep(0.01)
-    result = interaction_server.construct_input_list(0, 0.5)
+    result = interaction_server.construct_input_list([0], 0.5)
     assert interaction_server.last_user_interaction_time > old_time
     assert len(interaction_server.last_user_interaction_data) == default_dimension
     # Result should be clipped values

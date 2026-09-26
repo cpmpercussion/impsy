@@ -87,99 +87,109 @@ def get_config_data(config_path: str):
 # MIDI mapping and message utilities
 
 
-def output_values_to_midi_messages(
-    output_values: List[float], midi_mapping: dict
-) -> Dict[str, List[mido.Message]]:
-    """Transforms a list of output values to a list of MIDI messages using a mapping."""
-    output = {}
-    output_midi = list(
-        map(int, (np.ceil(output_values * 127)))
-    )  # transform output values to MIDI 0-127.
-    # print(output_midi)
-    for o_port in midi_mapping:
-        output_messages = []
-        for i in range(len(output_values)):
-            if midi_mapping[o_port][i][0] == "note_on":
-                # note decremented channel (0-15)
-                # note velocity is maximum at 127
-                # print(f"midi note {output_midi[i]}, dest: {o_port}")
-                midi_msg = mido.Message(
-                    "note_on",
-                    channel=midi_mapping[o_port][i][1] - 1,
-                    note=output_midi[i],
-                    velocity=127,
-                )
-                output_messages.append(midi_msg)
-            elif midi_mapping[o_port][i][0] == "control_change":
-                # note decremented channel (0-15)
-                # note control number starts at 0
-                output_val = output_midi[i]
-                if len(midi_mapping[o_port][i]) == 5:
-                    # process min/max if provided
-                    output_val = process_midi_min_max(
-                        output_val,
-                        midi_mapping[o_port][i][3],
-                        midi_mapping[o_port][i][4],
-                    )
-                # print(f"midi value {output_val}, dest {o_port}")
-                midi_msg = mido.Message(
-                    "control_change",
-                    channel=midi_mapping[o_port][i][1] - 1,
-                    control=midi_mapping[o_port][i][2],
-                    value=output_val,
-                )
-                output_messages.append(midi_msg)
-        output[o_port] = output_messages
-    # return the MIDI messages
-    return output
+def value_to_midi(value: float) -> int:
+    """Quantise a value in [0, 1] to a MIDI data byte 0-127, rounding to nearest (half up)."""
+    return int(np.clip(np.floor(float(value) * 127 + 0.5), 0, 127))
 
 
 def process_midi_min_max(value: int, min_value: int, max_value: int) -> int:
     """Process a MIDI control change value to fit within a min and max range."""
     range = max_value - min_value
-    new_value = int(np.ceil(range * value / 127) + min_value)
-    return new_value
+    return int(np.floor(range * value / 127 + 0.5) + min_value)
 
 
-def get_midi_note_offs(
-    midi_mapping: dict, last_midi_notes: dict
-) -> Dict[str, List[mido.Message]]:
-    """Get a list of note_off messages for any MIDI channels that have been used for notes."""
-    output = {}
+class MidiOutputState:
+    """Turns output vectors into MIDI messages for one output mapping.
 
-    for o_port in midi_mapping:
-        output_messages = []
-        out_channels = [
-            x[1] for x in midi_mapping[o_port] if x[0] == "note_on"
-        ]  # just get channels associated with note_on messages.
-        for i in out_channels:
-            channel = i - 1  # decrement to get channel value 0-15
-            if channel in last_midi_notes[o_port]:
-                midi_msg = mido.Message(
-                    "note_off",
-                    channel=i - 1,
-                    note=last_midi_notes[o_port][channel],
-                    velocity=0,
+    Notes are tracked per dimension, so several note_on dimensions on the same
+    channel can sound together. Before a dimension plays a new note, its
+    previous note is turned off, unless another dimension on that channel is
+    still holding the same note.
+    """
+
+    def __init__(self, mapping: list):
+        self.mapping = mapping
+        self.sounding = {}  # dimension index -> (channel, note), 0-based channel
+        self.last_note_on = {}  # channel -> most recent note sent on it
+
+    def _held_elsewhere(self, index: int, channel_note: tuple) -> bool:
+        return any(
+            held == channel_note for i, held in self.sounding.items() if i != index
+        )
+
+    def messages(self, output_values) -> List[mido.Message]:
+        messages = []
+        for i, entry in enumerate(self.mapping):
+            if i >= len(output_values):
+                break
+            channel = entry[1] - 1
+            midi_value = value_to_midi(output_values[i])
+            if entry[0] == "note_on":
+                previous = self.sounding.pop(i, None)
+                if previous is not None and not self._held_elsewhere(i, previous):
+                    messages.append(
+                        mido.Message(
+                            "note_off",
+                            channel=previous[0],
+                            note=previous[1],
+                            velocity=0,
+                        )
+                    )
+                messages.append(
+                    mido.Message(
+                        "note_on", channel=channel, note=midi_value, velocity=127
+                    )
                 )
-                output_messages.append(midi_msg)
-        output[o_port] = output_messages
+                self.sounding[i] = (channel, midi_value)
+                self.last_note_on[channel] = midi_value
+            elif entry[0] == "control_change":
+                if len(entry) == 5:
+                    midi_value = process_midi_min_max(midi_value, entry[3], entry[4])
+                messages.append(
+                    mido.Message(
+                        "control_change",
+                        channel=channel,
+                        control=entry[2],
+                        value=midi_value,
+                    )
+                )
+        return messages
 
-    return output
+    def all_notes_off(self) -> List[mido.Message]:
+        """Note-offs for every sounding note, e.g. on disconnect."""
+        messages = [
+            mido.Message("note_off", channel=channel, note=note, velocity=0)
+            for channel, note in dict.fromkeys(self.sounding.values())
+        ]
+        self.sounding = {}
+        return messages
 
 
-def midi_message_to_index_value(msg: mido.Message, input_mapping: dict) -> (int, float):
-    """Takes a MIDO message and an input mapping and returns a tuple of index and value for sending to the IMPSY callback."""
+def midi_message_to_indices_value(
+    msg: mido.Message, input_mapping: list
+) -> (List[int], float):
+    """Takes a MIDO message and an input mapping and returns the indices it maps to and its value.
+
+    A message can map to several dimensions; all of them get the same value.
+    Note-ons with velocity 0 are note-offs and, like other messages that
+    don't change the input, raise ValueError.
+    """
     if msg.type == "note_on":
-        index = input_mapping.index(["note_on", msg.channel + 1])
+        if msg.velocity == 0:
+            raise ValueError("Note-ons with velocity 0 are note-offs.")
+        key = ["note_on", msg.channel + 1]
         value = msg.note / 127.0
     elif msg.type == "control_change":
-        index = input_mapping.index(["control_change", msg.channel + 1, msg.control])
+        key = ["control_change", msg.channel + 1, msg.control]
         value = msg.value / 127.0
     else:
         raise ValueError(
             f"Only note_on and control_change messages can be processed, this was a {msg.type} message."
         )
-    return (index, value)
+    indices = [i for i, entry in enumerate(input_mapping) if list(entry) == key]
+    if not indices:
+        raise ValueError(f"No input mapping for {msg}.")
+    return (indices, value)
 
 
 def match_midi_port_to_list(port, port_list, verbose=True):

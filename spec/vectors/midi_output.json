@@ -1,12 +1,12 @@
 {
   "spec_version": "0.1.0",
-  "description": "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Per-channel note state carries across steps within a case.",
+  "description": "Model output vectors (x_1..x_n, no dt) -> MIDI bytes sent at each step. Note state carries across steps within a case.",
   "tolerance": 1e-09,
   "cases": [
     {
       "name": "note_and_cc_encoding",
-      "description": "Note dimensions become note-on with note = ceil(value * 127) and velocity 127; CC dimensions become value = ceil(value * 127). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where ceil and round-to-nearest differ.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+      "description": "Note dimensions become note-on with note = floor(value * 127 + 0.5) (round to nearest, half up) and velocity 127; CC dimensions become value = floor(value * 127 + 0.5). The third step (0.3 -> 38.1, 0.6 -> 76.2) is where rounding differs from ceil, which IMPSY used before.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
       "dimension": 5,
       "output_mapping": [
         ["note_on", 1],
@@ -42,17 +42,17 @@
         ],
         [
           [128, 60, 0],
-          [144, 39, 127],
-          [176, 42, 39],
+          [144, 38, 127],
+          [176, 42, 38],
           [129, 13, 0],
-          [145, 77, 127],
-          [191, 7, 77]
+          [145, 76, 127],
+          [191, 7, 76]
         ]
       ]
     },
     {
       "name": "monophonic_note_offs",
-      "description": "Before each note-on, a note-off (velocity 0) is sent for the previous note on that channel, even if the note is the same.",
+      "description": "Before each note-on, a note-off (velocity 0) is sent for the previous note of that dimension, even if the note is the same.",
       "dimension": 3,
       "output_mapping": [
         ["note_on", 1],
@@ -90,7 +90,7 @@
     },
     {
       "name": "all_notes_off",
-      "description": "On disconnect, a note-off is sent for the last note on each note channel that has played.",
+      "description": "On disconnect, a note-off is sent for every sounding note.",
       "dimension": 3,
       "output_mapping": [
         ["note_on", 1],
@@ -149,8 +149,8 @@
     },
     {
       "name": "control_change_min_max",
-      "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to ceil((max - min) * v / 127) + min.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+      "description": "A 5-element CC mapping [cc, ch, ctrl, min, max] scales the 0-127 value v to floor((max - min) * v / 127 + 0.5) + min.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
       "dimension": 4,
       "output_mapping": [
         ["control_change", 1, 20, 0, 63],
@@ -177,7 +177,7 @@
         [
           [176, 20, 32],
           [176, 21, 96],
-          [176, 22, 16]
+          [176, 22, 15]
         ],
         [
           [176, 20, 63],
@@ -188,8 +188,8 @@
     },
     {
       "name": "output_boundary_values",
-      "description": "Values exactly at n/127 (in float64). ceil(value * 127) gives n here, but an implementation that holds these values as float32 and multiplies in float64 gets n + 1 for many n. Round-to-nearest gives n either way.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+      "description": "Values exactly at n/127 encode to n. Rounding to nearest gets this right whether the value is held as float32 or float64; ceil, which IMPSY used before, gave n + 1 for many n in float32.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
       "dimension": 3,
       "output_mapping": [
         ["note_on", 1],
@@ -224,9 +224,9 @@
       ]
     },
     {
-      "name": "duplicate_note_mapping",
-      "description": "Two note dimensions on the same channel: the second note-on first turns off the first.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/102"],
+      "name": "polyphonic_notes_on_one_channel",
+      "description": "Note dimensions that share a channel play together: each turns off only its own previous note. If another dimension on the channel is still holding that note, no note-off is sent. All-notes-off sends one note-off per sounding (channel, note).",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/102"],
       "dimension": 3,
       "output_mapping": [
         ["note_on", 1],
@@ -235,13 +235,42 @@
       "steps": [
         {
           "values": [0.47007874015748036, 0.5015748031496063]
+        },
+        {
+          "values": [0.4858267716535433, 0.5015748031496063]
+        },
+        {
+          "values": [0.5015748031496063, 0.5015748031496063]
+        },
+        {
+          "all_notes_off": true
+        },
+        {
+          "values": [0.47007874015748036, 0.4858267716535433]
         }
       ],
       "expected": [
         [
           [144, 60, 127],
-          [128, 60, 0],
           [144, 64, 127]
+        ],
+        [
+          [128, 60, 0],
+          [144, 62, 127],
+          [128, 64, 0],
+          [144, 64, 127]
+        ],
+        [
+          [128, 62, 0],
+          [144, 64, 127],
+          [144, 64, 127]
+        ],
+        [
+          [128, 64, 0]
+        ],
+        [
+          [144, 60, 127],
+          [144, 62, 127]
         ]
       ]
     }

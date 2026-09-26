@@ -6,7 +6,7 @@
     {
       "name": "websocket_output",
       "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note on a channel.",
-      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/100"],
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
       "output_mapping": [
         ["note_on", 1],
         ["control_change", 1, 42],
@@ -21,7 +21,7 @@
       "expected": [
         ["/channel/1/noteon/64/127", "/channel/1/cc/42/64", "/channel/2/noteon/0/127", "/channel/16/cc/7/127"],
         ["/channel/1/noteoff/64/0", "/channel/1/noteon/60/127", "/channel/1/cc/42/32", "/channel/2/noteoff/0/0", "/channel/2/noteon/13/127", "/channel/16/cc/7/127"],
-        ["/channel/1/noteoff/60/0", "/channel/1/noteon/39/127", "/channel/1/cc/42/39", "/channel/2/noteoff/13/0", "/channel/2/noteon/77/127", "/channel/16/cc/7/77"]
+        ["/channel/1/noteoff/60/0", "/channel/1/noteon/38/127", "/channel/1/cc/42/38", "/channel/2/noteoff/13/0", "/channel/2/noteon/76/127", "/channel/16/cc/7/76"]
       ]
     }
   ]
