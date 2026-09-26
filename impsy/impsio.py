@@ -288,6 +288,8 @@ class WebSocketServer(IOServer):
           /channel/<ch1based>/pitchbend/<value 0-16383>
         """
         self.ws_clients.add(websocket)  # add websocket to the client list.
+        # so the next step sends this client every CC and pitch bend
+        self.output_state.clear_sent_values()
         for message in websocket:
             if self.verbose:
                 click.secho(f"WS in: {message}", fg="blue")

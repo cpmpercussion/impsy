@@ -231,6 +231,8 @@ The same mapping is used in both directions. Inbound: a matching MIDI message is
 
 Several entries can name the same message. On input, one incoming message sets every dimension it's mapped to, as one interaction. On output, note dimensions that share a channel play polyphonically: each dimension turns off its own previous note before playing a new one. For CCs, the last value sent holds.
 
+CC and pitch bend messages are only sent when their value changes: if a step would send the same MIDI value to the same channel and controller as the last one sent, it's skipped. Notes are always sent. The last values are forgotten on disconnect, and when a new WebSocket client connects, so the next step sends every CC and pitch bend again.
+
 Channels are 1-based in the config (matching standard MIDI conventions); they're decremented internally to mido's 0-based channel.
 
 ## Command-line overrides

@@ -160,3 +160,20 @@ def test_generate_data_minimum_dimension():
     """Test that dimension must be > 1."""
     with pytest.raises(AssertionError):
         utils.generate_data(samples=10, dimension=1)
+
+
+def test_unchanged_cc_and_pitch_bend_not_resent():
+    state = utils.MidiOutputState(
+        [["note_on", 1], ["control_change", 1, 7], ["pitch_bend", 1]]
+    )
+    first = state.messages([0.5, 0.5, 0.5])
+    assert [m.type for m in first] == ["note_on", "control_change", "pitchwheel"]
+    # same values: only the note (with its note-off) is sent again
+    again = state.messages([0.5, 0.5, 0.5])
+    assert [m.type for m in again] == ["note_off", "note_on"]
+    # a change sends just that controller
+    changed = state.messages([0.5, 0.9, 0.5])
+    assert [m.type for m in changed] == ["note_off", "note_on", "control_change"]
+    # all-notes-off forgets the values, so everything is sent again
+    state.all_notes_off()
+    assert len(state.messages([0.5, 0.9, 0.5])) == 3

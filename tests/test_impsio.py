@@ -543,3 +543,20 @@ def test_serial_midi_handle_with_mock(default_config):
     sender.handle()
     # The parser may or may not yield a message depending on internal state
     # but the function should not crash
+
+
+def test_new_websocket_client_gets_every_value(default_config):
+    """A client connecting mid-performance gets every CC on the next step."""
+    config = dict(default_config)
+    config["websocket"] = dict(
+        default_config["websocket"], output=[["control_change", 1, 7]]
+    )
+    server = impsio.WebSocketServer(config, lambda u: None, lambda v: None)
+    client = MagicMock()
+    server.ws_clients.add(client)
+    server.send([0.5])
+    server.send([0.5])
+    assert client.send.call_count == 1
+    server.websocket_handler(MagicMock(__iter__=lambda self: iter([])))
+    server.send([0.5])
+    assert client.send.call_count == 2

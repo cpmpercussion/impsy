@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.2.0",
+  "spec_version": "1.0.0",
   "description": "MIDI bytes in -> the [index, value] updates it makes to the input vector, or null if ignored. Indices are 0-based over x_1..x_n (dt excluded).",
   "tolerance": 1e-09,
   "cases": [
