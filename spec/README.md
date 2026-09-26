@@ -29,7 +29,7 @@ Conventions used across all files:
 
 ## Using the vectors in another implementation
 
-1. Copy `spec/vectors/` into your repository from a tagged IMPSY release, and record which one (a git submodule works too). Check `spec_version` in your test so an update is a deliberate change.
+1. Copy `spec/vectors/` and `spec/models/` into your repository from a tagged IMPSY release, and record which one (a git submodule works too). Check `spec_version` in your test so an update is a deliberate change.
 2. Write a test that loads each file, feeds every case's inputs through your code, and compares the result with `expected`. Compare integers and strings exactly, and floats within an absolute tolerance: the file's `tolerance`, or `1e-6` if your implementation works in float32 and the file's value is smaller.
 3. If your implementation deliberately differs from a case, skip that case by name, with a comment that links to the discussion. Don't edit the vector.
 

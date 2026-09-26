@@ -53,3 +53,20 @@ def test_vectors_are_current():
             document, DOCUMENTS[filename], document["tolerance"]
         )
         assert found is None, f"{filename} is out of date: {found}"
+
+
+@pytest.mark.parametrize(
+    "case",
+    DOCUMENTS["pipeline.json"]["cases"],
+    ids=lambda case: case["name"],
+)
+def test_pipeline_model_inputs_match_log(case):
+    """Each model input must be the vector that was logged for that event.
+
+    Guards against queued inputs being changed by later events, which
+    regenerating the vectors would otherwise record as expected.
+    """
+    expected = case["expected"]
+    assert len(expected["model_inputs"]) == len(expected["log"])
+    for model_input, row in zip(expected["model_inputs"], expected["log"]):
+        assert model_input[1:] == row["values"]
