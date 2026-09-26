@@ -169,3 +169,24 @@ def test_train_command_with_dataset_argument(dimension, dataset_file, tmp_path):
     )
     assert result.exit_code == 0, result.output
     assert list(tmp_path.glob(f"*dim{dimension}*.tflite"))
+
+
+def test_train_rejects_short_performances(tmp_path):
+    import numpy as np
+    import pytest
+    from impsy import train
+
+    short = np.array([np.zeros((10, 3), dtype=np.float32)], dtype=object)
+    dataset_file = tmp_path / "training-dataset-3d.npz"
+    np.savez_compressed(dataset_file, perfs=short)
+    with pytest.raises(ValueError, match="longer than"):
+        train.train_mdrnn(
+            dimension=None,
+            dataset_location=dataset_file,
+            model_size="xxs",
+            early_stopping=False,
+            patience=10,
+            num_epochs=1,
+            batch_size=1,
+            save_location=tmp_path,
+        )
