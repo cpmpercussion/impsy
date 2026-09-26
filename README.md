@@ -133,12 +133,16 @@ Use the `dataset` command:
 
 This command collates all logs of dimension N+1 from the logs directory and saves the data in a compressed `.npz` file in the datasets directory. It will also print out some information about your dataset, in particular the total number of individual interactions. To have a useful dataset, it's good to start with more than 10,000 individual interactions but YMMV.
 
-To train the model, use the `train` command---this can take a while on a normal computer, so be prepared to let your computer sit and think for a few hours! You'll have to decide what _size_ model to try to train: `xxs`, `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
+To train the model, use the `train` command. You don't need a GPU: an `s` model trained on a laptop CPU with around 10,000 interactions takes a few minutes. You'll have to decide what _size_ model to try to train: `xxs`, `xs`, `s`, `m`, `l`, `xl`. The size refers to the number of LSTM units in each layer of your model and roughly corresponds to "learning capacity" at a cost of slower training and predictions.
 It's a good idea to start with an `xs` or `s` model, and the larger models may work better for quite large datasets (e.g., >1M individual interactions).
 
-    poetry run ./start_impsy.py train --dimension (N+1) --modelsize s
+    poetry run ./start_impsy.py train datasets/training-dataset-(N+1)d.npz --modelsize s
 
-Early stopping is enabled by default and will stop training after the model stops improving for 10 epochs (configurable with `--patience`). You can disable it with `--no-earlystopping`.
+The model's dimension is read from the dataset. You can also leave out the dataset file and give `--dimension (N+1)` to use `datasets/training-dataset-(N+1)d.npz`.
+
+Early stopping is enabled by default and will stop training after the model stops improving for 10 epochs (configurable with `--patience`). You can disable it with `--no-earlystopping`. If you press `Ctrl-C` during training, IMPSY stops and saves the model as it is.
+
+You can also upload logs, make a dataset and train a model from the web UI (`impsy webui`, see the Train page) on whatever device is running IMPSY, e.g., a laptop running the Docker image or a Raspberry Pi. A Raspberry Pi 4 or 5 should be able to train small models, but we wouldn't recommend training on a Pi Zero 2 W.
 
 By default, your trained model will be saved in the `models` directory in `.keras` and `.tflite` format.
 

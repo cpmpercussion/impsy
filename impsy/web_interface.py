@@ -11,6 +11,7 @@ from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, 
 from threading import Lock, Thread
 from impsy.data import default_config_template
 from impsy.dataset import generate_dataset
+from impsy.utils import SIZE_TO_PARAMETERS
 from pathlib import Path
 from pythonosc import dispatcher, osc_server
 from datetime import datetime
@@ -302,6 +303,152 @@ def allowed_dataset_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"npz"}
 
 
+def log_file_dimension(filename):
+    """Returns the dimension in a log filename (*-{dimension}d-mdrnn.log), or None."""
+    name = Path(filename).name
+    if not name.endswith("d-mdrnn.log"):
+        return None
+    dim = name[: -len("d-mdrnn.log")].rsplit("-", 1)[-1]
+    return int(dim) if dim.isdigit() else None
+
+
+def get_dataset_file_info(filepath):
+    """Get metadata for a dataset file, including the dimension of its data."""
+    info = get_file_info(filepath)
+    try:
+        from impsy.train import dataset_dimension
+
+        info["dimension"] = dataset_dimension(filepath)
+    except Exception:
+        info["dimension"] = None
+    return info
+
+
+TRAIN_SIZES = list(SIZE_TO_PARAMETERS.keys())
+TRAIN_MAX_EPOCHS = 1000
+
+
+class TrainingJob:
+    """Runs one model training at a time in a background thread.
+
+    Progress (epoch, losses, status) is kept here so the /train page can poll it.
+    Stopping ends training after the current batch and still saves the model.
+    """
+
+    def __init__(self):
+        self.status = "idle"  # idle, running, stopping, finished, failed
+        self.dataset = None
+        self.model_size = None
+        self.max_epochs = 0
+        self.epoch = 0
+        self.loss = []
+        self.val_loss = []
+        self.model_files = []
+        self.error = None
+        self.started_at = None
+        self.finished_at = None
+        self._stop_requested = False
+        self._thread = None
+        self._lock = Lock()
+
+    @property
+    def running(self):
+        return self.status in ("running", "stopping")
+
+    def start(self, dataset_file, model_size, max_epochs, patience, models_dir):
+        """Starts training in the background. Returns False if a job is already running."""
+        with self._lock:
+            if self.running:
+                return False
+            self.status = "running"
+            self.dataset = Path(dataset_file).name
+            self.model_size = model_size
+            self.max_epochs = max_epochs
+            self.epoch = 0
+            self.loss = []
+            self.val_loss = []
+            self.model_files = []
+            self.error = None
+            self.started_at = time.time()
+            self.finished_at = None
+            self._stop_requested = False
+            self._thread = Thread(
+                target=self._run,
+                args=(dataset_file, model_size, max_epochs, patience, models_dir),
+                name="webui_training_thread",
+                daemon=True,
+            )
+            self._thread.start()
+            return True
+
+    def stop(self):
+        if self.running:
+            self._stop_requested = True
+            self.status = "stopping"
+
+    def _run(self, dataset_file, model_size, max_epochs, patience, models_dir):
+        try:
+            import tensorflow as tf
+            from impsy.train import train_mdrnn
+
+            job = self
+
+            class ProgressCallback(tf.keras.callbacks.Callback):
+                def on_train_batch_end(self, batch, logs=None):
+                    if job._stop_requested:
+                        self.model.stop_training = True
+
+                def on_epoch_end(self, epoch, logs=None):
+                    logs = logs or {}
+                    job.epoch = epoch + 1
+                    job.loss.append(logs.get("loss"))
+                    job.val_loss.append(logs.get("val_loss"))
+                    if job._stop_requested:
+                        self.model.stop_training = True
+
+            Path(models_dir).mkdir(parents=True, exist_ok=True)
+            output = train_mdrnn(
+                None,
+                dataset_file,
+                model_size,
+                early_stopping=True,
+                patience=patience,
+                num_epochs=max_epochs,
+                batch_size=64,
+                save_location=models_dir,
+                callbacks=[ProgressCallback()],
+            )
+            self.model_files = [
+                Path(output[k]).name
+                for k in ("tflite_file", "keras_file")
+                if k in output
+            ]
+            self.status = "finished"
+        except Exception as e:
+            self.error = str(e)
+            self.status = "failed"
+        finally:
+            self.finished_at = time.time()
+
+    def to_dict(self):
+        end = self.finished_at or time.time()
+        return {
+            "status": self.status,
+            "dataset": self.dataset,
+            "model_size": self.model_size,
+            "max_epochs": self.max_epochs,
+            "epoch": self.epoch,
+            "loss": self.loss,
+            "val_loss": self.val_loss,
+            "model_files": self.model_files,
+            "error": self.error,
+            "elapsed": int(end - self.started_at) if self.started_at else 0,
+        }
+
+
+_training_job = TrainingJob()
+
+
 class MonitorListener:
     """Lazily-started OSC listener that mirrors IMPSY's /monitor/{in,out} stream.
 
@@ -397,8 +544,27 @@ def index():
     )
 
 
-@app.route("/logs")
+@app.route("/logs", methods=["GET", "POST"])
 def logs():
+    if request.method == "POST":
+        uploaded = []
+        for file in request.files.getlist("file"):
+            if not file or file.filename == "":
+                continue
+            filename = secure_filename(file.filename)
+            if not allowed_log_file(filename) or log_file_dimension(filename) is None:
+                flash(
+                    f"Skipped {file.filename}: log files need names ending in -{{dimension}}d-mdrnn.log",
+                    "error",
+                )
+                continue
+            LOGS_DIR.mkdir(parents=True, exist_ok=True)
+            file.save(LOGS_DIR / filename)
+            uploaded.append(filename)
+        if uploaded:
+            flash(f"Uploaded {len(uploaded)} log file(s)", "success")
+        return redirect(url_for("logs"))
+
     if LOGS_DIR.exists():
         log_files = sorted(
             [get_log_file_info(f) for f in LOGS_DIR.iterdir() if f.suffix == ".log"],
@@ -445,7 +611,11 @@ def datasets():
 
     if DATASET_DIR.exists():
         dataset_files = sorted(
-            [get_file_info(f) for f in DATASET_DIR.iterdir() if f.suffix == ".npz"],
+            [
+                get_dataset_file_info(f)
+                for f in DATASET_DIR.iterdir()
+                if f.suffix == ".npz"
+            ],
             key=lambda x: x["name"],
             reverse=True,
         )
@@ -512,6 +682,75 @@ def delete_model(filename):
     else:
         flash(f"File not found: {filename}", "error")
     return redirect(url_for("models"))
+
+
+@app.route("/train", methods=["GET", "POST"])
+def train():
+    """Train a model from a dataset in the background."""
+    if request.method == "POST":
+        dataset_name = secure_filename(request.form.get("dataset", ""))
+        dataset_file = DATASET_DIR / dataset_name
+        model_size = request.form.get("model_size", "s")
+        max_epochs = request.form.get("max_epochs", type=int, default=100)
+        patience = request.form.get("patience", type=int, default=10)
+        if not dataset_name or not dataset_file.exists():
+            flash("Choose a dataset to train on.", "error")
+        elif model_size not in TRAIN_SIZES:
+            flash(f"Unknown model size: {model_size}", "error")
+        elif not 1 <= max_epochs <= TRAIN_MAX_EPOCHS or patience < 1:
+            flash(f"Epochs must be between 1 and {TRAIN_MAX_EPOCHS}.", "error")
+        elif not _training_job.start(
+            dataset_file, model_size, max_epochs, patience, MODEL_DIR
+        ):
+            flash(
+                "A model is already training. Wait for it to finish or stop it.",
+                "error",
+            )
+        else:
+            flash(f"Started training on {dataset_name}.", "success")
+        return redirect(url_for("train"))
+
+    if DATASET_DIR.exists():
+        dataset_files = sorted(
+            [
+                get_dataset_file_info(f)
+                for f in DATASET_DIR.iterdir()
+                if f.suffix == ".npz"
+            ],
+            key=lambda x: x["name"],
+            reverse=True,
+        )
+    else:
+        dataset_files = []
+    workflow = get_workflow_status()
+    default_size = "s"
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            default_size = tomllib.load(f).get("model", {}).get("size", "s")
+    except Exception:
+        pass
+    return render_template(
+        "train.html",
+        active_page="train",
+        dataset_files=dataset_files,
+        selected_dataset=request.args.get("dataset"),
+        config_dimension=workflow.get("dimension"),
+        sizes=TRAIN_SIZES,
+        default_size=default_size,
+        max_epochs=TRAIN_MAX_EPOCHS,
+        job=_training_job.to_dict(),
+    )
+
+
+@app.route("/train/status")
+def train_status():
+    return _training_job.to_dict()
+
+
+@app.route("/train/stop", methods=["POST"])
+def train_stop():
+    _training_job.stop()
+    return redirect(url_for("train"))
 
 
 @app.route("/download_log/<filename>")

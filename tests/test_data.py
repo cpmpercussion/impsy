@@ -86,3 +86,16 @@ def test_log_with_rnn_source_filtered(tmp_path):
     log = dataset.transform_log_to_sequence_example(str(log_file), dimension)
     # All entries should be from interface source only
     assert log.shape[0] == 9  # 10 interface lines minus 1 (first diff is NaN)
+
+
+def test_generate_dataset_creates_destination(
+    log_files, log_location, dimension, tmp_path
+):
+    """A fresh workspace (e.g., the web UI's) has no datasets folder yet."""
+    from impsy import dataset
+
+    destination = tmp_path / "new" / "datasets"
+    dataset_file = dataset.generate_dataset(
+        dimension, source=log_location, destination=destination
+    )
+    assert dataset_file.exists()

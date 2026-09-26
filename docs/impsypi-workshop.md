@@ -123,7 +123,7 @@ Finally, the SD card is configured to allow ethernet over USB so you can plug yo
 
 Connecting to the Raspberry Pi should be straightforward: if your computer knows about it over USB-ethernet, you can just type <http://impsypi.local:4000> into a web browser and see the web UI. The Pi gives itself the IP address 169.254.1.107 so you might try <http://169.254.1.107:4000> as well if the above doesn't work.
 
-Now you can poke around the web UI and see what you can do. Most importantly, you can update the configuration file directly, download log files and generate or download datasets. You can't train new models from the web UI (yet!) and it's possibly a bad idea to train models on the slower Raspberry Pis anyway.
+Now you can poke around the web UI and see what you can do. Most importantly, you can update the configuration file directly, upload or download log files and generate or download datasets. The web UI can also train models on the Train page. A Raspberry Pi 4 or 5 should be able to train a small model (try `xs` or `s`), but we wouldn't recommend training on a Pi Zero 2 W; instead, train on your laptop (e.g., with the Docker image) and upload the `.tflite` model to your Pi.
 
 > N.B.: I'm new to this whole ethernet over USB and SD card building business. I'm probably doing something wrong so if there are issues here please be patient and if you know a better way to set something up, let me know!
 
@@ -308,7 +308,7 @@ docker run --rm \
   --volume ./datasets:/impsy/datasets \
   --volume ./models:/impsy/models \
   charlepm/impsy \
-  poetry run ./start_impsy.py train -D 4 -S datasets/training-dataset-4d.npz
+  poetry run ./start_impsy.py train datasets/training-dataset-4d.npz
 ```
 
 to train a 4D model. This command makes sure that the model files that are saved by the train command get saved out of the docker container and in your regular computer filesystem.

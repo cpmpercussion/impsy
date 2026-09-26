@@ -439,3 +439,85 @@ def test_realtime_route_renders(client):
     finally:
         web_interface._monitor_listener.stop()
         web_interface._monitor_listener = None
+
+
+# Log upload and training
+
+
+def test_log_file_dimension():
+    assert webui_mod.log_file_dimension("2024-06-01T12-00-00-8d-mdrnn.log") == 8
+    assert webui_mod.log_file_dimension("x-12d-mdrnn.log") == 12
+    assert webui_mod.log_file_dimension("notes.log") is None
+    assert webui_mod.log_file_dimension("x-d-mdrnn.log") is None
+
+
+def test_logs_upload(client, tmp_path, restored_workspace):
+    set_workspace(tmp_path)
+    data = {
+        "file": [
+            (io.BytesIO(b"2024-06-01T12:00:00,interface,0.5\n"), "a-2d-mdrnn.log"),
+            (io.BytesIO(b"stuff"), "badname.log"),
+            (io.BytesIO(b"stuff"), "a-2d-mdrnn.exe"),
+        ]
+    }
+    response = client.post(
+        "/logs", data=data, content_type="multipart/form-data", follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert b"Uploaded 1 log file" in response.data
+    assert b"Skipped badname.log" in response.data
+    assert [f.name for f in (tmp_path / "logs").iterdir()] == ["a-2d-mdrnn.log"]
+
+
+def test_train_get_without_datasets(client, tmp_path, restored_workspace):
+    set_workspace(tmp_path)
+    response = client.get("/train")
+    assert response.status_code == 200
+    assert b"No datasets yet" in response.data
+
+
+def test_train_status_idle(client):
+    response = client.get("/train/status")
+    assert response.status_code == 200
+    assert "status" in response.get_json()
+
+
+def test_train_post_rejects_bad_input(client, tmp_path, restored_workspace):
+    set_workspace(tmp_path)
+    (tmp_path / "datasets").mkdir()
+    (tmp_path / "datasets" / "d.npz").write_bytes(b"")
+    response = client.post(
+        "/train", data={"dataset": "missing.npz"}, follow_redirects=True
+    )
+    assert b"Choose a dataset" in response.data
+    response = client.post(
+        "/train", data={"dataset": "d.npz", "model_size": "huge"}, follow_redirects=True
+    )
+    assert b"Unknown model size" in response.data
+    response = client.post(
+        "/train", data={"dataset": "d.npz", "max_epochs": "0"}, follow_redirects=True
+    )
+    assert b"Epochs must be" in response.data
+
+
+def test_training_job_trains_and_stops(dimension, dataset_file, tmp_path):
+    """Run a real (tiny) training job in the background, then stop one early."""
+    job = webui_mod.TrainingJob()
+    assert job.start(dataset_file, "xxs", 1, 10, tmp_path)
+    job._thread.join(timeout=300)
+    state = job.to_dict()
+    assert state["status"] == "finished", state["error"]
+    assert state["epoch"] == 1
+    assert len(state["val_loss"]) == 1
+    assert any(name.endswith(".tflite") for name in state["model_files"])
+    for name in state["model_files"]:
+        assert (tmp_path / name).exists()
+
+    # Stop a long job straight away; it should still finish with a model.
+    assert job.start(dataset_file, "xxs", 500, 500, tmp_path / "stopped")
+    assert not job.start(dataset_file, "xxs", 1, 10, tmp_path)  # one at a time
+    job.stop()
+    job._thread.join(timeout=300)
+    assert job.status == "finished", job.error
+    assert job.epoch < 500
+    assert (tmp_path / "stopped").exists()

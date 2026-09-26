@@ -227,8 +227,11 @@ class PredictiveMusicMDRNN(object):
         save_location="models",
         validation_split=0.1,
         patience=10,
+        callbacks=None,
     ):
-        """Train the network for a number of epochs with a specific dataset."""
+        """Train the network for a number of epochs with a specific dataset.
+
+        Extra Keras callbacks can be given in callbacks."""
         save_location = Path(save_location)
         checkpoint_path = save_location / f"{self.model_name}-ckpt.keras"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -242,11 +245,13 @@ class PredictiveMusicMDRNN(object):
         early_stopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor="val_loss", mode="min", verbose=1, patience=patience
         )
+        extra_callbacks = list(callbacks or [])
         callbacks = [terminateOnNaN]
         if checkpointing:
             callbacks.append(checkpoint_callback)
         if early_stopping:
             callbacks.append(early_stopping_callback)
+        callbacks += extra_callbacks
 
         # Do the data scaling in here.
         X = np.array(X, dtype=np.float32) * SCALE_FACTOR
