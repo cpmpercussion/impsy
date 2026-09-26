@@ -1,0 +1,188 @@
+{
+  "spec_version": "0.1.0",
+  "description": "MIDI bytes in -> (index, value) for the model input vector, or null if ignored. Index is 0-based over x_1..x_n (dt excluded).",
+  "cases": [
+    {
+      "name": "note_on_value_is_pitch",
+      "description": "A note-on on a mapped channel sets that dimension to note/127. Velocity is ignored.",
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": [
+        [144, 60, 100],
+        [144, 60, 1],
+        [144, 0, 127],
+        [144, 127, 127],
+        [145, 64, 90]
+      ],
+      "expected": [
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        },
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        },
+        {
+          "index": 0,
+          "value": 0.0
+        },
+        {
+          "index": 0,
+          "value": 1.0
+        },
+        {
+          "index": 2,
+          "value": 0.5039370078740157
+        }
+      ]
+    },
+    {
+      "name": "note_on_velocity_zero",
+      "description": "A note-on with velocity 0 (a note-off by MIDI convention) is currently treated as a new note.",
+      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99"],
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": [
+        [144, 60, 0],
+        [145, 72, 0]
+      ],
+      "expected": [
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        },
+        {
+          "index": 2,
+          "value": 0.5669291338582677
+        }
+      ]
+    },
+    {
+      "name": "note_off_ignored",
+      "description": "Note-off messages never change the input vector.",
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": [
+        [128, 60, 0],
+        [129, 64, 64]
+      ],
+      "expected": [null, null]
+    },
+    {
+      "name": "control_change_value",
+      "description": "A CC on a mapped channel and controller sets that dimension to value/127.",
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": [
+        [176, 42, 0],
+        [176, 42, 64],
+        [176, 42, 127],
+        [191, 7, 100]
+      ],
+      "expected": [
+        {
+          "index": 1,
+          "value": 0.0
+        },
+        {
+          "index": 1,
+          "value": 0.5039370078740157
+        },
+        {
+          "index": 1,
+          "value": 1.0
+        },
+        {
+          "index": 3,
+          "value": 0.7874015748031497
+        }
+      ]
+    },
+    {
+      "name": "unmapped_messages_ignored",
+      "description": "Messages on unmapped channels or controllers, and unsupported message types, are ignored.",
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "messages": [
+        [146, 60, 100],
+        [176, 43, 64],
+        [177, 42, 64],
+        [224, 0, 64],
+        [248]
+      ],
+      "expected": [null, null, null, null, null]
+    },
+    {
+      "name": "channels_are_one_based_in_config",
+      "description": "Config channel 1 is status nibble 0; config channel 16 is status nibble 15.",
+      "dimension": 3,
+      "input_mapping": [
+        ["note_on", 16],
+        ["control_change", 1, 1]
+      ],
+      "messages": [
+        [159, 60, 100],
+        [144, 60, 100],
+        [176, 1, 50],
+        [191, 1, 50]
+      ],
+      "expected": [
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        },
+        null,
+        {
+          "index": 1,
+          "value": 0.3937007874015748
+        },
+        null
+      ]
+    },
+    {
+      "name": "duplicate_note_mapping_first_wins",
+      "description": "When two dimensions map to note_on on the same channel, input goes to the first.",
+      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/102"],
+      "dimension": 3,
+      "input_mapping": [
+        ["note_on", 1],
+        ["note_on", 1]
+      ],
+      "messages": [
+        [144, 60, 100]
+      ],
+      "expected": [
+        {
+          "index": 0,
+          "value": 0.47244094488188976
+        }
+      ]
+    }
+  ]
+}

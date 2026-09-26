@@ -83,6 +83,10 @@ Runtime config is TOML (default: `config.toml`, examples in `configs/`). Key sec
 
 Releases publish to PyPI via `.github/workflows/publish.yml` using PyPI trusted publishing (no API tokens). To cut a release: bump `version` in `pyproject.toml` (the only place it's set; the package reads it from metadata), push to `main`, then `gh release create vX.Y.Z --notes-file ...`. The workflow checks the tag matches the pyproject version, builds with Poetry, smoke-tests the wheel, publishes from the `pypi` GitHub environment (restricted to `v*` tags), and attaches the sdist/wheel to the GitHub release. There's no CHANGELOG — release notes live on the GitHub release.
 
+### Conformance vectors (`spec/`)
+
+`spec/vectors/*.json` records how this reference implementation maps MIDI/WebSocket input to model input vectors, output vectors back to messages, and logs to datasets. impsy-auv3 and impsy-web run the same vectors. `impsy/conformance.py` defines the cases and computes their expected values by driving the real `MIDIServer`/`WebSocketServer`/`InteractionServer`/`dataset` code with fakes. `tests/test_conformance.py` runs the vectors and fails if they're stale. After an intentional behaviour change to these paths, run `poetry run python -m impsy.conformance` and bump `SPEC_VERSION`. Open design questions are linked from each case's `open_decisions`. See `spec/README.md`.
+
 ### Tests
 
 Fixtures in `tests/conftest.py` provide: synthetic log files, generated datasets, trained `xs`-size models, and converted TFLite/Keras/weights files. Tests use dimension=8, sequence_length=3, batch_size=3.

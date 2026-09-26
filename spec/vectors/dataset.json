@@ -1,0 +1,26 @@
+{
+  "spec_version": "0.1.0",
+  "description": "Log file lines -> training dataset rows [dt, x_1..x_n].",
+  "cases": [
+    {
+      "name": "log_to_dataset",
+      "description": "Log rows are 'timestamp,source,x_1,...,x_n' with ISO 8601 timestamps. Only 'interface' rows are used. Each dataset row is [dt, x_1, ..., x_n] where dt is the time since the previous interface row, so the first row is dropped.",
+      "dimension": 3,
+      "log_lines": ["2026-09-26T10:00:00.000000,interface,0.5,0.25", "2026-09-26T10:00:00.500000,interface,0.4724409448818898,0.25", "2026-09-26T10:00:00.600000,rnn,0.1,0.2", "2026-09-26T10:00:01.250000,interface,0.4724409448818898,1.0", "2026-09-26T10:00:03.250000,interface,0.0,1.0"],
+      "expected": [
+        [0.5, 0.4724409448818898, 0.25],
+        [0.75, 0.4724409448818898, 1.0],
+        [2.0, 0.0, 1.0]
+      ]
+    },
+    {
+      "name": "malformed_rows_skipped",
+      "description": "Rows with too few values or unparseable numbers or timestamps are skipped; dt is measured between the remaining rows.",
+      "dimension": 3,
+      "log_lines": ["2026-09-26T10:00:00,interface,0.5,0.25", "2026-09-26T10:00:01,interface,0.5", "2026-09-26T10:00:02,interface,abc,0.25", "not-a-timestamp,interface,0.5,0.25", "2026-09-26T10:00:04,interface,0.75,0.25"],
+      "expected": [
+        [4.0, 0.75, 0.25]
+      ]
+    }
+  ]
+}

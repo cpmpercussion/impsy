@@ -1,0 +1,122 @@
+{
+  "spec_version": "0.1.0",
+  "description": "Timed MIDI input -> the model input vectors [dt, x_1..x_n] and 'interface' log rows it produces.",
+  "cases": [
+    {
+      "name": "sparse_midi_to_dense_model_input",
+      "description": "Each MIDI event updates one dimension of the current input vector; the others keep their last values. The model input is [dt, x_1, ..., x_n], where dt is seconds since the previous interaction (or since start_time for the first). Each event also writes an 'interface' log row with x_1..x_n. The initial vector is random in the reference implementation; here it is set explicitly.",
+      "open_decisions": ["https://github.com/cpmpercussion/impsy/issues/99", "https://github.com/cpmpercussion/impsy/issues/101"],
+      "dimension": 5,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 42],
+        ["note_on", 2],
+        ["control_change", 16, 7]
+      ],
+      "initial_values": [0.0, 0.0, 0.0, 0.0],
+      "start_time": 100.0,
+      "events": [
+        {
+          "time": 100.5,
+          "bytes": [144, 60, 100]
+        },
+        {
+          "time": 100.75,
+          "bytes": [176, 42, 127]
+        },
+        {
+          "time": 101.0,
+          "bytes": [144, 60, 0]
+        },
+        {
+          "time": 101.25,
+          "bytes": [128, 60, 0]
+        },
+        {
+          "time": 102.0,
+          "bytes": [145, 72, 80]
+        },
+        {
+          "time": 102.125,
+          "bytes": [191, 7, 0]
+        }
+      ],
+      "expected": {
+        "model_inputs": [
+          [0.5, 0.47244094488188976, 1.0, 0.0, 0.0],
+          [0.25, 0.47244094488188976, 1.0, 0.0, 0.0],
+          [0.25, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0],
+          [1.0, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0],
+          [0.125, 0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
+        ],
+        "log": [
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 0.0, 0.0, 0.0]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 1.0, 0.0, 0.0]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 1.0, 0.0, 0.0]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 1.0, 0.5669291338582677, 0.0]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ignored_messages_do_not_reset_dt",
+      "description": "Ignored messages produce no model input, and dt runs from the last message that did.",
+      "dimension": 3,
+      "input_mapping": [
+        ["note_on", 1],
+        ["control_change", 1, 1]
+      ],
+      "initial_values": [0.5, 0.5],
+      "start_time": 0.0,
+      "events": [
+        {
+          "time": 1.0,
+          "bytes": [144, 48, 100]
+        },
+        {
+          "time": 1.5,
+          "bytes": [176, 2, 100]
+        },
+        {
+          "time": 1.75,
+          "bytes": [248]
+        },
+        {
+          "time": 2.0,
+          "bytes": [176, 1, 0]
+        }
+      ],
+      "expected": {
+        "model_inputs": [
+          [1.0, 0.3779527559055118, 0.0],
+          [1.0, 0.3779527559055118, 0.0]
+        ],
+        "log": [
+          {
+            "source": "interface",
+            "values": [0.3779527559055118, 0.5]
+          },
+          {
+            "source": "interface",
+            "values": [0.3779527559055118, 0.0]
+          }
+        ]
+      }
+    }
+  ]
+}
