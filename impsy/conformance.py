@@ -35,7 +35,7 @@ from impsy import dataset, impsio, interaction
 
 # Bump the minor version when cases are added, the major version when the
 # expected behaviour of an existing case changes.
-SPEC_VERSION = "0.1.0"
+SPEC_VERSION = "0.2.0"
 
 SPEC_DIR = Path(__file__).resolve().parent.parent / "spec"
 DEFAULT_VECTOR_DIR = SPEC_DIR / "vectors"
@@ -578,6 +578,53 @@ MIDI_INPUT_CASES = [
         ],
         "messages": [[NOTE | 0, 60, 100], [CC | 0, 7, 32]],
     },
+    {
+        "name": "note_velocity_pairs_with_notes",
+        "description": "A note-on sets every note_on dimension on its channel to note/127 and every note_velocity dimension on its channel to velocity/127, as one update. A note_velocity dimension can be mapped without a note dimension on that channel. Velocity-0 note-ons are still note-offs and change nothing.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 5,
+        "input_mapping": [
+            ["note_on", 1],
+            ["note_velocity", 1],
+            ["control_change", 1, 74],
+            ["note_velocity", 2],
+        ],
+        "messages": [
+            [NOTE | 0, 60, 100],
+            [NOTE | 0, 60, 1],
+            [NOTE | 0, 72, 127],
+            [NOTE | 1, 64, 90],
+            [NOTE | 0, 60, 0],
+            [NOTE_OFF | 1, 64, 64],
+        ],
+    },
+    {
+        "name": "fixed_velocity_note_input",
+        "description": "A note mapping with a fixed output velocity [note_on, ch, velocity] matches note-ons on its channel like [note_on, ch]; the fixed velocity only affects output.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 2,
+        "input_mapping": [["note_on", 1, 100]],
+        "messages": [[NOTE | 0, 60, 100], [NOTE | 0, 64, 20]],
+    },
+    {
+        "name": "pitch_bend_input",
+        "description": "A pitch bend on a mapped channel sets that dimension to raw / 16383, where raw = (msb << 7) | lsb is the 14-bit value (0-16383, centre 8192).",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 4,
+        "input_mapping": [
+            ["pitch_bend", 1],
+            ["pitch_bend", 16],
+            ["control_change", 1, 1],
+        ],
+        "messages": [
+            [PITCH_BEND | 0, 0, 0],
+            [PITCH_BEND | 0, 0, 64],
+            [PITCH_BEND | 0, 127, 127],
+            [PITCH_BEND | 0, 1, 0],
+            [PITCH_BEND | 15, 0, 96],
+            [PITCH_BEND | 1, 0, 64],
+        ],
+    },
 ]
 
 MIDI_OUTPUT_CASES = [
@@ -668,6 +715,48 @@ MIDI_OUTPUT_CASES = [
             {"values": [note(60), note(62)]},
         ],
     },
+    {
+        "name": "note_velocity_output",
+        "description": "A note dimension takes its velocity from the first note_velocity dimension on its channel in the same output vector: max(1, floor(v * 127 + 0.5)), so it never sends velocity 0. Note dimensions on one channel share its velocity dimension. A note_velocity dimension sends nothing itself, and notes on channels without one keep velocity 127.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 5,
+        "output_mapping": [
+            ["note_on", 1],
+            ["note_velocity", 1],
+            ["note_on", 1],
+            ["note_on", 2],
+        ],
+        "steps": [
+            {"values": [note(60), 0.5, note(64), note(67)]},
+            {"values": [note(62), 0.0, note(65), note(67)]},
+            {"values": [note(62), 1.0, note(65), note(67)]},
+        ],
+    },
+    {
+        "name": "fixed_velocity_output",
+        "description": "[note_on, ch, velocity] sends its notes with that fixed velocity (clamped to 1-127). A note_velocity dimension on the same channel overrides it.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 5,
+        "output_mapping": [
+            ["note_on", 1, 100],
+            ["note_on", 2, 100],
+            ["note_velocity", 2],
+            ["note_on", 3, 0],
+        ],
+        "steps": [{"values": [note(60), note(60), 0.25, note(60)]}],
+    },
+    {
+        "name": "pitch_bend_output",
+        "description": "A pitch_bend dimension sends a pitch bend with raw = floor(v * 16383 + 0.5), as bytes [0xE0 | ch, raw & 0x7F, raw >> 7]. Values are clipped to [0, 1] first.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 3,
+        "output_mapping": [["pitch_bend", 1], ["pitch_bend", 16]],
+        "steps": [
+            {"values": [0.0, 1.0]},
+            {"values": [0.5, 0.25]},
+            {"values": [-1.0, 2.0]},
+        ],
+    },
 ]
 
 WEBSOCKET_INPUT_CASES = [
@@ -688,6 +777,21 @@ WEBSOCKET_INPUT_CASES = [
             "/channel/1/noteon/sixty/100",
         ],
     },
+    {
+        "name": "websocket_velocity_and_pitch_bend",
+        "description": "noteon sets note_velocity dimensions like the equivalent MIDI note-on. /channel/{ch}/pitchbend/{value} carries the raw 14-bit value (0-16383) and is decoded like a MIDI pitch bend. Out-of-range or malformed pitch bends are ignored.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "input_mapping": [["note_on", 1], ["note_velocity", 1], ["pitch_bend", 1]],
+        "messages": [
+            "/channel/1/noteon/60/100",
+            "/channel/1/pitchbend/8192",
+            "/channel/1/pitchbend/0",
+            "/channel/1/pitchbend/16383",
+            "/channel/2/pitchbend/8192",
+            "/channel/1/pitchbend/16384",
+            "/channel/1/pitchbend/1/2",
+        ],
+    },
 ]
 
 WEBSOCKET_OUTPUT_CASES = [
@@ -701,6 +805,16 @@ WEBSOCKET_OUTPUT_CASES = [
             [note(60), 0.25, 0.1, 0.999],
             [0.3, 0.3, 0.6, 0.6],
             [-0.5, 1.5, 2.0, -1.0],
+        ],
+    },
+    {
+        "name": "websocket_velocity_and_pitch_bend_output",
+        "description": "Note velocity and pitch bend are encoded as for MIDI output. Pitch bend is sent as /channel/{ch}/pitchbend/{raw} with raw in 0-16383.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "output_mapping": [["note_on", 1], ["note_velocity", 1], ["pitch_bend", 1]],
+        "steps": [
+            [note(60), 0.5, 0.5],
+            [note(62), 0.0, 1.0],
         ],
     },
 ]
@@ -751,6 +865,21 @@ PIPELINE_CASES = [
             {"time": 1.5, "bytes": [CC | 0, 2, 100]},
             {"time": 1.75, "bytes": [0xF8]},
             {"time": 2.0, "bytes": [CC | 0, 1, 0]},
+        ],
+    },
+    {
+        "name": "note_and_velocity_are_one_interaction",
+        "description": "A note-on that sets both a note and a note_velocity dimension is one interaction: one model input and one log row. Pitch bends are interactions of their own.",
+        "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+        "dimension": 4,
+        "input_mapping": [["note_on", 1], ["note_velocity", 1], ["pitch_bend", 1]],
+        "initial_values": [0.0, 0.0, 0.5],
+        "start_time": 0.0,
+        "events": [
+            {"time": 1.0, "bytes": [NOTE | 0, 60, 100]},
+            {"time": 1.25, "bytes": [PITCH_BEND | 0, 0, 96]},
+            {"time": 1.5, "bytes": [NOTE | 0, 60, 0]},
+            {"time": 2.0, "bytes": [NOTE | 0, 64, 32]},
         ],
     },
 ]

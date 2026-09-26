@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.0",
+  "spec_version": "0.2.0",
   "description": "Timed MIDI input -> the model input vectors [dt, x_1..x_n] and 'interface' log rows it produces.",
   "tolerance": 1e-09,
   "cases": [
@@ -149,6 +149,58 @@
           {
             "source": "interface",
             "values": [0.3779527559055118, 0.0]
+          }
+        ]
+      }
+    },
+    {
+      "name": "note_and_velocity_are_one_interaction",
+      "description": "A note-on that sets both a note and a note_velocity dimension is one interaction: one model input and one log row. Pitch bends are interactions of their own.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "dimension": 4,
+      "input_mapping": [
+        ["note_on", 1],
+        ["note_velocity", 1],
+        ["pitch_bend", 1]
+      ],
+      "initial_values": [0.0, 0.0, 0.5],
+      "start_time": 0.0,
+      "events": [
+        {
+          "time": 1.0,
+          "bytes": [144, 60, 100]
+        },
+        {
+          "time": 1.25,
+          "bytes": [224, 0, 96]
+        },
+        {
+          "time": 1.5,
+          "bytes": [144, 60, 0]
+        },
+        {
+          "time": 2.0,
+          "bytes": [144, 64, 32]
+        }
+      ],
+      "expected": {
+        "model_inputs": [
+          [1.0, 0.47244094488188976, 0.7874015748031497, 0.5],
+          [0.25, 0.47244094488188976, 0.7874015748031497, 0.7500457791613258],
+          [0.75, 0.5039370078740157, 0.25196850393700787, 0.7500457791613258]
+        ],
+        "log": [
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 0.7874015748031497, 0.5]
+          },
+          {
+            "source": "interface",
+            "values": [0.47244094488188976, 0.7874015748031497, 0.7500457791613258]
+          },
+          {
+            "source": "interface",
+            "values": [0.5039370078740157, 0.25196850393700787, 0.7500457791613258]
           }
         ]
       }

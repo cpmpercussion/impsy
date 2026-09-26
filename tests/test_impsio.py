@@ -348,6 +348,19 @@ def test_websocket_send_midi_formats(default_config, sparse_callback, dense_call
     sender.websocket_send_midi(msg)
     mock_client.send.assert_called_with("/channel/2/cc/42/64")
 
+    # pitch bend is sent as the raw 14-bit value, 0-16383
+    msg = mido.Message("pitchwheel", channel=0, pitch=-8192)
+    sender.websocket_send_midi(msg)
+    mock_client.send.assert_called_with("/channel/1/pitchbend/0")
+
+
+def test_websocket_to_midi_pitch_bend():
+    msg = impsio.WebSocketServer.websocket_to_midi("/channel/3/pitchbend/16383")
+    assert msg.type == "pitchwheel" and msg.channel == 2 and msg.pitch == 8191
+    for bad in ["/channel/1/pitchbend/16384", "/channel/1/pitchbend/1/2"]:
+        with pytest.raises(ValueError):
+            impsio.WebSocketServer.websocket_to_midi(bad)
+
 
 def test_websocket_handler_roundtrip(default_config):
     """Outgoing wire format must be parseable by the input handler.

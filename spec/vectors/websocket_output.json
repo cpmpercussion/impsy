@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.0",
+  "spec_version": "0.2.0",
   "description": "Model output vectors -> WebSocket message strings sent at each step.",
   "tolerance": 1e-09,
   "cases": [
@@ -24,6 +24,24 @@
         ["/channel/1/noteoff/64/0", "/channel/1/noteon/60/127", "/channel/1/cc/42/32", "/channel/2/noteoff/0/0", "/channel/2/noteon/13/127", "/channel/16/cc/7/127"],
         ["/channel/1/noteoff/60/0", "/channel/1/noteon/38/127", "/channel/1/cc/42/38", "/channel/2/noteoff/13/0", "/channel/2/noteon/76/127", "/channel/16/cc/7/76"],
         ["/channel/1/noteoff/38/0", "/channel/1/noteon/0/127", "/channel/1/cc/42/127", "/channel/2/noteoff/76/0", "/channel/2/noteon/127/127", "/channel/16/cc/7/0"]
+      ]
+    },
+    {
+      "name": "websocket_velocity_and_pitch_bend_output",
+      "description": "Note velocity and pitch bend are encoded as for MIDI output. Pitch bend is sent as /channel/{ch}/pitchbend/{raw} with raw in 0-16383.",
+      "issues": ["https://github.com/cpmpercussion/impsy/issues/98"],
+      "output_mapping": [
+        ["note_on", 1],
+        ["note_velocity", 1],
+        ["pitch_bend", 1]
+      ],
+      "steps": [
+        [0.47007874015748036, 0.5, 0.5],
+        [0.4858267716535433, 0.0, 1.0]
+      ],
+      "expected": [
+        ["/channel/1/noteon/60/64", "/channel/1/pitchbend/8192"],
+        ["/channel/1/noteoff/60/0", "/channel/1/noteon/62/1", "/channel/1/pitchbend/16383"]
       ]
     }
   ]

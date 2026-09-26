@@ -148,8 +148,12 @@ def compute_channel_labels(config: dict) -> list[str]:
             entry = mapping[i]
             if entry[0] == "note_on" and len(entry) >= 2:
                 labels.append(f"Note ch{entry[1]}")
+            elif entry[0] == "note_velocity" and len(entry) >= 2:
+                labels.append(f"Vel ch{entry[1]}")
             elif entry[0] == "control_change" and len(entry) >= 3:
                 labels.append(f"CC{entry[1]}:{entry[2]}")
+            elif entry[0] == "pitch_bend" and len(entry) >= 2:
+                labels.append(f"PB ch{entry[1]}")
             else:
                 labels.append(f"Ch {i}")
         else:

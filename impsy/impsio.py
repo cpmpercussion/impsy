@@ -12,6 +12,7 @@ from websockets.sync.server import serve
 from pythonosc import dispatcher, osc_server, udp_client
 from threading import Thread
 from impsy.utils import (
+    PITCH_BEND_CENTRE,
     MidiOutputState,
     match_midi_port_to_list,
     midi_message_to_updates,
@@ -266,6 +267,8 @@ class WebSocketServer(IOServer):
             ws_msg = f"/channel/{channel}/noteoff/{message.note}/{message.velocity}"
         elif message.type == "control_change":
             ws_msg = f"/channel/{channel}/cc/{message.control}/{message.value}"
+        elif message.type == "pitchwheel":
+            ws_msg = f"/channel/{channel}/pitchbend/{message.pitch + PITCH_BEND_CENTRE}"
         else:
             return
         # click.secho(f"WS out: {ws_msg}")
@@ -282,6 +285,7 @@ class WebSocketServer(IOServer):
         Expected wire format mirrors websocket_send_midi:
           /channel/<ch1based>/noteon/<note>/<velocity>
           /channel/<ch1based>/cc/<controller>/<value>
+          /channel/<ch1based>/pitchbend/<value 0-16383>
         """
         self.ws_clients.add(websocket)  # add websocket to the client list.
         for message in websocket:
@@ -296,18 +300,25 @@ class WebSocketServer(IOServer):
 
     @staticmethod
     def websocket_to_midi(message: str) -> mido.Message:
-        """Parse /channel/<ch1based>/<noteon|noteoff|cc>/<a>/<b> into a mido message."""
+        """Parse /channel/<ch1based>/<noteon|noteoff|cc>/<a>/<b> or
+        /channel/<ch1based>/pitchbend/<value> into a mido message."""
         try:
-            _, _, chan, msg_type, a, b = message.split("/")
+            _, _, chan, msg_type, *args = message.split("/")
             channel = int(chan) - 1
-            a, b = int(a), int(b)
-            if msg_type == "noteon":
-                return mido.Message("note_on", channel=channel, note=a, velocity=b)
-            if msg_type == "noteoff":
-                return mido.Message("note_off", channel=channel, note=a, velocity=b)
-            if msg_type == "cc":
+            args = [int(a) for a in args]
+            if len(args) == 2:
+                a, b = args
+                if msg_type == "noteon":
+                    return mido.Message("note_on", channel=channel, note=a, velocity=b)
+                if msg_type == "noteoff":
+                    return mido.Message("note_off", channel=channel, note=a, velocity=b)
+                if msg_type == "cc":
+                    return mido.Message(
+                        "control_change", channel=channel, control=a, value=b
+                    )
+            if len(args) == 1 and msg_type == "pitchbend":
                 return mido.Message(
-                    "control_change", channel=channel, control=a, value=b
+                    "pitchwheel", channel=channel, pitch=args[0] - PITCH_BEND_CENTRE
                 )
         except (ValueError, TypeError) as e:
             raise ValueError(f"Could not parse websocket message {message!r}") from e

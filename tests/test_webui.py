@@ -325,6 +325,16 @@ def test_compute_channel_labels_midi_note_and_cc():
     assert labels == ["Note ch1", "CC2:19", "CC3:20"]
 
 
+def test_compute_channel_labels_velocity_and_pitch_bend():
+    from impsy.web_interface import compute_channel_labels
+
+    cfg = {
+        "model": {"dimension": 3},
+        "midi": {"input": {"Foo": [["note_velocity", 1], ["pitch_bend", 2]]}},
+    }
+    assert compute_channel_labels(cfg) == ["Vel ch1", "PB ch2"]
+
+
 def test_compute_channel_labels_picks_first_port_alphabetically():
     """Multi-port MIDI configs use the first port (sorted by name) for labels."""
     from impsy.web_interface import compute_channel_labels
