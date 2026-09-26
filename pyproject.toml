@@ -18,7 +18,7 @@ dependencies = [
     "python-rtmidi>=1.5.8,<2",
     "click>=8.1.7,<9",
     "flask>=3.0.3,<4",
-    "psutil>=6.0.0,<7",
+    "psutil>=6.0.0,<8",
 ]
 
 [project.urls]
