@@ -127,6 +127,8 @@ Every time you use IMPSY's `run` command, a new log file is created so that you 
 
 There's two steps for training: Generate a dataset file, and train the predictive model.
 
+> **No computer to train on?** The [IMPSY training notebook](https://colab.research.google.com/github/cpmpercussion/impsy/blob/main/notebooks/impsy_training.ipynb) runs the same steps on Google Colab: upload your `.log` files, and download a trained `.tflite` model. You'll need a Google account.
+
 Use the `dataset` command:
 
     poetry run ./start_impsy.py dataset --dimension (N+1)
