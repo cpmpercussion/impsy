@@ -70,6 +70,7 @@ def generate_dataset(
 
     # Save Performance Data in a compressed numpy file.
     dataset_name = filename if filename else f"training-dataset-{dimension}d.npz"
+    Path(destination).mkdir(parents=True, exist_ok=True)
     dataset_file = Path(destination) / dataset_name
 
     # Input format is:

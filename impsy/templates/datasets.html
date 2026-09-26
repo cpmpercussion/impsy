@@ -31,6 +31,7 @@
                     <th>File</th>
                     <th>Size</th>
                     <th>Date</th>
+                    <th>Dim</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -43,7 +44,9 @@
                     </td>
                     <td class="text-nowrap">{{ file.size }}</td>
                     <td class="text-nowrap">{{ file.date }}</td>
+                    <td>{% if file.dimension %}{{ file.dimension }}d{% else %}?{% endif %}</td>
                     <td class="text-end text-nowrap">
+                        <a href="{{ url_for('train', dataset=file.name) }}" class="btn btn-outline-primary btn-sm">Train</a>
                         <a href="{{ url_for('download_dataset', filename=file.name) }}" class="btn btn-outline-secondary btn-sm">Download</a>
                         <form method="POST" action="{{ url_for('delete_dataset', filename=file.name) }}" class="d-inline" onsubmit="return confirm('Delete {{ file.name }}?')">
                             <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>

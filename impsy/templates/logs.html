@@ -2,7 +2,23 @@
 {% block title %}IMPSY - Log Files{% endblock %}
 {% block content %}
 <h1 class="mb-2">Log Files</h1>
-<p class="text-secondary mb-4">Interaction logs recorded during performances. Run <code>impsy run</code> to record new data.</p>
+<p class="text-secondary mb-4">Interaction logs recorded during performances. Run <code>impsy run</code> to record new data, or upload logs from another IMPSY device.</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Upload Logs</h5>
+        <form method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label for="file" class="form-label">Log files (.log)</label>
+                <input type="file" class="form-control" name="file" id="file" accept=".log" multiple>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+        <div class="form-text mt-2">Log files from IMPSY, IMPSYpi, the AUv3 app and IMPSY Web all work. Names need to end in <code>-{dimension}d-mdrnn.log</code>.</div>
+    </div>
+</div>
 
 <div class="card">
     <div class="card-body">

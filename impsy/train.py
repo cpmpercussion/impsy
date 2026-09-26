@@ -46,8 +46,38 @@ def seq_to_singleton_format(examples):
     return (xs, ys)
 
 
+def dataset_dimension(dataset_file) -> int:
+    """Returns the dimension (dt plus number of values) of the data in a .npz dataset."""
+    with np.load(dataset_file, allow_pickle=True) as loaded:
+        corpus = loaded["perfs"]
+    for perf in corpus:
+        if len(perf) > 0:
+            return int(np.asarray(perf).shape[1])
+    raise ValueError(f"Dataset {dataset_file} has no data.")
+
+
+def find_dataset_file(dataset_location, dimension: int | None = None) -> Path:
+    """Resolves a dataset file from a .npz path or a directory of datasets.
+
+    For a directory, uses training-dataset-{dimension}d.npz if dimension is given,
+    otherwise the only .npz file in the directory.
+    """
+    dataset_location = Path(dataset_location)
+    if dataset_location.suffix == ".npz":
+        return dataset_location
+    if dimension is not None:
+        return dataset_location / f"training-dataset-{dimension}d.npz"
+    candidates = sorted(dataset_location.glob("*.npz"))
+    if len(candidates) == 1:
+        return candidates[0]
+    raise ValueError(
+        f"Found {len(candidates)} .npz files in {dataset_location}; "
+        "give a dataset file or a dimension to choose one."
+    )
+
+
 def train_mdrnn(
-    dimension: int,
+    dimension: int | None,
     dataset_location: str,
     model_size: str,
     early_stopping: bool,
@@ -58,8 +88,14 @@ def train_mdrnn(
     save_model: bool = True,
     save_weights: bool = False,
     save_tflite: bool = True,
+    callbacks: list | None = None,
 ):
-    """Loads a dataset, creates a model and runs the training procedure."""
+    """Loads a dataset, creates a model and runs the training procedure.
+
+    dimension can be None to read it from the dataset. If training is interrupted
+    (e.g., with Ctrl-C) the model is still saved with the latest weights.
+    Extra Keras callbacks can be given to follow or stop training.
+    """
     from . import mdrnn
 
     model_config = mdrnn_config(model_size)
@@ -78,13 +114,16 @@ def train_mdrnn(
     np.random.seed(SEED)
 
     # Load dataset
-    dataset_location = Path(dataset_location)
-    dataset_default_name = f"training-dataset-{str(dimension)}d.npz"
-    if dataset_location.suffix == "":
-        dataset_default_name = f"training-dataset-{str(dimension)}d.npz"
-        dataset_location = dataset_location / dataset_default_name
-    assert dataset_location.suffix == ".npz", "dataset file to load must end with .npz"
+    dataset_location = find_dataset_file(dataset_location, dimension)
     click.secho(f"Dataset: {dataset_location}")
+    data_dimension = dataset_dimension(dataset_location)
+    if dimension is None:
+        dimension = data_dimension
+    elif dimension != data_dimension:
+        raise ValueError(
+            f"Dataset has dimension {data_dimension} but dimension {dimension} was requested."
+        )
+    click.secho(f"Dimension: {dimension}", fg="blue")
     with np.load(dataset_location, allow_pickle=True) as loaded:
         corpus = loaded["perfs"]
     print("Loaded performances:", len(corpus))
@@ -121,17 +160,22 @@ def train_mdrnn(
     )
 
     validation_split = 0.10
-    history = training_mdrnn.train(
-        X,
-        y,
-        batch_size=batch_size,
-        epochs=num_epochs,
-        checkpointing=True,
-        early_stopping=early_stopping,
-        save_location=save_location,
-        validation_split=validation_split,
-        patience=patience,
-    )
+    try:
+        history = training_mdrnn.train(
+            X,
+            y,
+            batch_size=batch_size,
+            epochs=num_epochs,
+            checkpointing=True,
+            early_stopping=early_stopping,
+            save_location=save_location,
+            validation_split=validation_split,
+            patience=patience,
+            callbacks=callbacks,
+        )
+    except KeyboardInterrupt:
+        click.secho("Training interrupted, saving the latest weights.", fg="yellow")
+        history = getattr(training_mdrnn.model, "history", None)
 
     # Save final Model
     model_name = training_mdrnn.model_name
@@ -162,19 +206,23 @@ def train_mdrnn(
         # Save .tflite file
         from .tflite_converter import model_to_tflite
 
-        tflite_file = model_to_tflite(inference_mdrnn.model, model_keras_file)
+        if not save_model:
+            inference_mdrnn.model.set_weights(training_mdrnn.model.get_weights())
+        tflite_path = save_location / f"{inference_mdrnn.model_name}.tflite"
+        tflite_file = model_to_tflite(inference_mdrnn.model, tflite_path)
         output["tflite_file"] = tflite_file
 
     return output
 
 
 @click.command(name="train")
+@click.argument("dataset", required=False, default=None)
 @click.option(
     "-D",
     "--dimension",
     type=int,
-    default=2,
-    help="The dimension of the data to model, must be >= 2.",
+    default=None,
+    help="The dimension of the data to model, must be >= 2 (read from the dataset if not given).",
 )
 @click.option(
     "-S",
@@ -218,7 +266,8 @@ def train_mdrnn(
     help="The destination directory to write trained model files to.",
 )
 def train(
-    dimension: int,
+    dataset: str | None,
+    dimension: int | None,
     source: str,
     modelsize: str,
     earlystopping: bool,
@@ -227,12 +276,20 @@ def train(
     batchsize: int,
     destination: str,
 ):
-    """Trains an IMPSY MDRNN model based on an existing dataset (run dataset command first!)."""
+    """Trains an IMPSY MDRNN model based on an existing dataset (run dataset command first!).
+
+    DATASET is an optional .npz file to train on (overrides --source). The trained
+    model is saved in .keras and .tflite formats. Press Ctrl-C to stop training
+    early and save the model as it is.
+    """
+    if dataset is not None:
+        source = dataset
     click.secho(
-        f"IMPSY: Going to train a {dimension}D, {modelsize} sized MDRNN model.",
+        f"IMPSY: Going to train a {modelsize} sized MDRNN model.",
         fg="green",
     )
-    train_mdrnn(
+    Path(destination).mkdir(parents=True, exist_ok=True)
+    output = train_mdrnn(
         dimension,
         source,
         modelsize,
@@ -243,3 +300,4 @@ def train(
         save_location=destination,
     )
     click.secho("IMPSY: training completed.", fg="green")
+    click.secho(f"Model file: {output['tflite_file']}", fg="green")
