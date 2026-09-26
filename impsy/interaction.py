@@ -396,7 +396,8 @@ class InteractionServer(object):
         dimensions.
         """
         # set up dense interaction list
-        values = self.last_user_interaction_data[1:]
+        # copy: the previous vector may still be queued for the model.
+        values = self.last_user_interaction_data[1:].copy()
         for index, value in updates:
             values[index] = value
         self._broadcast_monitor("in", values)

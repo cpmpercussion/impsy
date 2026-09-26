@@ -228,18 +228,26 @@ def run_websocket_input_case(case):
 
 
 def run_websocket_output_case(case):
-    """A sequence of output vectors -> the websocket strings sent at each step."""
+    """A sequence of output vectors -> the websocket strings sent at each step.
+
+    Values pass through InteractionServer.send_back_values, so clipping to
+    [0, 1] is included.
+    """
     config = {
         "verbose": False,
         "websocket": {"input": [], "output": case["output_mapping"]},
     }
-    server = impsio.WebSocketServer(config, lambda i, v: None, lambda v: None)
+    websocket = impsio.WebSocketServer(config, lambda u: None, lambda v: None)
     client = FakeWebsocketClient()
-    server.ws_clients.add(client)
+    websocket.ws_clients.add(client)
+    dimension = len(case["output_mapping"]) + 1
+    config["model"] = {"dimension": dimension}
+    server, _ = _interaction_server(config, [0.0] * (dimension - 1), 0.0)
+    server.senders = [websocket]
     results = []
     for values in case["steps"]:
         client.sent = []
-        server.send(np.array(values))
+        server.send_back_values(np.array(values))
         results.append(list(client.sent))
     return results
 
@@ -685,13 +693,14 @@ WEBSOCKET_INPUT_CASES = [
 WEBSOCKET_OUTPUT_CASES = [
     {
         "name": "websocket_output",
-        "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note on a channel.",
+        "description": "Outgoing messages use the same wire format and the same note/CC encoding as MIDI output, including note-offs before each new note and clipping to [0, 1].",
         "issues": ["https://github.com/cpmpercussion/impsy/issues/100"],
         "output_mapping": MIXED_MAPPING,
         "steps": [
             [0.5, 0.5, 0.0, 1.0],
             [note(60), 0.25, 0.1, 0.999],
             [0.3, 0.3, 0.6, 0.6],
+            [-0.5, 1.5, 2.0, -1.0],
         ],
     },
 ]
