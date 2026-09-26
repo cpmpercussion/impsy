@@ -45,6 +45,8 @@ IMPSY's prediction model is a small mixture density recurrent network. Training 
 
 See the main repository for the current training command, hyperparameter defaults, and tips for tuning the mixture parameters.
 
+If you don't have a computer that can run IMPSY, the [IMPSY training notebook](https://colab.research.google.com/github/cpmpercussion/impsy/blob/main/notebooks/impsy_training.ipynb) trains a model on Google Colab from your uploaded `.log` files.
+
 ## 5. Run the instrument
 
 Once you have a trained model, IMPSY can run in *call-and-response* mode (the model answers when you pause), *polyphony* mode (you and the model play simultaneously), or *battle* mode (the model plays autonomously alongside you) — plus a *user-only* mode for logging data without predictions. See the [configuration reference]({{ '/config/' | relative_url }}) for details. On a desktop machine you can iterate quickly; on a Pi, you get a self-contained intelligent instrument that boots straight into performance mode.
