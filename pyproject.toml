@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://charlesmartin.au/impsy-homepage/"
+homepage = "https://charlesmartin.au/impsy"
 repository = "https://github.com/cpmpercussion/impsy"
 
 [project.scripts]
