@@ -142,6 +142,41 @@ def test_websocket_server(io_config, sparse_callback, dense_callback, output_val
     time.sleep(0.1)
 
 
+def test_websocket_client_round_trip(io_config, dense_callback, output_values):
+    """A real client's messages reach the callback, and output reaches the client."""
+    from websockets.sync.client import connect
+
+    io_config["websocket"]["server_ip"] = "127.0.0.1"
+    received = []
+    server = impsio.WebSocketServer(io_config, received.append, dense_callback)
+    server.connect()
+    try:
+        client = None
+        for _ in range(50):  # wait for the server thread to start listening
+            try:
+                client = connect("ws://127.0.0.1:5099")
+                break
+            except OSError:
+                time.sleep(0.05)
+        assert client is not None, "couldn't connect to the websocket server"
+        with client:
+            client.send("/channel/1/noteon/64/100")
+            client.send("not a valid message")  # skipped, doesn't end the handler
+            client.send("/channel/1/cc/42/127")
+            for _ in range(50):
+                if len(received) >= 2:
+                    break
+                time.sleep(0.05)
+            assert received[0] == [(0, 64 / 127)]
+            assert received[1] == [(1, 1.0)]
+
+            server.send(output_values)
+            first = client.recv(timeout=2)
+            assert first.startswith("/channel/")
+    finally:
+        server.disconnect()
+
+
 def test_osc_server(io_config, sparse_callback, dense_callback, output_values):
     sender = impsio.OSCServer(io_config, sparse_callback, dense_callback)
     sender.connect()
@@ -383,9 +418,7 @@ def test_websocket_handler_roundtrip(default_config):
 
     # Build the wire message via websocket_send_midi
     mido_chan = cfg_chan - 1  # mido stores channel as 0-based
-    msg = mido.Message(
-        "control_change", channel=mido_chan, control=cfg_ctrl, value=64
-    )
+    msg = mido.Message("control_change", channel=mido_chan, control=cfg_ctrl, value=64)
     captured = []
     mock_client = MagicMock(send=lambda s: captured.append(s))
     sender.ws_clients.add(mock_client)
