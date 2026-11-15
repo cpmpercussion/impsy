@@ -266,9 +266,7 @@ class InteractionServer(object):
                 click.secho("Network not ready, pitemp not applied.", fg="yellow")
             else:
                 self.net.pi_temp = float(args[0])
-                click.secho(
-                    f"Pi temp set to {self.net.pi_temp}", bg="blue", fg="white"
-                )
+                click.secho(f"Pi temp set to {self.net.pi_temp}", bg="blue", fg="white")
         elif command == "timescale" and args:
             self.config["model"]["timescale"] = float(args[0])
             click.secho(
@@ -288,34 +286,34 @@ class InteractionServer(object):
         disp = dispatcher.Dispatcher()
         disp.map(
             "/impsy/mode",
-            lambda addr, *args: self.handle_command("mode", [str(args[0])])
-            if args
-            else None,
+            lambda addr, *args: (
+                self.handle_command("mode", [str(args[0])]) if args else None
+            ),
         )
         disp.map("/impsy/reset", lambda addr, *args: self.handle_command("reset", []))
         disp.map(
             "/impsy/pause",
-            lambda addr, *args: self.handle_command("pause", [int(args[0])])
-            if args
-            else None,
+            lambda addr, *args: (
+                self.handle_command("pause", [int(args[0])]) if args else None
+            ),
         )
         disp.map(
             "/impsy/sigmatemp",
-            lambda addr, *args: self.handle_command("sigmatemp", [float(args[0])])
-            if args
-            else None,
+            lambda addr, *args: (
+                self.handle_command("sigmatemp", [float(args[0])]) if args else None
+            ),
         )
         disp.map(
             "/impsy/pitemp",
-            lambda addr, *args: self.handle_command("pitemp", [float(args[0])])
-            if args
-            else None,
+            lambda addr, *args: (
+                self.handle_command("pitemp", [float(args[0])]) if args else None
+            ),
         )
         disp.map(
             "/impsy/timescale",
-            lambda addr, *args: self.handle_command("timescale", [float(args[0])])
-            if args
-            else None,
+            lambda addr, *args: (
+                self.handle_command("timescale", [float(args[0])]) if args else None
+            ),
         )
         try:
             self._command_server = osc_server.ThreadingOSCUDPServer(

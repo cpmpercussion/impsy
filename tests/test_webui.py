@@ -383,7 +383,7 @@ def test_compute_channel_labels_handles_malformed_entry():
         "midi": {
             "input": {
                 "Foo": [
-                    ["note_on"],            # missing channel
+                    ["note_on"],  # missing channel
                     ["control_change", 1],  # missing controller number
                     ["unknown_kind", 1, 2],  # unrecognised type
                 ]

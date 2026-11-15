@@ -605,6 +605,7 @@ def test_broadcast_monitor_sends_out(interaction_server, monkeypatch):
 
 def test_broadcast_monitor_swallows_errors(interaction_server, monkeypatch):
     """A failing send (no listener) must not propagate."""
+
     def boom(addr, vals):
         raise OSError("no listener")
 
@@ -678,9 +679,7 @@ def test_command_listener_dispatches_to_handle_command(interaction_server, monke
         "handle_command",
         lambda cmd, args: received.append((cmd, list(args))),
     )
-    client = udp_client.SimpleUDPClient(
-        "127.0.0.1", interaction_server._command_port
-    )
+    client = udp_client.SimpleUDPClient("127.0.0.1", interaction_server._command_port)
     client.send_message("/impsy/mode", "polyphony")
     deadline = time.time() + 1.0
     while time.time() < deadline and not received:

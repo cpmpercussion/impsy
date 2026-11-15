@@ -8,7 +8,11 @@ import os
 import re
 import time
 import tomllib
-from importlib.metadata import PackageNotFoundError, metadata as _pkg_metadata, version as _pkg_version
+from importlib.metadata import (
+    PackageNotFoundError,
+    metadata as _pkg_metadata,
+    version as _pkg_version,
+)
 from threading import Lock, Thread
 from impsy.data import default_config_template
 from impsy.dataset import generate_dataset
@@ -486,9 +490,7 @@ class MonitorListener:
         disp = dispatcher.Dispatcher()
         disp.map("/monitor/in", self._on_in)
         disp.map("/monitor/out", self._on_out)
-        self._server = osc_server.ThreadingOSCUDPServer(
-            ("127.0.0.1", self.port), disp
-        )
+        self._server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", self.port), disp)
         self._thread = Thread(
             target=self._server.serve_forever,
             name="webui_monitor_thread",
@@ -975,9 +977,7 @@ def commands():
             elif command == "pause":
                 _pause_state = not _pause_state
                 client.send_message("/impsy/pause", 1 if _pause_state else 0)
-                flash(
-                    f"{'Paused' if _pause_state else 'Resumed'} IMPSY.", "success"
-                )
+                flash(f"{'Paused' if _pause_state else 'Resumed'} IMPSY.", "success")
             else:
                 flash(f"Unknown command: {command}", "error")
         except ImportError:
