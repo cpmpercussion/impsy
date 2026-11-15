@@ -87,9 +87,7 @@ def init(directory, force):
     elif action == "overwritten":
         click.secho(f"  overwrote {cfg.name}", fg="green")
     elif action == "kept":
-        click.secho(
-            f"  exists    {cfg.name} (use --force to overwrite)", fg="yellow"
-        )
+        click.secho(f"  exists    {cfg.name} (use --force to overwrite)", fg="yellow")
     else:  # no-template
         click.secho(
             "  warning   bundled default template not found; "
